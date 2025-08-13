@@ -45,19 +45,19 @@ export async function middleware(req: NextRequest) {
 	const { supabase, response } = createSupabaseMiddlewareClient(req);
 
 	const {
-		data: { session },
-	} = await supabase.auth.getSession();
+		data: { user },
+	} = await supabase.auth.getUser();
 
 	const pathname = req.nextUrl.pathname;
 
 	// Jika user sudah login & membuka /login → kembalikan ke beranda
-	if (pathname === "/login" && session) {
+	if (pathname === "/login" && user) {
 		const url = req.nextUrl.clone();
 		url.pathname = "/";
 		return NextResponse.redirect(url);
 	}
 
-	if (!session && !isPublicPath(pathname)) {
+	if (!user && !isPublicPath(pathname)) {
 		const url = req.nextUrl.clone();
 		url.pathname = "/login";
 		url.searchParams.set("redirect", pathname);

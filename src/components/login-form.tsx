@@ -32,7 +32,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
       return;
     }
     startTransition(() => {
-      router.replace("/");
+      router.replace("/dashboard");
     });
   }
 
