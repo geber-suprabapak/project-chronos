@@ -3,10 +3,8 @@
 
 import { sql } from "drizzle-orm";
 import {
-  index,
   uniqueIndex,
   pgTable,
-  pgTableCreator,
   bigint,
   uuid,
   text,
