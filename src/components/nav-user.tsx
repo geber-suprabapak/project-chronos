@@ -9,7 +9,7 @@ import {
   Check,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   DropdownMenu,
@@ -50,7 +50,12 @@ export function NavUser({ user, loading }: NavUserProps) {
     router.replace("/login");
   }
 
-  // Skeleton / placeholder when loading or no user
+  // Redirect ke /login jika user sudah hilang (misal setelah sign out) – dilakukan via efek client.
+  React.useEffect(() => {
+    if (!loading && !user) router.replace("/login");
+  }, [user, loading, router]);
+
+  // Skeleton / placeholder ketika masih loading
   if (loading) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
@@ -58,9 +63,8 @@ export function NavUser({ user, loading }: NavUserProps) {
       </div>
     );
   }
-  if (!user) {
-    redirect("/login");
-  }
+  // Jika sudah tidak loading dan user null, jangan render apa-apa (efek di atas akan redirect)
+  if (!user) return null;
 
   // Derive display data (can extend with user_metadata avatar, name etc.)
   const displayName = (user.user_metadata?.full_name as string) ?? user.email;
@@ -83,7 +87,6 @@ export function NavUser({ user, loading }: NavUserProps) {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
