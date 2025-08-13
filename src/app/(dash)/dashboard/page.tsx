@@ -2,6 +2,8 @@ import { HydrateClient, api } from "~/trpc/server";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 import { LogoutButton } from "~/components/logout-button";
+import { AppSidebar } from "~/components/app-sidebar";
+import { SidebarProvider, SidebarInset } from "~/components/ui/sidebar";
 
 export default async function Home() {
   const supabase = createSupabaseServerClient();
@@ -16,33 +18,38 @@ export default async function Home() {
   const allPerizinan = await api.perizinan.listRaw();
 
   return (
-    <HydrateClient>
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="font-semibold text-lg">Dashboard</h1>
-          <LogoutButton />
-        </div>
-        <section className="space-y-6">
-          <div>
-            <h2 className="font-medium mb-2">User</h2>
-            <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-80">
-              {JSON.stringify(user, null, 2)}
-            </pre>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <HydrateClient>
+          <header className="flex h-16 shrink-0 items-center gap-2 px-6">
+            <h1 className="text-lg font-semibold">Dashboard</h1>
+            <div className="ml-auto"><LogoutButton /></div>
+          </header>
+          <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+            <section className="space-y-6">
+              <div>
+                <h2 className="mb-2 font-medium">User</h2>
+                <pre className="max-h-80 overflow-auto rounded bg-gray-100 p-3 text-xs">
+                  {JSON.stringify(user, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h2 className="mb-2 font-medium">Raw Data Absences (Semua)</h2>
+                <pre className="max-h-96 overflow-auto rounded bg-gray-100 p-3 text-xs">
+                  {JSON.stringify(allAbsences, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h2 className="mb-2 font-medium">Raw Data Perizinan (Semua)</h2>
+                <pre className="max-h-96 overflow-auto rounded bg-gray-100 p-3 text-xs">
+                  {JSON.stringify(allPerizinan, null, 2)}
+                </pre>
+              </div>
+            </section>
           </div>
-          <div>
-            <h2 className="font-medium mb-2">Raw Data Absences (Semua)</h2>
-            <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-96">
-              {JSON.stringify(allAbsences, null, 2)}
-            </pre>
-          </div>
-          <div>
-            <h2 className="font-medium mb-2">Raw Data Perizinan (Semua)</h2>
-            <pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-96">
-              {JSON.stringify(allPerizinan, null, 2)}
-            </pre>
-          </div>
-        </section>
-      </div>
-    </HydrateClient>
+        </HydrateClient>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

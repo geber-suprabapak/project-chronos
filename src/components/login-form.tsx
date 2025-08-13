@@ -9,7 +9,10 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+export function LoginForm({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   const supabase = getSupabaseBrowserClient();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -66,11 +69,15 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive" role="alert">
+              <p className="text-destructive text-sm" role="alert">
                 {error}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={loading || isPending}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || isPending}
+            >
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>

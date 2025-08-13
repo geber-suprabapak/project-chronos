@@ -28,7 +28,7 @@ export const absencesRouter = createTRPCRouter({
       z
         .object({
           userId: z.string().uuid().optional(),
-            // pagination
+          // pagination
           limit: z.number().int().min(1).max(100).default(20),
           offset: z.number().int().min(0).default(0),
           status: z.string().optional(),
@@ -54,7 +54,11 @@ export const absencesRouter = createTRPCRouter({
         .where(where ?? undefined)
         .limit(input?.limit ?? 20)
         .offset(input?.offset ?? 0)
-        .orderBy((input?.sort ?? "asc") === "desc" ? desc(absences.date) : asc(absences.date));
+        .orderBy(
+          (input?.sort ?? "asc") === "desc"
+            ? desc(absences.date)
+            : asc(absences.date),
+        );
 
       return rows;
     }),
@@ -77,7 +81,6 @@ export const absencesRouter = createTRPCRouter({
       });
       return row ?? null;
     }),
-
 });
 
 export type AbsencesRouter = typeof absencesRouter;

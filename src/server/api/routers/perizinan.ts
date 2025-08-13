@@ -40,9 +40,12 @@ export const perizinanRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const conditions: SQL[] = [];
       if (input?.userId) conditions.push(eq(perizinan.userId, input.userId));
-      if (input?.kategoriIzin) conditions.push(eq(perizinan.kategoriIzin, input.kategoriIzin));
-      if (input?.approvalStatus) conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
-      if (typeof input?.status === 'boolean') conditions.push(eq(perizinan.status, input.status));
+      if (input?.kategoriIzin)
+        conditions.push(eq(perizinan.kategoriIzin, input.kategoriIzin));
+      if (input?.approvalStatus)
+        conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
+      if (typeof input?.status === "boolean")
+        conditions.push(eq(perizinan.status, input.status));
       if (input?.tanggal) conditions.push(eq(perizinan.tanggal, input.tanggal));
 
       const where = conditions.length ? and(...conditions) : undefined;
@@ -60,7 +63,10 @@ export const perizinanRouter = createTRPCRouter({
 
   // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
   listRaw: publicProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db.select().from(perizinan).orderBy(desc(perizinan.createdAt));
+    const rows = await ctx.db
+      .select()
+      .from(perizinan)
+      .orderBy(desc(perizinan.createdAt));
     return rows;
   }),
 

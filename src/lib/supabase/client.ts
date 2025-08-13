@@ -15,11 +15,11 @@ let browserClient: SupabaseClient | null = null;
  * Safe to call in event handlers or during render in client components.
  */
 export function getSupabaseBrowserClient(): SupabaseClient {
-	browserClient ??= createBrowserClient(
-		env.NEXT_PUBLIC_SUPABASE_URL,
-		env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-	);
-	return browserClient;
+  browserClient ??= createBrowserClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  );
+  return browserClient;
 }
 
 export type { SupabaseClient };

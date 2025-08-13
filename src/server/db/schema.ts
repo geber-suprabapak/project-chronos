@@ -44,7 +44,10 @@ export const absences = pgTable("absences", {
 export const userProfiles = pgTable(
   "user_profiles",
   {
-    id: uuid("id").default(sql`gen_random_uuid()`).notNull().primaryKey(),
+    id: uuid("id")
+      .default(sql`gen_random_uuid()`)
+      .notNull()
+      .primaryKey(),
     userId: uuid("user_id").notNull(),
     fullName: text("full_name"),
     email: text("email").notNull(),
