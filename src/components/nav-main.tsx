@@ -1,6 +1,7 @@
 "use client"
 
 import { type LucideIcon } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 import {
   SidebarGroup,
@@ -26,32 +27,53 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const pathname = usePathname()
+
+  const isSubItemActive = (url: string) => {
+    if (!url) return false
+    // Exact match or nested route segment
+    return pathname === url || pathname.startsWith(url + "/")
+  }
+
+  const isItemActive = (item: (typeof items)[number]) => {
+    if (item.isActive) return true // allow manual override
+    if (isSubItemActive(item.url)) return true
+  if (item.items?.some((sub) => isSubItemActive(sub.url))) return true
+    return false
+  }
+
   return (
     <SidebarGroup>
       <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton tooltip={item.title} asChild>
-              <a href={item.url} className="flex items-center gap-2">
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </a>
-            </SidebarMenuButton>
-            {item.items && item.items.length > 0 && (
-              <SidebarMenuSub>
-                {item.items.map((subItem) => (
-                  <SidebarMenuSubItem key={subItem.title}>
-                    <SidebarMenuSubButton asChild>
-                      <a href={subItem.url}>
-                        <span>{subItem.title}</span>
-                      </a>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
-              </SidebarMenuSub>
-            )}
-          </SidebarMenuItem>
-        ))}
+        {items.map((item) => {
+          const active = isItemActive(item)
+          return (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton tooltip={item.title} asChild isActive={active}>
+                <a href={item.url} className="flex items-center gap-2">
+                  {item.icon && <item.icon />}
+                  <span>{item.title}</span>
+                </a>
+              </SidebarMenuButton>
+              {item.items && item.items.length > 0 && (
+                <SidebarMenuSub>
+                  {item.items.map((subItem) => {
+                    const subActive = isSubItemActive(subItem.url)
+                    return (
+                      <SidebarMenuSubItem key={subItem.title}>
+                        <SidebarMenuSubButton asChild isActive={subActive}>
+                          <a href={subItem.url}>
+                            <span>{subItem.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    )
+                  })}
+                </SidebarMenuSub>
+              )}
+            </SidebarMenuItem>
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

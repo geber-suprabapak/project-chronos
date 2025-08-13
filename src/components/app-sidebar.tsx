@@ -1,39 +1,56 @@
 "use client"
 
-import * as React from "react"
-import { SquareTerminal } from "lucide-react"
+import * as React from "react";
+import { SquareTerminal } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { NavMain } from "~/components/nav-main";
+import { NavUser } from "~/components/nav-user";
+import { Sidebar, SidebarContent, SidebarFooter } from "~/components/ui/sidebar";
+import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
-import { NavMain } from "~/components/nav-main"
-import { NavUser } from "~/components/nav-user"
-import { Sidebar, SidebarContent, SidebarFooter } from "~/components/ui/sidebar"
-
-// This is sample data.
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+const navItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: SquareTerminal,
   },
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-    },
-  ],
-
-}
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Collapsible behavior removed: always show full sidebar width.
+  const supabase = getSupabaseBrowserClient();
+  const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    // Initial fetch
+  void (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!active) return;
+        setUser(data.user ?? null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    // Listen to auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
   return (
     <Sidebar {...props}>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} loading={loading} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
