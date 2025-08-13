@@ -1,5 +1,4 @@
 import { HydrateClient, api } from "~/trpc/server";
-import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 
 export default async function Home() {
@@ -7,7 +6,6 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
 
   // Ambil semua data absensi (raw)
   const allAbsences = await api.absences.listRaw();
