@@ -21,8 +21,8 @@ import { createSupabaseMiddlewareClient } from "~/lib/supabase/middleware";
 
 // Daftar path yang TIDAK membutuhkan autentikasi (akses bebas)
 const PUBLIC_PATHS = new Set([
-	"/login",
-	"/auth/callback", // potential OAuth callback
+  "/login",
+  "/auth/callback", // potential OAuth callback
 ]);
 
 /**
@@ -30,43 +30,49 @@ const PUBLIC_PATHS = new Set([
  * Sesuaikan sesuai kebutuhan (misal ingin mengamankan /api → ubah return untuk /api menjadi false).
  */
 function isPublicPath(pathname: string) {
-	if (PUBLIC_PATHS.has(pathname)) return true;
-	// Aset statis & internal Next
-	if (pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/assets") || pathname.startsWith("/public")) return true;
-	// API routes (saat ini dibiarkan publik — ubah jika perlu)
-	if (pathname.startsWith("/api")) return true; // ubah ke false bila ingin proteksi API
-	return false;
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  // Aset statis & internal Next
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/assets") ||
+    pathname.startsWith("/public")
+  )
+    return true;
+  // API routes (saat ini dibiarkan publik — ubah jika perlu)
+  if (pathname.startsWith("/api")) return true; // ubah ke false bila ingin proteksi API
+  return false;
 }
 
 /**
  * Middleware utama: evaluasi sesi & lakukan redirect jika diperlukan.
  */
 export async function middleware(req: NextRequest) {
-	const { supabase, response } = createSupabaseMiddlewareClient(req);
+  const { supabase, response } = createSupabaseMiddlewareClient(req);
 
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-	const pathname = req.nextUrl.pathname;
+  const pathname = req.nextUrl.pathname;
 
-	// Jika user sudah login & membuka /login → kembalikan ke beranda
-	if (pathname === "/login" && user) {
-		const url = req.nextUrl.clone();
-		url.pathname = "/";
-		return NextResponse.redirect(url);
-	}
+  // Jika user sudah login & membuka /login → kembalikan ke beranda
+  if (pathname === "/login" && user) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
-	if (!user && !isPublicPath(pathname)) {
-		const url = req.nextUrl.clone();
-		url.pathname = "/login";
-		url.searchParams.set("redirect", pathname);
-		return NextResponse.redirect(url);
-	}
+  if (!user && !isPublicPath(pathname)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
+  }
 
-	return response; // includes any updated auth cookies
+  return response; // includes any updated auth cookies
 }
 
 export const config = {
-	matcher: ["/(.*)"],
+  matcher: ["/(.*)"],
 };
