@@ -5,7 +5,7 @@ import { SquareTerminal } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
-import { Sidebar, SidebarContent, SidebarFooter } from "~/components/ui/sidebar";
+import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
 const navItems = [
@@ -50,6 +50,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-1">
+          <SquareTerminal className="size-5" />
+          <span className="font-semibold tracking-tight">Chronos</span>
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <NavMain items={navItems} />
       </SidebarContent>
