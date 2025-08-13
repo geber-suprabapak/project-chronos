@@ -3,6 +3,10 @@
 import {
   ChevronsUpDown,
   LogOut,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { redirect, useRouter } from "next/navigation";
@@ -11,7 +15,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "~/components/ui/dropdown-menu";
 import {
   SidebarMenu,
@@ -21,6 +29,7 @@ import {
 } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import * as React from "react";
+import { useTheme } from "next-themes";
 
 interface NavUserProps {
   user: User | null;
@@ -32,6 +41,7 @@ export function NavUser({ user, loading }: NavUserProps) {
   const supabase = getSupabaseBrowserClient();
   const router = useRouter();
   const [signingOut, setSigningOut] = React.useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   async function handleLogout() {
     setSigningOut(true);
@@ -84,6 +94,38 @@ export function NavUser({ user, loading }: NavUserProps) {
             align="end"
             sideOffset={4}
           >
+            <DropdownMenuLabel className="text-xs font-normal">
+              Signed in as
+              <br />
+              <span className="font-medium">{user.email}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-medium">Theme</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={theme === "system" ? "system" : resolvedTheme ?? theme}
+              onValueChange={(val) => setTheme(val)}
+            >
+              <DropdownMenuRadioItem value="light">
+                <Sun className="size-4" />
+                <span className="flex-1">Light</span>
+                {(resolvedTheme === "light" && theme !== "system") && (
+                  <Check className="size-4 ml-auto" />
+                )}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark">
+                <Moon className="size-4" />
+                <span className="flex-1">Dark</span>
+                {(resolvedTheme === "dark" && theme !== "system") && (
+                  <Check className="size-4 ml-auto" />
+                )}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="system">
+                <Monitor className="size-4" />
+                <span className="flex-1">System</span>
+                {theme === "system" && <Check className="size-4 ml-auto" />}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} disabled={signingOut}>
               <LogOut />
               {signingOut ? "Logging out..." : "Log out"}

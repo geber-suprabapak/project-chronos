@@ -14,6 +14,11 @@ const navItems = [
     url: "/dashboard",
     icon: SquareTerminal,
   },
+  {
+    title: "test",
+    url: "/test",
+    icon: SquareTerminal,
+  },
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
