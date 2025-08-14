@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { perizinan } from "~/server/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -20,7 +20,7 @@ import type { SQL } from "drizzle-orm";
  */
 export const perizinanRouter = createTRPCRouter({
   // Mengambil daftar perizinan dengan opsi filter & pagination.
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
@@ -62,7 +62,7 @@ export const perizinanRouter = createTRPCRouter({
     }),
 
   // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
-  listRaw: publicProcedure.query(async ({ ctx }) => {
+  listRaw: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
       .select()
       .from(perizinan)
@@ -71,7 +71,7 @@ export const perizinanRouter = createTRPCRouter({
   }),
 
   // Mengambil satu record perizinan berdasarkan UUID primary key.
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.perizinan.findFirst({

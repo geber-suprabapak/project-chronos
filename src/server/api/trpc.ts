@@ -6,9 +6,10 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { createSupabaseServerClient } from "~/lib/supabase/server"; // Asumsi Anda punya helper ini
 
 import { db } from "~/server/db";
 
@@ -95,6 +96,22 @@ export const createTRPCRouter = t.router;
 
 //   return result;
 // });
+const isAuthed = t.middleware(async ({ next }) => {
+  // Ambil user session dari Supabase atau sumber lain di context
+  const supabase = createSupabaseServerClient(); // Ini perlu disesuaikan
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next({
+    ctx: {
+      // Menyertakan user dalam konteks untuk prosedur selanjutnya
+      user,
+    },
+  });
+});
 
 /**
  * Public (unauthenticated) procedure
@@ -104,3 +121,4 @@ export const createTRPCRouter = t.router;
  * are logged in.
  */
 export const publicProcedure = t.procedure//.use(timingMiddleware);
+export const protectedProcedure = t.procedure.use(isAuthed);

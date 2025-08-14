@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { absences } from "~/server/db/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -23,7 +23,7 @@ import type { SQL } from "drizzle-orm";
 export const absencesRouter = createTRPCRouter({
   // Mengambil daftar absensi dengan opsi filter & pagination.
   // Return: Array record absensi sesuai filter.
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({
@@ -64,7 +64,7 @@ export const absencesRouter = createTRPCRouter({
     }),
 
   // Mengambil seluruh data absensi (tanpa pagination) - gunakan hati-hati untuk dataset besar.
-  listRaw: publicProcedure.query(async ({ ctx }) => {
+  listRaw: protectedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
       .select()
       .from(absences)
@@ -73,7 +73,7 @@ export const absencesRouter = createTRPCRouter({
   }),
 
   // Mengambil satu record berdasarkan ID (primary key). Return null jika tidak ditemukan.
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.absences.findFirst({
