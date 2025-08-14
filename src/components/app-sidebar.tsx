@@ -15,7 +15,7 @@ import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
 const navItems = [
   {
-    title: "Dashboard",
+    title: "Debug Dash",
     url: "/dashboard",
     icon: SquareTerminal,
   },
@@ -24,6 +24,11 @@ const navItems = [
     url: "/test",
     icon: SquareTerminal,
   },
+  {
+    title: "Profiles",
+    url: "/profiles",
+    icon: SquareTerminal,
+  }
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
