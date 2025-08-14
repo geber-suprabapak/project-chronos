@@ -99,7 +99,9 @@ export const createTRPCRouter = t.router;
 const isAuthed = t.middleware(async ({ next }) => {
   // Ambil user session dari Supabase atau sumber lain di context
   const supabase = createSupabaseServerClient(); // Ini perlu disesuaikan
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -120,5 +122,5 @@ const isAuthed = t.middleware(async ({ next }) => {
  * guarantee that a user querying is authorized, but you can still access user session data if they
  * are logged in.
  */
-export const publicProcedure = t.procedure//.use(timingMiddleware);
+export const publicProcedure = t.procedure; //.use(timingMiddleware);
 export const protectedProcedure = t.procedure.use(isAuthed);

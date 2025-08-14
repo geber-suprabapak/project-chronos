@@ -1,11 +1,16 @@
-"use client"
+"use client";
 
 import * as React from "react";
 import { SquareTerminal } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
-import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter } from "~/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+} from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
 const navItems = [
@@ -29,7 +34,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => {
     let active = true;
     // Initial fetch
-  void (async () => {
+    void (async () => {
       try {
         const { data } = await supabase.auth.getUser();
         if (!active) return;
@@ -39,9 +44,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     })();
     // Listen to auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      },
+    );
     return () => {
       active = false;
       listener.subscription.unsubscribe();

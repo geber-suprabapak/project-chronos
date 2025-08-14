@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { type LucideIcon } from "lucide-react"
-import { usePathname } from "next/navigation"
+import { type LucideIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import {
   SidebarGroup,
@@ -11,42 +11,42 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "~/components/ui/sidebar"
+} from "~/components/ui/sidebar";
 
 export function NavMain({
   items,
 }: {
   items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
+    title: string;
+    url: string;
+    icon?: LucideIcon;
+    isActive?: boolean;
     items?: {
-      title: string
-      url: string
-    }[]
-  }[]
+      title: string;
+      url: string;
+    }[];
+  }[];
 }) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const isSubItemActive = (url: string) => {
-    if (!url) return false
+    if (!url) return false;
     // Exact match or nested route segment
-    return pathname === url || pathname.startsWith(url + "/")
-  }
+    return pathname === url || pathname.startsWith(url + "/");
+  };
 
   const isItemActive = (item: (typeof items)[number]) => {
-    if (item.isActive) return true // allow manual override
-    if (isSubItemActive(item.url)) return true
-  if (item.items?.some((sub) => isSubItemActive(sub.url))) return true
-    return false
-  }
+    if (item.isActive) return true; // allow manual override
+    if (isSubItemActive(item.url)) return true;
+    if (item.items?.some((sub) => isSubItemActive(sub.url))) return true;
+    return false;
+  };
 
   return (
     <SidebarGroup>
       <SidebarMenu>
         {items.map((item) => {
-          const active = isItemActive(item)
+          const active = isItemActive(item);
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton tooltip={item.title} asChild isActive={active}>
@@ -58,7 +58,7 @@ export function NavMain({
               {item.items && item.items.length > 0 && (
                 <SidebarMenuSub>
                   {item.items.map((subItem) => {
-                    const subActive = isSubItemActive(subItem.url)
+                    const subActive = isSubItemActive(subItem.url);
                     return (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild isActive={subActive}>
@@ -67,14 +67,14 @@ export function NavMain({
                           </a>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
-                    )
+                    );
                   })}
                 </SidebarMenuSub>
               )}
             </SidebarMenuItem>
-          )
+          );
         })}
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
 }

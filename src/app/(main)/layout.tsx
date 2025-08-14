@@ -8,7 +8,11 @@ import { SidebarProvider, SidebarInset } from "~/components/ui/sidebar";
 // - Mengecek autentikasi sekali di sini (server component)
 // - Menyediakan Sidebar di setiap halaman anak
 // Taruh halaman baru di dalam (dash)/* tanpa perlu ulangi wrapper sidebar.
-export default async function DashLayout({ children }: { children: ReactNode }) {
+export default async function DashLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
