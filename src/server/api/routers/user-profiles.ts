@@ -8,6 +8,39 @@ import { userProfiles } from "~/server/db/schema";
  * Fokus pada operasi MUTATION (create, update, delete, upsert).
  */
 export const userProfilesRouter = createTRPCRouter({
+	// GET BY ID
+	getById: protectedProcedure
+		.input(z.object({ id: z.string().uuid() }))
+		.query(async ({ ctx, input }) => {
+			const row = await ctx.db.query.userProfiles.findFirst({
+				where: (table, { eq }) => eq(table.id, input.id),
+			});
+			return row ?? null;
+		}),
+	// LIST: ambil daftar user_profiles dengan pagination sederhana
+	list: protectedProcedure
+		.input(
+			z
+				.object({
+					limit: z.number().int().min(1).max(100).default(20),
+					offset: z.number().int().min(0).default(0),
+				})
+				.optional(),
+		)
+		.query(async ({ ctx, input }) => {
+			const rows = await ctx.db
+				.select()
+				.from(userProfiles)
+				.limit(input?.limit ?? 20)
+				.offset(input?.offset ?? 0);
+			return rows;
+		}),
+
+	// LIST RAW: semua data (hati-hati untuk dataset besar)
+	listRaw: protectedProcedure.query(async ({ ctx }) => {
+		const rows = await ctx.db.select().from(userProfiles);
+		return rows;
+	}),
 	// CREATE: membuat user_profile baru
 	create: protectedProcedure
 		.input(
@@ -66,6 +99,36 @@ export const userProfilesRouter = createTRPCRouter({
 				.returning();
 
 			return row ?? null; // null bila tidak ada row ter-update
+		}),
+
+	// UPDATE (alias): sama dengan updateById untuk konsistensi nama hook di FE
+	update: protectedProcedure
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				data: z
+					.object({
+						userId: z.string().uuid().optional(),
+						email: z.string().email().optional(),
+						fullName: z.string().min(1).optional(),
+						avatarUrl: z.string().url().optional(),
+						absenceNumber: z.string().optional(),
+						className: z.string().optional(),
+						role: z.string().optional(),
+					})
+					.refine((d) => Object.keys(d).length > 0, {
+						message: "No fields to update",
+					}),
+			})
+		)
+		.mutation(async ({ ctx, input }) => {
+			const [row] = await ctx.db
+				.update(userProfiles)
+				.set({ ...input.data, updatedAt: new Date() })
+				.where(eq(userProfiles.id, input.id))
+				.returning();
+
+			return row ?? null;
 		}),
 
 	// DELETE by id
