@@ -28,6 +28,11 @@ const navItems = [
     title: "Profiles",
     url: "/profiles",
     icon: SquareTerminal,
+  },
+  {
+    title: "Perizinan",
+    url: "/perizinan",
+    icon: SquareTerminal,
   }
 ];
 
