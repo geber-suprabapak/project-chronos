@@ -10,6 +10,7 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
+  SidebarRail,
 } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
@@ -71,11 +72,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [supabase]);
 
   return (
-    <Sidebar {...props}>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <SquareTerminal className="size-5" />
-          <span className="font-semibold tracking-tight">Chronos Alpha</span>
+        <div className="flex min-w-0 items-center gap-2 px-2 py-1 overflow-hidden">
+          <SquareTerminal className="size-5 shrink-0" />
+          <span className="font-semibold tracking-tight flex-1 min-w-0 truncate group-data-[collapsible=icon]:hidden">
+            Chronos Alpha
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -84,6 +87,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <NavUser user={user} loading={loading} />
       </SidebarFooter>
+      {/* Sidebar rail for quick toggle and compact hit area */}
+      <SidebarRail />
     </Sidebar>
   );
 }
