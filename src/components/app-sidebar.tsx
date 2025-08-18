@@ -30,6 +30,11 @@ const navItems = [
     icon: SquareTerminal,
   },
   {
+    title: "Absensi",
+    url: "/absensi",
+    icon: SquareTerminal,
+  },
+  {
     title: "Perizinan",
     url: "/perizinan",
     icon: SquareTerminal,
