@@ -17,15 +17,37 @@ import { toast } from "sonner";
 import Image from "next/image";
 
 // Helper function to format date
-const formatDate = (dateString: string | Date | null | undefined) => {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
+// - Handles date-only strings (YYYY-MM-DD) without applying timezone shift
+//   to avoid showing 07:00 due to UTC parsing.
+const formatDate = (input: string | Date | null | undefined) => {
+  if (!input) return "N/A";
+
+  const isDateOnly =
+    typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
+
+  if (isDateOnly) {
+    const [yStr, mStr, dStr] = input.split("-") as [string, string, string];
+    const y = Number(yStr);
+    const m = Number(mStr);
+    const d = Number(dStr);
+    // Construct as local date (no time), avoiding UTC timezone offset issues
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat("id-ID", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+  }
+
+  const date = new Date(input);
   return new Intl.DateTimeFormat("id-ID", {
     year: "numeric",
     month: "long",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    // If you want a fixed timezone regardless of client device, uncomment:
+    // timeZone: "Asia/Jakarta",
   }).format(date);
 };
 
