@@ -233,8 +233,18 @@ export default function ShowPerizinanPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>
-        <DialogContent className="max-w-4xl">
-            <Image src={perizinan.linkFoto ?? ""} alt="Bukti Perizinan" fill style={{ objectFit: "contain" }}/>
+        <DialogContent
+          className="p-0 max-w-none sm:max-w-none w-[95vw] md:w-[85vw] lg:w-[75vw] xl:w-[65vw] h-[80vh] overflow-hidden"
+        >
+          <div className="relative w-full h-full bg-muted">
+            <Image
+              src={perizinan.linkFoto ?? ""}
+              alt="Bukti Perizinan"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
