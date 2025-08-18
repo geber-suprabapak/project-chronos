@@ -9,6 +9,7 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
 
 export default async function ProfilesPage() {
 	// Fetch on the server for less client JS and faster TTFB
@@ -35,11 +36,12 @@ export default async function ProfilesPage() {
 	}
 
 	return (
-		<div className="flex flex-1 flex-col gap-6 p-6">
+		<div className="flex flex-1 flex-col gap-6 p-4 md:p-8">
 			<section className="space-y-4">
 				<h1 className="text-xl font-semibold">User Profiles</h1>
-				<div className="overflow-hidden rounded-md border">
-					<Table>
+				<Card className="overflow-hidden">
+					<CardContent>
+						<Table>
 						<TableHeader>
 							<TableRow>
 								<TableHead className="w-[120px]">User ID</TableHead>
@@ -80,8 +82,9 @@ export default async function ProfilesPage() {
 								</TableRow>
 							)}
 						</TableBody>
-					</Table>
-				</div>
+						</Table>
+					</CardContent>
+				</Card>
 			</section>
 		</div>
 	);

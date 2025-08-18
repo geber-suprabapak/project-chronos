@@ -45,16 +45,16 @@ export default function AbsensiPage() {
         <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
       </div>
 
-      <Card className="p-0">
+  <Card className="p-4">
         {loading ? (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
         ) : absencesError || profilesError ? (
-          <div className="p-4 text-red-600">
+          <div className="text-red-600">
             {absencesError?.message ?? profilesError?.message ?? "Terjadi kesalahan saat memuat data."}
           </div>
         ) : (
