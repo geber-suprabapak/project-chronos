@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/theme-provider";
+import { Toaster } from "~/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Chronos",
@@ -32,6 +33,7 @@ export default function RootLayout({
         >
           <TRPCReactProvider>{children}</TRPCReactProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

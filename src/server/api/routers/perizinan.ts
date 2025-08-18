@@ -76,8 +76,42 @@ export const perizinanRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.perizinan.findFirst({
         where: (table, { eq }) => eq(table.id, input.id),
+        with: {
+          userProfile: true,
+        },
       });
       return row ?? null;
+    }),
+
+  // Memperbarui status persetujuan perizinan.
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        approvalStatus: z.enum(["approved", "rejected", "pending"]),
+        rejectionReason: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.db
+        .update(perizinan)
+        .set({
+          approvalStatus: input.approvalStatus,
+          // Clear rejection fields if status is moved back to pending or approved
+          rejectionReason: input.approvalStatus === "rejected" ? input.rejectionReason : null,
+          rejectedAt: input.approvalStatus === "rejected" ? new Date() : null,
+          rejectedBy: input.approvalStatus === "rejected" ? ctx.user.id : null,
+          // Set approval fields only if approved
+          approvedAt: input.approvalStatus === "approved" ? new Date() : null,
+          approvedBy: input.approvalStatus === "approved" ? ctx.user.id : null,
+          // General status boolean
+          status: input.approvalStatus === "approved",
+          updatedAt: new Date(),
+        })
+        .where(eq(perizinan.id, input.id))
+        .returning();
+
+      return result[0] ?? null;
     }),
 });
 

@@ -1,7 +1,7 @@
 // Example model schema from the Drizzle docs
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   uniqueIndex,
   pgTable,
@@ -68,6 +68,10 @@ export const userProfiles = pgTable(
   ],
 );
 
+export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
+  perizinan: many(perizinan),
+}));
+
 // perizinan
 export const perizinan = pgTable(
   "perizinan",
@@ -100,3 +104,10 @@ export const perizinan = pgTable(
     sql`CONSTRAINT perizinan_kategori_izin_check CHECK (${t.kategoriIzin} = ANY (ARRAY['sakit','pergi']))`,
   ],
 );
+
+export const perizinanRelations = relations(perizinan, ({ one }) => ({
+  userProfile: one(userProfiles, {
+    fields: [perizinan.userId],
+    references: [userProfiles.userId],
+  }),
+}));
