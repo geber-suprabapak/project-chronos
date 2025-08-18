@@ -1,6 +1,6 @@
 import { api } from "~/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { EditProfileForm } from "./profile-form.js";
+import { EditProfileForm } from "~/components/profiles/edit-profile-form";
 
 export default async function EditProfilePage({ params }: { params?: Promise<Record<string, string>> }) {
 	const resolvedParams = params ? await params : undefined;
