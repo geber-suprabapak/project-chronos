@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { api } from "~/trpc/react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -11,6 +12,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Card } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 
 export default function AbsensiPage() {
@@ -66,7 +68,7 @@ export default function AbsensiPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Alasan</TableHead>
                 <TableHead>Lokasi</TableHead>
-                <TableHead>Foto</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,18 +87,9 @@ export default function AbsensiPage() {
                     </TableCell>
                     <TableCell>{lokasi || "-"}</TableCell>
                     <TableCell>
-                      {a.photoUrl ? (
-                        <a
-                          href={a.photoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary underline"
-                        >
-                          Lihat
-                        </a>
-                      ) : (
-                        "-"
-                      )}
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/absensi/show/${a.id}`}>Detail</Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
