@@ -68,9 +68,14 @@ export default async function ProfilesPage() {
 											{r.updatedAt ? new Date(r.updatedAt as unknown as string).toLocaleString() : "-"}
 										</TableCell>
 										<TableCell className="text-right">
-											<Button asChild variant="outline" size="sm">
-												<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-											</Button>
+											<div className="flex justify-end gap-2">
+												<Button asChild variant="secondary" size="sm">
+													<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
+												</Button>
+												<Button asChild variant="outline" size="sm">
+													<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
+												</Button>
+											</div>
 										</TableCell>
 									</TableRow>
 								))
