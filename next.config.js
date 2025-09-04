@@ -12,8 +12,16 @@ const config = {
         protocol: 'https',
         hostname: 'uacjwtyhlrwojwqdanop.supabase.co',
         port: '',
-        pathname: '/storage/v1/object/public/**',
+        // Allow both public and signed URLs
+        pathname: '/storage/v1/object/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'prod-db1.hyacine.my.id',
+        port: '',
+        // Allow both public and signed URLs
+        pathname: '/storage/v1/object/**',
+      }
     ],
   },
 };
