@@ -50,14 +50,14 @@ const getBadgeVariant = (status: string | null | undefined) => {
 
 export default function ShowAbsensiPage() {
   const params = useParams();
-  const rawId = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
-  const id = Number(rawId);
+  const idParam = (params as Record<string, string | string[] | undefined>)?.id;
+  const id: string = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] ?? "" : "";
 
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);
 
   const { data: absence, isLoading, error } = api.absences.getById.useQuery(
     { id },
-    { enabled: Number.isFinite(id) }
+    { enabled: !!id }
   );
 
   const { data: profiles } = api.userProfiles.listRaw.useQuery(undefined, { enabled: true });
@@ -67,7 +67,7 @@ export default function ShowAbsensiPage() {
     return profiles.find((p) => p.userId === absence.userId) ?? null;
   }, [absence, profiles]);
 
-  if (!Number.isFinite(id)) return <div className="p-8">Invalid ID.</div>;
+  if (!id) return <div className="p-8">Invalid ID.</div>;
   if (isLoading) return <SkeletonLayout />;
   if (error) return <div className="p-8 text-red-500">Error: {error.message}</div>;
   if (!absence) return <div className="p-8">Absensi tidak ditemukan.</div>;

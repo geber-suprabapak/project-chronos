@@ -5,7 +5,6 @@ import { relations, sql } from "drizzle-orm";
 import {
   uniqueIndex,
   pgTable,
-  bigint,
   uuid,
   text,
   timestamp,
@@ -27,7 +26,8 @@ import {
 
 // absences
 export const absences = pgTable("absences", {
-  id: bigint("id", { mode: "number" }).primaryKey().notNull(),
+  // Match new SQL schema: UUID primary key with default gen_random_uuid()
+  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
   userId: uuid("user_id").notNull(),
   date: date("date").notNull(),
   reason: text("reason"),
@@ -37,7 +37,7 @@ export const absences = pgTable("absences", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .default(sql`now()`)
     .notNull(),
-  status: text("status"),
+  status: text("status").notNull(),
 });
 
 // user_profiles
@@ -77,7 +77,7 @@ export const perizinan = pgTable(
   "perizinan",
   {
     id: uuid("id")
-      .default(sql`extensions.uuid_generate_v4()`)
+      .default(sql`gen_random_uuid()`)
       .notNull()
       .primaryKey(),
     userId: uuid("user_id").notNull(),
@@ -94,7 +94,10 @@ export const perizinan = pgTable(
     approvedBy: uuid("approved_by"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     rejectionReason: text("rejection_reason"),
-    tanggal: date("tanggal").notNull(),
+  // New schema uses timestamptz for tanggal
+    tanggal: timestamp("tanggal", { withTimezone: true }).notNull(),
+  // Helper column maintained by trigger for per-day uniqueness and filtering
+  tanggalUtcDate: date("tanggal_utc_date"),
     approvalStatus: text("approval_status").default(sql`'pending'`),
     rejectedAt: timestamp("rejected_at", { withTimezone: true }),
     rejectedBy: text("rejected_by"),

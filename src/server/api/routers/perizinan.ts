@@ -46,7 +46,8 @@ export const perizinanRouter = createTRPCRouter({
         conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
       if (typeof input?.status === "boolean")
         conditions.push(eq(perizinan.status, input.status));
-      if (input?.tanggal) conditions.push(eq(perizinan.tanggal, input.tanggal));
+  // Filter per hari: gunakan kolom tanggal_utc_date (DATE) yang diisi oleh trigger
+  if (input?.tanggal) conditions.push(eq(perizinan.tanggalUtcDate, input.tanggal));
 
       const where = conditions.length ? and(...conditions) : undefined;
 

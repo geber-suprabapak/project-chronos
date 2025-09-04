@@ -74,7 +74,7 @@ export const absencesRouter = createTRPCRouter({
 
   // Mengambil satu record berdasarkan ID (primary key). Return null jika tidak ditemukan.
   getById: protectedProcedure
-    .input(z.object({ id: z.number().int() }))
+    .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.absences.findFirst({
         where: (table, { eq }) => eq(table.id, input.id),
