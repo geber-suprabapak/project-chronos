@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal } from "lucide-react";
+import { SquareTerminal, CircleUserRound, Users, CalendarDays, FileClock } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
+// Update icons to match each link
 const navItems = [
   {
     title: "Debug Dash",
@@ -28,17 +29,17 @@ const navItems = [
   {
     title: "Profiles",
     url: "/profiles",
-    icon: SquareTerminal,
+    icon: Users,
   },
   {
     title: "Absensi",
     url: "/absensi",
-    icon: SquareTerminal,
+    icon: CalendarDays,
   },
   {
     title: "Perizinan",
     url: "/perizinan",
-    icon: SquareTerminal,
+    icon: FileClock,
   }
 ];
 
@@ -75,9 +76,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex min-w-0 items-center gap-2 px-2 py-1 overflow-hidden">
-          <SquareTerminal className="size-5 shrink-0" />
+          <img src="/logo.png" alt="Skanida Apps" className="h-8 w-8" />
           <span className="font-semibold tracking-tight flex-1 min-w-0 truncate group-data-[collapsible=icon]:hidden">
-            Chronos Alpha
+            Skanida Apps
           </span>
         </div>
       </SidebarHeader>
