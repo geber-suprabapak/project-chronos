@@ -25,13 +25,13 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 	const offset = (page - 1) * limit;
 	// Fetch on the server for less client JS and faster TTFB
 	let rows: Array<{
-		id: string | number;
-		userId: string | number;
+		id: string | number | null;
 		fullName: string | null;
 		email: string;
 		className: string | null;
 		absenceNumber: string | null;
 		role: string | null;
+		nis?: string | null;
 		updatedAt?: unknown;
 	}> = [];
 	let total = 0;
@@ -99,9 +99,10 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-[120px]">User ID</TableHead>
+									<TableHead className="w-[120px]">ID</TableHead>
 									<TableHead className="w-[220px]">Full Name</TableHead>
 									<TableHead>Email</TableHead>
+									<TableHead>NIS</TableHead>
 									<TableHead>Class</TableHead>
 									<TableHead>Absence #</TableHead>
 									<TableHead>Role</TableHead>
@@ -111,32 +112,50 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 							</TableHeader>
 							<TableBody>
 								{rows.length ? (
-									rows.map((r) => (
-										<TableRow key={String(r.id)}>
-											<TableCell className="font-mono text-xs">{String(r.userId)}</TableCell>
-											<TableCell className="font-medium">{r.fullName ?? "-"}</TableCell>
-											<TableCell>{r.email}</TableCell>
-											<TableCell>{r.className ?? "-"}</TableCell>
-											<TableCell>{r.absenceNumber ?? "-"}</TableCell>
-											<TableCell>{r.role ?? "-"}</TableCell>
-											<TableCell>
-												{r.updatedAt ? new Date(r.updatedAt as unknown as string).toLocaleString() : "-"}
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="flex justify-end gap-2">
-													<Button asChild variant="secondary" size="sm">
-														<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
-													</Button>
-													<Button asChild variant="outline" size="sm">
-														<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-													</Button>
-												</div>
-											</TableCell>
-										</TableRow>
-									))
+									rows.map((r, idx) => {
+										// Stable key: prefer id; otherwise use a fallback including NIS/email and index
+										const rowKey = r?.id ? `id:${String(r.id)}` : `f:${r.nis ?? r.email ?? 'unknown'}:${idx}`;
+										return (
+											<TableRow key={rowKey}>
+												<TableCell className="font-mono text-xs">{r?.id ? String(r.id) : "-"}</TableCell>
+												<TableCell className="font-medium">{r.fullName ?? "-"}</TableCell>
+												<TableCell>{r.email}</TableCell>
+												<TableCell>{r.nis ?? "-"}</TableCell>
+												<TableCell>{r.className ?? "-"}</TableCell>
+												<TableCell>{r.absenceNumber ?? "-"}</TableCell>
+												<TableCell>{r.role ?? "-"}</TableCell>
+												<TableCell>
+													{r.updatedAt ? new Date(r.updatedAt as unknown as string).toLocaleString() : "-"}
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex justify-end gap-2">
+														{r?.id ? (
+															<>
+																<Button asChild variant="secondary" size="sm">
+																	<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
+																</Button>
+																<Button asChild variant="outline" size="sm">
+																	<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
+																</Button>
+															</>
+														) : (
+															<>
+																<Button variant="secondary" size="sm" disabled>
+																	Detail
+																</Button>
+																<Button variant="outline" size="sm" disabled>
+																	Edit
+																</Button>
+															</>
+														)}
+													</div>
+												</TableCell>
+											</TableRow>
+										);
+									})
 								) : (
 									<TableRow>
-										<TableCell colSpan={8} className="h-24 text-center">
+										<TableCell colSpan={9} className="h-24 text-center">
 											No results.
 										</TableCell>
 									</TableRow>

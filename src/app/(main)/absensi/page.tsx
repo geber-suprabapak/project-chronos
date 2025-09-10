@@ -33,7 +33,10 @@ export default function AbsensiPage() {
   const profileByUserId = useMemo(() => {
     const map = new Map<string, { fullName?: string | null; email: string }>();
     for (const p of profiles ?? []) {
-      map.set(p.userId, { fullName: p.fullName, email: p.email });
+      // user_profiles uses `id` (UUID PK). Absences `userId` references this.
+      if (p.id) {
+        map.set(p.id, { fullName: p.fullName, email: p.email });
+      }
     }
     return map;
   }, [profiles]);
@@ -47,7 +50,7 @@ export default function AbsensiPage() {
         <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
       </div>
 
-  <Card className="p-4">
+      <Card className="p-4">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
