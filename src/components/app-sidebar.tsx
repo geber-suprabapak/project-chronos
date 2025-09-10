@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal } from "lucide-react";
+import { SquareTerminal, User as UserIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -28,7 +28,7 @@ const navItems = [
   {
     title: "Profiles",
     url: "/profiles",
-    icon: SquareTerminal,
+  icon: UserIcon,
   },
   {
     title: "Absensi",

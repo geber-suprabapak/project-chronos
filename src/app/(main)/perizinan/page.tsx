@@ -39,6 +39,7 @@ const getBadgeVariant = (status: string | null) => {
     case "rejected":
       return "destructive" as const;
     case "pending":
+      return "pending" as const;
     default:
       return "secondary" as const;
   }
@@ -108,7 +109,7 @@ export default function PerizinanPage() {
                   <TableRow key={item.id}>
                     <TableCell>{formatDate(item.tanggal)}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="rounded-full px-2.5 py-1">
+                      <Badge variant="secondary" className="rounded-sm">
                         {item.kategoriIzin}
                       </Badge>
                     </TableCell>
@@ -116,7 +117,7 @@ export default function PerizinanPage() {
                     <TableCell>
                       <Badge
                         variant={getBadgeVariant(item.approvalStatus)}
-                        className="rounded-full px-2.5 py-1 capitalize"
+                        className="rounded-sm capitalize"
                       >
                         {item.approvalStatus ?? "pending"}
                       </Badge>

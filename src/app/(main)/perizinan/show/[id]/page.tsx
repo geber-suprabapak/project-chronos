@@ -59,6 +59,7 @@ const getBadgeVariant = (status: string | null) => {
     case "rejected":
       return "destructive";
     case "pending":
+      return "pending";
     default:
       return "outline";
   }
@@ -130,7 +131,9 @@ export default function ShowPerizinanPage() {
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Kategori</p>
-                <Badge variant="secondary">{perizinan.kategoriIzin}</Badge>
+                <Badge variant={perizinan.kategoriIzin === "sakit" ? "destructive" : "secondary"}>
+                  {perizinan.kategoriIzin}
+                </Badge>
               </div>
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Tanggal Izin</p>
@@ -146,7 +149,7 @@ export default function ShowPerizinanPage() {
         <Card>
             <CardHeader><CardTitle>Riwayat Status</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-                 <p><strong>Status Saat Ini:</strong> <Badge variant={getBadgeVariant(perizinan.approvalStatus)} className="capitalize">{perizinan.approvalStatus}</Badge></p>
+                <p><strong>Status Saat Ini:</strong> <Badge variant={getBadgeVariant(perizinan.approvalStatus)} className="capitalize rounded-sm">{perizinan.approvalStatus}</Badge></p>
                 <p><strong>Dibuat pada:</strong> {formatDate(perizinan.createdAt)}</p>
                 {perizinan.approvalStatus === 'approved' && (
                   <p><strong>Disetujui pada:</strong> {formatDate(perizinan.approvedAt)}</p>
