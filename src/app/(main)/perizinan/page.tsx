@@ -1,4 +1,6 @@
+
 "use client";
+import { DownloadPdfButton } from "~/components/download-pdf-button";
 
 import Link from "next/link";
 import { api } from "~/trpc/react";
@@ -81,11 +83,14 @@ export default function PerizinanPage() {
   return (
     <div className="p-4 md:p-8">
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Perizinan</CardTitle>
-          <CardDescription>
-            Berikut adalah daftar semua perizinan yang tercatat.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Daftar Perizinan</CardTitle>
+            <CardDescription>
+              Berikut adalah daftar semua perizinan yang tercatat.
+            </CardDescription>
+          </div>
+          <DownloadPdfButton tableId="perizinan-table" filename="perizinan.pdf" title="Data Perizinan" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -110,7 +115,7 @@ export default function PerizinanPage() {
               return (filter.sort ?? "desc") === "desc" ? db - da : da - db;
             });
             return (
-              <Table>
+              <Table id="perizinan-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tanggal</TableHead>

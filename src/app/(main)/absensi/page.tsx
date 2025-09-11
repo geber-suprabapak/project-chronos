@@ -1,4 +1,6 @@
+
 "use client";
+import { DownloadPdfButton } from "~/components/download-pdf-button";
 
 import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
@@ -57,9 +59,12 @@ export default function AbsensiPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Daftar Absensi</h1>
-        <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Daftar Absensi</h1>
+          <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
+        </div>
+  <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
       </div>
 
       <Card className="p-4">
@@ -101,7 +106,7 @@ export default function AbsensiPage() {
                 return (a.status ?? "").toLowerCase() === status.toLowerCase();
               });
               return (
-                <Table>
+                <Table id="absensi-table">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tanggal</TableHead>
