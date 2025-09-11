@@ -30,15 +30,16 @@ export const userProfilesRouter = createTRPCRouter({
 					.optional(),
 			)
 			.query(async ({ ctx, input }) => {
-				let whereClause: any = undefined;
-				if (input?.name && input?.className) {
-					whereClause = (table: typeof userProfiles, { and, ilike }: any) =>
-						and(ilike(table.fullName, `%${input.name}%`), ilike(table.className, `%${input.className}%`));
-				} else if (input?.name) {
-					whereClause = ilike(userProfiles.fullName, `%${input.name}%`);
-				} else if (input?.className) {
-					whereClause = ilike(userProfiles.className, `%${input.className}%`);
-				}
+						let whereClause: any = undefined;
+						const isAllJurusan = !input?.className || input.className === 'ALL';
+						if (input?.name && !isAllJurusan) {
+							whereClause = (table: typeof userProfiles, { and, ilike }: any) =>
+								and(ilike(table.fullName, `%${input.name}%`), ilike(table.className, `%${input.className}%`));
+						} else if (input?.name) {
+							whereClause = ilike(userProfiles.fullName, `%${input.name}%`);
+						} else if (!isAllJurusan) {
+							whereClause = ilike(userProfiles.className, `%${input.className}%`);
+						}
 				const limit = input?.limit ?? 20;
 				const offset = input?.offset ?? 0;
 				// Run data + total count in parallel
