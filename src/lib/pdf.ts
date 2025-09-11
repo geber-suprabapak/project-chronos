@@ -24,7 +24,7 @@ export function downloadTableAsPDF({
     head: [headers],
     body,
     startY: 20,
-    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', minCellWidth: 30 },
+    styles: { fontSize: 10, cellPadding: 3, overflow: 'ellipsize' },
     headStyles: { fillColor: [99, 102, 241], halign: 'center', fontStyle: 'bold' },
     bodyStyles: { valign: 'middle' },
     margin: { left: 10, right: 10 },

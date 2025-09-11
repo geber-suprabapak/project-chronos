@@ -80,8 +80,8 @@ export default function ShowPerizinanPage() {
 
   const updateStatusMutation = api.perizinan.updateStatus.useMutation({
     onSuccess: (data) => {
-      void utils.perizinan.getById.invalidate({ id });
-      void utils.perizinan.list.invalidate();
+  void utils.perizinan.getById.invalidate({ id });
+  void utils.perizinan.listRaw.invalidate();
       setRejectDialogOpen(false);
       if (data) {
         toast.success(`Status updated to ${data.approvalStatus}`);

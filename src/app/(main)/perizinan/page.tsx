@@ -62,11 +62,8 @@ export default function PerizinanPage() {
     data: perizinan,
     isLoading,
     error,
-  } = api.perizinan.list.useQuery(
-    {
-      approvalStatus: filter.status || undefined,
-      tanggal: filter.date || undefined,
-    },
+  } = api.perizinan.listRaw.useQuery(
+    undefined,
     {
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
     },

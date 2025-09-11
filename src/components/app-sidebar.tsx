@@ -39,6 +39,11 @@ const navItems = [
     title: "Perizinan",
     url: "/perizinan",
     icon: SquareTerminal,
+  },
+  {
+    title: "Statistik Siswa",
+    url: "/statistik",
+    icon: require("lucide-react").BarChart2,
   }
 ];
 
