@@ -12,6 +12,13 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
+import {
+	Select,
+	SelectTrigger,
+	SelectValue,
+	SelectContent,
+	SelectItem
+} from "~/components/ui/select";
 
 interface ProfilesPageProps {
 	searchParams?: Record<string, string | string[] | undefined>;
@@ -19,6 +26,7 @@ interface ProfilesPageProps {
 
 export default async function ProfilesPage({ searchParams }: ProfilesPageProps) {
 	const name = typeof searchParams?.name === "string" ? searchParams.name.trim() : "";
+	const className = typeof searchParams?.className === "string" ? searchParams.className : "";
 	const pageParam = typeof searchParams?.page === "string" ? parseInt(searchParams.page, 10) : 1;
 	const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
 	const limit = 20; // fixed page size
@@ -38,7 +46,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 	let hasMore = false;
 
 	try {
-		const res = await api.userProfiles.list({ limit, offset, name: name || undefined });
+		const res = await api.userProfiles.list({ limit, offset, name: name || undefined, className: className || undefined });
 		rows = res?.data ?? [];
 		total = res?.meta.total ?? 0;
 		hasMore = res?.meta.hasMore ?? false;
@@ -55,7 +63,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 		<div className="flex flex-1 flex-col gap-6 p-4 md:p-8">
 			<section className="space-y-4">
 				<h1 className="text-xl font-semibold">User Profiles</h1>
-				<Card>
+				<Card className="rounded-lg border-0 shadow-sm bg-background">
 					<CardContent className="pt-6">
 						<form method="get" className="flex flex-col gap-4 sm:flex-row sm:items-end">
 							<div className="flex flex-col gap-2 flex-1 min-w-[220px]">
@@ -63,9 +71,21 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 								<Input id="name" name="name" placeholder="Masukkan nama" defaultValue={name} />
 							</div>
 							<input type="hidden" name="page" value="1" />
-							<div className="flex gap-2">
+							<div className="flex gap-2 items-end">
+									<Select name="className" defaultValue={className || "ALL"}>
+										<SelectTrigger className="w-[160px]">
+											<SelectValue placeholder="Semua Jurusan" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="ALL">Semua Jurusan</SelectItem>
+											<SelectItem value="PPLG">PPLG</SelectItem>
+											<SelectItem value="AKL">AKL</SelectItem>
+											<SelectItem value="MPLB">MPLB</SelectItem>
+											<SelectItem value="PM">PM</SelectItem>
+										</SelectContent>
+									</Select>
 								<Button type="submit" variant="default">Search</Button>
-								{name && (
+								{(name || className) && (
 									<Button asChild type="button" variant="outline">
 										<Link href="/profiles">Reset</Link>
 									</Button>

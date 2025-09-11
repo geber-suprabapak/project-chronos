@@ -18,50 +18,57 @@ export const userProfilesRouter = createTRPCRouter({
 			return row ?? null;
 		}),
 	// LIST: ambil daftar user_profiles dengan pagination sederhana
-	list: protectedProcedure
-		.input(
-			z
-				.object({
-					limit: z.number().int().min(1).max(100).default(20),
-					offset: z.number().int().min(0).default(0),
-					name: z.string().min(1).max(255).optional(),
-				})
-				.optional(),
-		)
-		.query(async ({ ctx, input }) => {
-			const whereClause = input?.name
-				? ilike(userProfiles.fullName, `%${input.name}%`)
-				: undefined;
-			const limit = input?.limit ?? 20;
-			const offset = input?.offset ?? 0;
-			// Run data + total count in parallel
-			const [rows, totalResult] = await Promise.all([
-				ctx.db
-					.select()
-					.from(userProfiles)
-					.where(whereClause as any)
-					.orderBy(
-						sql`coalesce(${userProfiles.className}, '~~~~') ASC`,
-						sql`coalesce(${userProfiles.fullName}, '~~~~') ASC`
-					)
-					.limit(limit)
-					.offset(offset),
-				ctx.db
-					.select({ count: sql<number>`count(*)` })
-					.from(userProfiles)
-					.where(whereClause as any),
-			]);
-			const total = Number(totalResult[0]?.count ?? 0);
-			return {
-				data: rows,
-				meta: {
-					total,
-					limit,
-					offset,
-					hasMore: offset + rows.length < total,
-				},
-			};
-		}),
+		list: protectedProcedure
+			.input(
+				z
+					.object({
+						limit: z.number().int().min(1).max(100).default(20),
+						offset: z.number().int().min(0).default(0),
+						name: z.string().min(1).max(255).optional(),
+						className: z.string().optional(),
+					})
+					.optional(),
+			)
+			.query(async ({ ctx, input }) => {
+				let whereClause: any = undefined;
+				if (input?.name && input?.className) {
+					whereClause = (table: typeof userProfiles, { and, ilike }: any) =>
+						and(ilike(table.fullName, `%${input.name}%`), ilike(table.className, `%${input.className}%`));
+				} else if (input?.name) {
+					whereClause = ilike(userProfiles.fullName, `%${input.name}%`);
+				} else if (input?.className) {
+					whereClause = ilike(userProfiles.className, `%${input.className}%`);
+				}
+				const limit = input?.limit ?? 20;
+				const offset = input?.offset ?? 0;
+				// Run data + total count in parallel
+				const [rows, totalResult] = await Promise.all([
+					ctx.db
+						.select()
+						.from(userProfiles)
+						.where(whereClause as any)
+						.orderBy(
+							sql`coalesce(${userProfiles.className}, '~~~~') ASC`,
+							sql`coalesce(${userProfiles.fullName}, '~~~~') ASC`
+						)
+						.limit(limit)
+						.offset(offset),
+					ctx.db
+						.select({ count: sql<number>`count(*)` })
+						.from(userProfiles)
+						.where(whereClause as any),
+				]);
+				const total = Number(totalResult[0]?.count ?? 0);
+				return {
+					data: rows,
+					meta: {
+						total,
+						limit,
+						offset,
+						hasMore: offset + rows.length < total,
+					},
+				};
+			}),
 
 	// LIST RAW: semua data (hati-hati untuk dataset besar)
 	listRaw: protectedProcedure.query(async ({ ctx }) => {
