@@ -15,19 +15,20 @@ type FormValues = {
   absenceNumber: string
   className: string
   role: 'admin' | 'none'
+  nis: string
 }
 
 type Props = {
   id: string
   initialData: {
     id: string | number
-    userId: string | number
     fullName: string | null
     email: string
     avatarUrl: string | null
     absenceNumber: string | null
     className: string | null
     role: string | null
+    nis?: string | null
   }
 }
 
@@ -42,6 +43,7 @@ export function EditProfileForm({ id, initialData }: Props) {
       absenceNumber: initialData.absenceNumber ?? '',
       className: initialData.className ?? '',
       role: initialData.role?.toLowerCase() === 'admin' ? 'admin' : 'none',
+      nis: (initialData as any).nis ?? '',
     }),
     [initialData],
   )
@@ -85,6 +87,7 @@ export function EditProfileForm({ id, initialData }: Props) {
         absenceNumber: v.absenceNumber || undefined,
         className: v.className || undefined,
         role: v.role === 'admin' ? 'admin' : undefined,
+        nis: v.nis || undefined,
       },
     })
     setIsDirty(false)
@@ -100,6 +103,10 @@ export function EditProfileForm({ id, initialData }: Props) {
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" value={formValues.email} onChange={handleChange} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="nis">NIS</Label>
+          <Input id="nis" name="nis" value={formValues.nis} onChange={handleChange} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="className">Class</Label>

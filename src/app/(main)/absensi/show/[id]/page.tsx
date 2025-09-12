@@ -64,7 +64,7 @@ export default function ShowAbsensiPage() {
 
   const user = useMemo(() => {
     if (!absence || !profiles) return null;
-    return profiles.find((p) => p.userId === absence.userId) ?? null;
+    return profiles.find((p) => p.id === absence.userId) ?? null;
   }, [absence, profiles]);
 
   if (!id) return <div className="p-8">Invalid ID.</div>;

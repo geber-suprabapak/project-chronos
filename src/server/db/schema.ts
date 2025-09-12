@@ -48,7 +48,7 @@ export const userProfiles = pgTable(
       .default(sql`gen_random_uuid()`)
       .notNull()
       .primaryKey(),
-    userId: uuid("user_id").notNull(),
+    nis: text("nis"),
     fullName: text("full_name"),
     email: text("email").notNull(),
     avatarUrl: text("avatar_url"),
@@ -63,7 +63,6 @@ export const userProfiles = pgTable(
     role: text("role"),
   },
   (t) => [
-    uniqueIndex("user_profiles_user_id_unique").on(t.userId),
     uniqueIndex("user_profiles_email_unique").on(t.email),
   ],
 );
@@ -94,10 +93,10 @@ export const perizinan = pgTable(
     approvedBy: uuid("approved_by"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     rejectionReason: text("rejection_reason"),
-  // New schema uses timestamptz for tanggal
+    // New schema uses timestamptz for tanggal
     tanggal: timestamp("tanggal", { withTimezone: true }).notNull(),
-  // Helper column maintained by trigger for per-day uniqueness and filtering
-  tanggalUtcDate: date("tanggal_utc_date"),
+    // Helper column maintained by trigger for per-day uniqueness and filtering
+    tanggalUtcDate: date("tanggal_utc_date"),
     approvalStatus: text("approval_status").default(sql`'pending'`),
     rejectedAt: timestamp("rejected_at", { withTimezone: true }),
     rejectedBy: text("rejected_by"),
@@ -111,6 +110,6 @@ export const perizinan = pgTable(
 export const perizinanRelations = relations(perizinan, ({ one }) => ({
   userProfile: one(userProfiles, {
     fields: [perizinan.userId],
-    references: [userProfiles.userId],
+    references: [userProfiles.id],
   }),
 }));

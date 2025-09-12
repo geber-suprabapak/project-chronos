@@ -35,12 +35,12 @@ export default function ShowProfilePage() {
 
   // Related data (small lists) for additional context
   const { data: allAbsences } = api.absences.list.useQuery(
-    { userId: profile?.userId, limit: 5, offset: 0, sort: "desc" },
-    { enabled: !!profile?.userId }
+    { userId: profile?.id as string, limit: 5, offset: 0, sort: "desc" },
+    { enabled: !!profile?.id }
   );
   const { data: recentLeaves } = api.perizinan.list.useQuery(
-    { userId: profile?.userId, limit: 5, offset: 0 },
-    { enabled: !!profile?.userId }
+    { userId: profile?.id as string, limit: 5, offset: 0 },
+    { enabled: !!profile?.id }
   );
 
   if (!id) return <div className="p-8">Invalid ID.</div>;
@@ -71,7 +71,8 @@ export default function ShowProfilePage() {
             </div>
             <Separator />
             <div className="grid gap-2">
-              <Row label="User ID" value={profile.userId} mono />
+              <Row label="ID" value={String(profile.id)} mono />
+              {profile.nis ? <Row label="NIS" value={profile.nis} /> : null}
               <Row label="Kelas" value={profile.className ?? "-"} />
               <Row label="No. Absen" value={profile.absenceNumber ?? "-"} />
               <Row label="Role" value={profile.role ?? "-"} />
