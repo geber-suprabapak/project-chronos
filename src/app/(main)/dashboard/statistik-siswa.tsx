@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { api } from "~/trpc/react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "~/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "~/components/ui/select";
+import { Input } from "~/components/ui/input";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
@@ -37,6 +38,7 @@ function computeStatusMap(users: UserProfile[], absensi: any[] = [], izin: any[]
 
 export default function StatistikSiswaDashboard() {
   const [kelas, setKelas] = useState<string>("ALL");
+  const [search, setSearch] = useState<string>("");
   const [tab, setTab] = useState<string>("sudah");
   const { data: users } = api.userProfiles.listRaw.useQuery();
   const { data: absensi } = api.absences.listRaw.useQuery();
@@ -48,7 +50,7 @@ export default function StatistikSiswaDashboard() {
     if (kelas === "ALL") return list;
     const target = kelas.toLowerCase();
     // Tokenize target to support jurusan like 'PPLG'
-    const result = list.filter((u) => {
+    let result = list.filter((u) => {
       const raw = (u.className || "").toLowerCase();
       if (!raw) return false;
       // Normalize separators
@@ -63,19 +65,23 @@ export default function StatistikSiswaDashboard() {
       if (c.includes(target)) return true;
       return false;
     });
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      result = result.filter(u => (u.fullName || "").toLowerCase().includes(term));
+    }
     if (result.length === 0) {
       // Debug one-time console note (harmless in production builds can be removed later)
       // eslint-disable-next-line no-console
       console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0,5).map(u => u.className) });
     }
     return result;
-  }, [users, kelas]);
+  }, [users, kelas, search]);
 
   const statusMap = useMemo(() => computeStatusMap(filteredUsers, absensi ?? [], izin ?? []), [filteredUsers, absensi, izin]);
 
   const chartData = useMemo(() => {
     const data = [
-      { name: "Belum Absen", value: statusMap.belum.length, fill: "#a3a3a3" },
+      { name: "Nihil", value: statusMap.belum.length, fill: "#a3a3a3" },
       { name: "Sudah Absen", value: statusMap.sudah.length, fill: "#3b82f6" },
       { name: "Sakit", value: statusMap.sakit.length, fill: "#ef4444" },
       { name: "Pergi", value: statusMap.pergi.length, fill: "#22c55e" },
@@ -95,16 +101,24 @@ export default function StatistikSiswaDashboard() {
             <CardTitle className="text-lg">Rekap Kehadiran</CardTitle>
             <CardDescription className="text-sm">Per kelas & status</CardDescription>
           </div>
-          <Select value={kelas} onValueChange={setKelas}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Pilih Kelas" />
-            </SelectTrigger>
-            <SelectContent>
-              {kelasList.map((k) => (
-                <SelectItem key={k} value={k}>{k === "ALL" ? "Semua Kelas" : k}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Select value={kelas} onValueChange={setKelas}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Pilih Kelas" />
+              </SelectTrigger>
+              <SelectContent>
+                {kelasList.map((k) => (
+                  <SelectItem key={k} value={k}>{k === "ALL" ? "Semua Kelas" : k}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama..."
+              className="w-[200px]"
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col lg:flex-row gap-8 w-full">
@@ -127,7 +141,7 @@ export default function StatistikSiswaDashboard() {
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <LegendBox color="#3b82f6" label="Sudah" value={statusMap.sudah.length} />
-            <LegendBox color="#a3a3a3" label="Belum" value={statusMap.belum.length} />
+            <LegendBox color="#a3a3a3" label="Nihil" value={statusMap.belum.length} />
             <LegendBox color="#ef4444" label="Sakit" value={statusMap.sakit.length} />
             <LegendBox color="#22c55e" label="Pergi" value={statusMap.pergi.length} />
           </div>
@@ -137,7 +151,7 @@ export default function StatistikSiswaDashboard() {
           <RadixTabs.Root value={tab} onValueChange={setTab} className="w-full">
             <RadixTabs.List className="grid grid-cols-4 w-full mb-2 text-sm font-medium">
               <RadixTabs.Trigger value="sudah" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Sudah</RadixTabs.Trigger>
-              <RadixTabs.Trigger value="belum" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Belum</RadixTabs.Trigger>
+              <RadixTabs.Trigger value="belum" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Nihil</RadixTabs.Trigger>
               <RadixTabs.Trigger value="sakit" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Sakit</RadixTabs.Trigger>
               <RadixTabs.Trigger value="pergi" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Pergi</RadixTabs.Trigger>
             </RadixTabs.List>
