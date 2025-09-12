@@ -13,6 +13,7 @@ import {
   SidebarRail,
 } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
+import Image from 'next/image';
 
 // Update icons to match each link
 const navItems = [
@@ -76,7 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex min-w-0 items-center gap-2 px-2 py-1 overflow-hidden">
-          <img src="/logo.png" alt="Skanida Apps" className="h-8 w-8" />
+          <Image src="/logo.png" alt="Skanida Apps" width={32} height={32} className="h-8 w-8" />
           <span className="font-semibold tracking-tight flex-1 min-w-0 truncate group-data-[collapsible=icon]:hidden">
             Skanida Apps
           </span>
