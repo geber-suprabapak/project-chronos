@@ -52,11 +52,11 @@ export function StatistikPieChart() {
         <CardDescription>Rekap harian</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-row items-start gap-12 pb-0">
-        <div style={{ minWidth: 300, minHeight: 300, maxWidth: 340, maxHeight: 340 }}>
-          <ResponsiveContainer width={300} height={300}>
+        <div style={{ minWidth: 200, minHeight: 200, maxWidth: 220, maxHeight: 220 }}>
+          <ResponsiveContainer width={200} height={200}>
             <PieChart>
               <Tooltip />
-              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
+              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">
                 {chartData.map((entry, idx) => (
                   <Cell key={`cell-${idx}`} fill={entry.fill} />
                 ))}
@@ -64,11 +64,11 @@ export function StatistikPieChart() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex flex-col gap-4 justify-center mt-0" style={{ height: 300 }}>
+  <div className="flex flex-col gap-2 justify-center items-start" style={{ height: 200, marginLeft: '8px' }}>
           {chartData.map((entry) => (
             <div key={entry.name} className="flex items-center gap-2">
-              <span style={{ display: 'inline-block', width: 24, height: 24, borderRadius: 4, background: entry.fill, border: 'none' }} />
-              <span className="text-muted-foreground text-base font-medium">{entry.name}</span>
+              <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: entry.fill, border: 'none' }} />
+              <span className="text-muted-foreground text-base font-medium">{entry.name}:</span>
               <span className="text-foreground font-semibold">{entry.value}</span>
             </div>
           ))}
