@@ -102,8 +102,14 @@ export default function StatistikSiswaDashboard() {
             <CardDescription className="text-sm">Per kelas & status</CardDescription>
           </div>
           <div className="flex flex-wrap gap-3 items-center">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama..."
+              className="w-[200px] order-1"
+            />
             <Select value={kelas} onValueChange={setKelas}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[160px] order-2">
                 <SelectValue placeholder="Pilih Kelas" />
               </SelectTrigger>
               <SelectContent>
@@ -112,12 +118,6 @@ export default function StatistikSiswaDashboard() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama..."
-              className="w-[200px]"
-            />
           </div>
         </div>
       </CardHeader>
