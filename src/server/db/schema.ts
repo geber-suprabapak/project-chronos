@@ -60,10 +60,12 @@ export const userProfiles = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
-    role: text("role"),
+    role: text("role").default("user"),
   },
   (t) => [
     uniqueIndex("user_profiles_email_unique").on(t.email),
+    // Role constraint to ensure only valid roles
+    sql`CONSTRAINT user_profiles_role_check CHECK (${t.role} IN ('superadmin', 'admin', 'user'))`
   ],
 );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, FileClock } from "lucide-react";
+import { SquareTerminal, Users, CalendarDays, FileClock, Shield } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -13,10 +13,11 @@ import {
   SidebarRail,
 } from "~/components/ui/sidebar";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
+import { api } from "~/trpc/react";
 import Image from 'next/image';
 
-// Update icons to match each link
-const navItems = [
+// Base navigation items available to all users
+const baseNavItems = [
   {
     title: "Debug Dash",
     url: "/dashboard",
@@ -41,6 +42,15 @@ const navItems = [
     title: "Perizinan",
     url: "/perizinan",
     icon: FileClock,
+  }
+];
+
+// Admin-only navigation items
+const adminNavItems = [
+  {
+    title: "Admin Management",
+    url: "/admin",
+    icon: Shield,
   }
 ];
 
@@ -72,6 +82,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       authListener?.data.subscription.unsubscribe();
     };
   }, [supabase]);
+
+  // Get user role for navigation customization
+  const { data: userRole } = api.admin.getMyRole.useQuery(undefined, {
+    enabled: !!user, // Only run when user is authenticated
+  });
+
+  // Build navigation items based on user role
+  const navItems = React.useMemo(() => {
+    const items = [...baseNavItems];
+    
+    // Add admin-only items for admin and superadmin users
+    if (userRole?.role && ['admin', 'superadmin'].includes(userRole.role)) {
+      items.push(...adminNavItems);
+    }
+    
+    return items;
+  }, [userRole?.role]);
 
   return (
     <Sidebar collapsible="icon" {...props}>

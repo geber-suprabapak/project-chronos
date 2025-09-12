@@ -10,6 +10,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { createSupabaseServerClient } from "~/lib/supabase/server"; // Asumsi Anda punya helper ini
+import { hasMinimumRole, isValidRole } from "~/server/lib/roles";
+import type { UserRole } from "~/server/lib/roles";
 
 import { db } from "~/server/db";
 
@@ -96,7 +98,7 @@ export const createTRPCRouter = t.router;
 
 //   return result;
 // });
-const isAuthed = t.middleware(async ({ next }) => {
+const isAuthed = t.middleware(async ({ next, ctx }) => {
   // Ambil user session dari Supabase atau sumber lain di context
   const supabase = createSupabaseServerClient(); // Ini perlu disesuaikan
   const {
@@ -107,13 +109,69 @@ const isAuthed = t.middleware(async ({ next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
+  // Get user profile with role from database
+  const userProfile = await ctx.db.query.userProfiles.findFirst({
+    where: (table, { eq }) => eq(table.email, user.email!),
+  });
+
   return next({
     ctx: {
       // Menyertakan user dalam konteks untuk prosedur selanjutnya
       user,
+      userProfile,
     },
   });
 });
+
+import type { UserRole } from "~/server/lib/roles";
+
+/**
+ * Role-based middleware factory
+ */
+const requireRole = (requiredRole: UserRole) => 
+  t.middleware(async ({ next, ctx }) => {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    // Get user profile with role from database
+    const userProfile = await ctx.db.query.userProfiles.findFirst({
+      where: (table, { eq }) => eq(table.email, user.email!),
+    });
+
+    if (!userProfile?.role) {
+      throw new TRPCError({ 
+        code: "FORBIDDEN", 
+        message: "User profile not found or role not set" 
+      });
+    }
+
+    if (!isValidRole(userProfile.role)) {
+      throw new TRPCError({ 
+        code: "FORBIDDEN", 
+        message: "Invalid user role" 
+      });
+    }
+
+    if (!hasMinimumRole(userProfile.role, requiredRole)) {
+      throw new TRPCError({ 
+        code: "FORBIDDEN", 
+        message: `Requires ${requiredRole} role or higher` 
+      });
+    }
+
+    return next({
+      ctx: {
+        user,
+        userProfile,
+      },
+    });
+  });
 
 /**
  * Public (unauthenticated) procedure
@@ -123,4 +181,18 @@ const isAuthed = t.middleware(async ({ next }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure; //.use(timingMiddleware);
+
+/**
+ * Protected procedure that requires authentication
+ */
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+/**
+ * Admin procedure that requires admin role or higher
+ */
+export const adminProcedure = t.procedure.use(requireRole('admin'));
+
+/**
+ * Superadmin procedure that requires superadmin role
+ */
+export const superadminProcedure = t.procedure.use(requireRole('superadmin'));

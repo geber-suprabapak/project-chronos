@@ -1,6 +1,7 @@
 // import { postRouter } from "~/server/api/routers/post";
 import { absencesRouter } from "~/server/api/routers/absences";
 import { perizinanRouter } from "~/server/api/routers/perizinan";
+import { adminRouter } from "~/server/api/routers/admin";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { userProfilesRouter } from "~/server/api/routers/user-profiles";
 
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   absences: absencesRouter,
   perizinan: perizinanRouter,
   userProfiles: userProfilesRouter,
+  admin: adminRouter,
 });
 
 // export type definition of API
