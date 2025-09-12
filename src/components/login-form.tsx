@@ -25,10 +25,10 @@ export function LoginForm({
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { error: authError } = await supabase?.auth.signInWithPassword({
       email,
       password,
-    });
+    }) ?? { error: new Error('Supabase client not available') };
     setLoading(false);
     if (authError) {
       setError(authError.message);

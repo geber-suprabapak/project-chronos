@@ -21,13 +21,14 @@ import {
 } from "~/components/ui/select";
 
 interface ProfilesPageProps {
-	searchParams?: Record<string, string | string[] | undefined>;
+	searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ProfilesPage({ searchParams }: ProfilesPageProps) {
-	const name = typeof searchParams?.name === "string" ? searchParams.name.trim() : "";
-	const className = typeof searchParams?.className === "string" ? searchParams.className : "";
-	const pageParam = typeof searchParams?.page === "string" ? parseInt(searchParams.page, 10) : 1;
+	const params = await searchParams;
+	const name = typeof params?.name === "string" ? params.name.trim() : "";
+	const className = typeof params?.className === "string" ? params.className : "";
+	const pageParam = typeof params?.page === "string" ? parseInt(params.page, 10) : 1;
 	const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
 	const limit = 20; // fixed page size
 	const offset = (page - 1) * limit;

@@ -45,7 +45,7 @@ export function NavUser({ user, loading }: NavUserProps) {
 
   async function handleLogout() {
     setSigningOut(true);
-    await supabase.auth.signOut();
+    await supabase?.auth.signOut();
     setSigningOut(false);
     router.replace("/login");
   }

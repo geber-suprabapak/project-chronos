@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "~/env.js";
 
-export function createSupabaseServerClient(): SupabaseClient {
+export function createSupabaseServerClient() {
   return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

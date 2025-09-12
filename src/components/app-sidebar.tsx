@@ -54,22 +54,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Initial fetch
     void (async () => {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (!active) return;
-        setUser(data.user ?? null);
+        const response = await supabase?.auth.getUser();
+        if (!active || !response) return;
+        setUser(response.data.user ?? null);
       } finally {
         if (active) setLoading(false);
       }
     })();
     // Listen to auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    const authListener = supabase?.auth.onAuthStateChange(
+      (_event: any, session: any) => {
         setUser(session?.user ?? null);
       },
     );
     return () => {
       active = false;
-      listener.subscription.unsubscribe();
+      authListener?.data.subscription.unsubscribe();
     };
   }, [supabase]);
 

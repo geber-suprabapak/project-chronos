@@ -8,13 +8,13 @@ import { env } from "~/env.js";
 // import type { Database } from "~/lib/database.types";
 // Then change SupabaseClient below to SupabaseClient<Database>.
 
-let browserClient: SupabaseClient | null = null;
+let browserClient: any = null;
 
 /**
  * Returns a (cached) Supabase browser client for use inside React Client Components.
  * Safe to call in event handlers or during render in client components.
  */
-export function getSupabaseBrowserClient(): SupabaseClient {
+export function getSupabaseBrowserClient() {
   browserClient ??= createBrowserClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
