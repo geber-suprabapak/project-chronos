@@ -1,5 +1,4 @@
 import { HydrateClient, api } from "~/trpc/server";
-import dynamic from "next/dynamic";
 import StatistikSiswaDashboardClient from "./StatistikSiswaDashboardClient";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 
