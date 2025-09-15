@@ -106,14 +106,14 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 							<Button variant="outline" size="sm" disabled>Prev</Button>
 						) : (
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), page: String(page - 1) }).toString()}`}>Prev</Link>
+								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), ...(className ? { className } : {}), page: String(page - 1) }).toString()}`}>Prev</Link>
 							</Button>
 						)}
 						{!hasMore ? (
 							<Button variant="outline" size="sm" disabled>Next</Button>
 						) : (
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), page: String(page + 1) }).toString()}`}>Next</Link>
+								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), ...(className ? { className } : {}), page: String(page + 1) }).toString()}`}>Next</Link>
 							</Button>
 						)}
 					</div>
