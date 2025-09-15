@@ -20,15 +20,17 @@ import {
 	SelectContent,
 	SelectItem
 } from "~/components/ui/select";
-
-interface ProfilesPageProps {
-	searchParams?: Record<string, string | string[] | undefined>;
-}
-
-export default async function ProfilesPage({ searchParams }: ProfilesPageProps) {
-	const name = typeof searchParams?.name === "string" ? searchParams.name.trim() : "";
-	const className = typeof searchParams?.className === "string" ? searchParams.className : "";
-	const pageParam = typeof searchParams?.page === "string" ? parseInt(searchParams.page, 10) : 1;
+// Untuk kompatibilitas dengan Next.js type system, kita gunakan any
+export default async function ProfilesPage({
+	searchParams
+}: {
+	searchParams?: any
+}) {
+	// Await searchParams sebelum mengakses propertinya
+	const params = await searchParams;
+	const name = typeof params?.name === "string" ? params.name.trim() : "";
+	const className = typeof params?.className === "string" ? params.className : "";
+	const pageParam = typeof params?.page === "string" ? parseInt(params.page, 10) : 1;
 	const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
 	const limit = 20; // fixed page size
 	const offset = (page - 1) * limit;
@@ -47,7 +49,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 	let hasMore = false;
 
 	try {
-		const res = await api.userProfiles.list({ limit, offset, name: name || undefined, className: className || undefined });
+		const res = await api.userProfiles.list({ limit, offset, name: name ?? undefined, className: className ?? undefined });
 		rows = res?.data ?? [];
 		total = res?.meta.total ?? 0;
 		hasMore = res?.meta.hasMore ?? false;
@@ -76,20 +78,20 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 							</div>
 							<input type="hidden" name="page" value="1" />
 							<div className="flex gap-2 items-end">
-									<Select name="className" defaultValue={className || "ALL"}>
-										<SelectTrigger className="w-[160px]">
-											<SelectValue placeholder="Semua Jurusan" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="ALL">Semua Jurusan</SelectItem>
-											<SelectItem value="PPLG">PPLG</SelectItem>
-											<SelectItem value="AKL">AKL</SelectItem>
-											<SelectItem value="MPLB">MPLB</SelectItem>
-											<SelectItem value="PM">PM</SelectItem>
-										</SelectContent>
-									</Select>
+								<Select name="className" defaultValue={className ?? "ALL"}>
+									<SelectTrigger className="w-[160px]">
+										<SelectValue placeholder="Semua Jurusan" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ALL">Semua Jurusan</SelectItem>
+										<SelectItem value="PPLG">PPLG</SelectItem>
+										<SelectItem value="AKL">AKL</SelectItem>
+										<SelectItem value="MPLB">MPLB</SelectItem>
+										<SelectItem value="PM">PM</SelectItem>
+									</SelectContent>
+								</Select>
 								<Button type="submit" variant="default">Search</Button>
-								{(name || className) && (
+								{(name ?? className) && (
 									<Button asChild type="button" variant="outline">
 										<Link href="/profiles">Reset</Link>
 									</Button>

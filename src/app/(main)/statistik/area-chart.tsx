@@ -10,20 +10,30 @@ export default function StatistikAreaChart() {
   const { data: izin } = api.perizinan.listRaw.useQuery();
 
   // Gabungkan data per tanggal
+  type AbsensiItem = {
+    date: Date | string;
+    userId: string;
+  };
+
   const chartData = useMemo(() => {
     if (!absensi && !izin) return [];
     const hadirPerTanggal: Record<string, Set<string>> = {};
-    absensi?.forEach((a: any) => {
-      const tgl = a.date instanceof Date ? a.date.toISOString().slice(0, 10) : a.date?.slice(0, 10);
+    absensi?.forEach((a: AbsensiItem) => {
+      const tgl = a.date instanceof Date ? a.date.toISOString().slice(0, 10) : a.date.slice(0, 10);
       if (!tgl) return;
-      if (!hadirPerTanggal[tgl]) hadirPerTanggal[tgl] = new Set();
+      hadirPerTanggal[tgl] ??= new Set();
       hadirPerTanggal[tgl].add(a.userId);
     });
+    type IzinItem = {
+      tanggal: Date | string;
+      userId: string;
+    };
+
     const izinPerTanggal: Record<string, Set<string>> = {};
-    izin?.forEach((p: any) => {
-      const tgl = p.tanggal instanceof Date ? p.tanggal.toISOString().slice(0, 10) : p.tanggal?.slice(0, 10);
+    izin?.forEach((p: IzinItem) => {
+      const tgl = p.tanggal instanceof Date ? p.tanggal.toISOString().slice(0, 10) : p.tanggal.slice(0, 10);
       if (!tgl) return;
-      if (!izinPerTanggal[tgl]) izinPerTanggal[tgl] = new Set();
+      izinPerTanggal[tgl] ??= new Set();
       izinPerTanggal[tgl].add(p.userId);
     });
     const tanggalSet = new Set([
@@ -57,7 +67,7 @@ export default function StatistikAreaChart() {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                tickFormatter={(value) => value?.slice(5)}
+                tickFormatter={(value: string) => value ? value.slice(5) : ''}
               />
               <YAxis
                 allowDecimals={false}
