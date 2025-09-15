@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, FileClock } from "lucide-react";
+import { SquareTerminal, Users, CalendarDays, FileClock, BarChart2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -40,7 +40,12 @@ const navItems = [
   {
     title: "Perizinan",
     url: "/perizinan",
-    icon: FileClock,
+    icon: SquareTerminal,
+  },
+  {
+    title: "Statistik Siswa",
+    url: "/statistik",
+    icon: BarChart2,
   }
 ];
 

@@ -12,6 +12,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
+import { DownloadPdfButton } from "~/components/download-pdf-button";
 import {
 	Select,
 	SelectTrigger,
@@ -62,7 +63,10 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 	return (
 		<div className="flex flex-1 flex-col gap-6 p-4 md:p-8">
 			<section className="space-y-4">
-				<h1 className="text-xl font-semibold">User Profiles</h1>
+				<div className="flex items-center justify-between">
+					<h1 className="text-xl font-semibold">User Profiles</h1>
+					<DownloadPdfButton tableId="profiles-table" filename="profiles.pdf" title="Data Siswa" className="px-4 py-2" disabled={rows.length === 0} />
+				</div>
 				<Card className="rounded-lg border-0 shadow-sm bg-background">
 					<CardContent className="pt-6">
 						<form method="get" className="flex flex-col gap-4 sm:flex-row sm:items-end">
@@ -116,7 +120,7 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 				</div>
 				<Card className="overflow-hidden">
 					<CardContent>
-						<Table>
+						<Table id="profiles-table">
 							<TableHeader>
 								<TableRow>
 									<TableHead className="w-[120px]">ID</TableHead>

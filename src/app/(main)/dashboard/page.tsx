@@ -1,4 +1,5 @@
 import { HydrateClient, api } from "~/trpc/server";
+import StatistikSiswaDashboardClient from "./StatistikSiswaDashboardClient";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 
 export default async function Home() {
@@ -16,6 +17,7 @@ export default async function Home() {
     <HydrateClient>
       <div className="flex flex-1 flex-col gap-6 p-6">
         <section className="space-y-6">
+              <StatistikSiswaDashboardClient />
           <div>
             <h2 className="mb-2 font-medium">User</h2>
             <pre className="max-h-80 overflow-auto rounded bg-gray-100 p-3 text-xs text-black">

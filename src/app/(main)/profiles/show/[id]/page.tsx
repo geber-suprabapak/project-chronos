@@ -39,7 +39,7 @@ export default function ShowProfilePage() {
     { enabled: !!profile?.id }
   );
   const { data: recentLeaves } = api.perizinan.list.useQuery(
-    { userId: profile?.id as string, limit: 5, offset: 0 },
+    undefined,
     { enabled: !!profile?.id }
   );
 
