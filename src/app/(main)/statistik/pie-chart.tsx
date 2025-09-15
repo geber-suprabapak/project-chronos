@@ -9,7 +9,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../../../components/ui/card";
+} from "~/components/ui/card";
 import { api } from "~/trpc/react";
 import { useMemo } from "react";
 
