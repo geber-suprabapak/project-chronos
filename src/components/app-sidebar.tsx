@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal } from "lucide-react";
+import { SquareTerminal, BarChart2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -43,7 +43,7 @@ const navItems = [
   {
     title: "Statistik Siswa",
     url: "/statistik",
-    icon: require("lucide-react").BarChart2,
+    icon: BarChart2,
   }
 ];
 
