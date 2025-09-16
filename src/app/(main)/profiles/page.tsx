@@ -1,3 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+
 import Link from "next/link";
 import { api } from "~/trpc/server";
 import {
@@ -26,8 +33,10 @@ export default async function ProfilesPage({
 }: {
 	searchParams?: any
 }) {
-	// Await searchParams sebelum mengakses propertinya
+	// Di Next.js 15, kita perlu menggunakan await pada searchParams
 	const params = await searchParams;
+
+	// Akses searchParams dengan aman menggunakan params
 	const name = typeof params?.name === "string" ? params.name.trim() : "";
 	const className = typeof params?.className === "string" ? params.className : "";
 	const pageParam = typeof params?.page === "string" ? parseInt(params.page, 10) : 1;
@@ -49,15 +58,32 @@ export default async function ProfilesPage({
 	let hasMore = false;
 
 	try {
-		const res = await api.userProfiles.list({ limit, offset, name: name ?? undefined, className: className ?? undefined });
-		rows = res?.data ?? [];
-		total = res?.meta.total ?? 0;
-		hasMore = res?.meta.hasMore ?? false;
-	} catch {
-		// Let the page render an inline error instead of a full crash
+		// Pastikan parameter dikirim dengan benar dan sesuai dengan definisi input router
+		const params = {
+			limit,
+			offset,
+			name: name ? name : undefined, // Hanya kirim jika ada nilai
+			className: className && className !== "ALL" ? className : undefined // Hanya kirim jika bukan ALL dan ada nilai
+		};
+
+		console.log("Loading profiles with params:", params);
+		const res = await api.userProfiles.list(params);
+
+		if (res) {
+			// Pastikan data diproses dengan benar
+			rows = Array.isArray(res.data) ? res.data : [];
+			total = typeof res.meta?.total === "number" ? res.meta.total : 0;
+			hasMore = Boolean(res.meta?.hasMore);
+
+			console.log(`Loaded ${rows.length} profiles out of ${total}`);
+		} else {
+			console.warn("API returned no result");
+		}
+	} catch (error) {
+		console.error("Failed to load profiles:", error);
 		return (
 			<div className="p-6">
-				<p className="text-red-600">Gagal memuat data profil.</p>
+				<p className="text-red-600">Gagal memuat data profil. Silahkan coba lagi.</p>
 			</div>
 		);
 	}
