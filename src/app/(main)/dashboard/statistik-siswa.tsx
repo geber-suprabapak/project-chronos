@@ -255,7 +255,7 @@ function LegendBox({ color, label, value }: { color: string; label: string; valu
 }
 
 function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
-  if (!items || count === 0) {
+  if (items == null || count === 0) {
     return <div className="text-sm text-muted-foreground">Tidak ada data</div>;
   }
   // Deduplicate by stable key (id preferred, fallback to fullName)

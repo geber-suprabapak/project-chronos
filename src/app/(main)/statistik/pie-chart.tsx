@@ -1,12 +1,10 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
-import { LabelList, Pie, PieChart, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -23,12 +21,16 @@ export function StatistikPieChart() {
   const chartData = useMemo(() => {
     if (!users || !absensi || !izin) return [];
     const userIds = new Set(users.map((u) => u.id));
+    type IzinItem = {
+      kategoriIzin: string;
+    };
+
     const sudahAbsen = new Set(absensi.map((a) => a.userId));
-    let belumAbsen = new Set([...userIds]);
+    const belumAbsen = new Set([...userIds]);
     sudahAbsen.forEach((id) => belumAbsen.delete(id));
     let pergi = 0;
     let sakit = 0;
-    izin.forEach((p: any) => {
+    izin.forEach((p: IzinItem) => {
       if (p.kategoriIzin === "pergi") pergi++;
       if (p.kategoriIzin === "sakit") sakit++;
     });
@@ -64,7 +66,7 @@ export function StatistikPieChart() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-  <div className="flex flex-col gap-2 justify-center items-start" style={{ height: 200, marginLeft: '8px' }}>
+        <div className="flex flex-col gap-2 justify-center items-start" style={{ height: 200, marginLeft: '8px' }}>
           {chartData.map((entry) => (
             <div key={entry.name} className="flex items-center gap-2">
               <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: entry.fill, border: 'none' }} />

@@ -20,19 +20,37 @@ import {
 	SelectContent,
 	SelectItem
 } from "~/components/ui/select";
+// Next.js App Router page component with search params
 
-interface ProfilesPageProps {
-	searchParams?: Record<string, string | string[] | undefined>;
-}
+export default async function ProfilesPage({ 
+  searchParams 
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}) {
+	// Process searchParams safely
+	const params = {
+		name: typeof searchParams?.name === 'string' ? searchParams.name : '',
+		className: typeof searchParams?.className === 'string' ? searchParams.className : '',
+		page: typeof searchParams?.page === 'string' ? searchParams.page : '',
+	};
 
-export default async function ProfilesPage({ searchParams }: ProfilesPageProps) {
-	const name = typeof searchParams?.name === "string" ? searchParams.name.trim() : "";
-	const className = typeof searchParams?.className === "string" ? searchParams.className : "";
-	const pageParam = typeof searchParams?.page === "string" ? parseInt(searchParams.page, 10) : 1;
+	// Akses searchParams dengan aman menggunakan params
+	const name = params?.name ? params.name.trim() : "";
+	const className = params?.className ?? "";
+	const pageParam = params?.page ? parseInt(params.page, 10) : 1;
 	const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
 	const limit = 20; // fixed page size
 	const offset = (page - 1) * limit;
 	// Fetch on the server for less client JS and faster TTFB
+	// Helper function to create query string safely
+	function createQueryString(name: string, className: string, pageNum: number): string {
+		const params = new URLSearchParams();
+		if (name) params.set('name', name);
+		if (className && className !== 'ALL') params.set('className', className);
+		params.set('page', String(pageNum));
+		return params.toString();
+	}
+
 	let rows: Array<{
 		id: string | number | null;
 		fullName: string | null;
@@ -47,15 +65,30 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 	let hasMore = false;
 
 	try {
-		const res = await api.userProfiles.list({ limit, offset, name: name || undefined, className: className || undefined });
-		rows = res?.data ?? [];
-		total = res?.meta.total ?? 0;
-		hasMore = res?.meta.hasMore ?? false;
-	} catch {
-		// Let the page render an inline error instead of a full crash
+		// Pastikan parameter dikirim dengan benar dan sesuai dengan definisi input router
+	const params = {
+		limit,
+		offset,
+		name: name || undefined, // Hanya kirim jika ada nilai
+		className: className && className !== "ALL" ? className : undefined // Hanya kirim jika bukan ALL dan ada nilai
+	};		console.log("Loading profiles with params:", params);
+		const res = await api.userProfiles.list(params);
+
+		if (res) {
+			// Pastikan data diproses dengan benar
+			rows = Array.isArray(res.data) ? res.data : [];
+			total = res.meta?.total ?? 0;
+			hasMore = Boolean(res.meta?.hasMore);
+
+			console.log(`Loaded ${rows.length} profiles out of ${total}`);
+		} else {
+			console.warn("API returned no result");
+		}
+	} catch (error) {
+		console.error("Failed to load profiles:", error);
 		return (
 			<div className="p-6">
-				<p className="text-red-600">Gagal memuat data profil.</p>
+				<p className="text-red-600">Gagal memuat data profil. Silahkan coba lagi.</p>
 			</div>
 		);
 	}
@@ -76,18 +109,18 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 							</div>
 							<input type="hidden" name="page" value="1" />
 							<div className="flex gap-2 items-end">
-									<Select name="className" defaultValue={className || "ALL"}>
-										<SelectTrigger className="w-[160px]">
-											<SelectValue placeholder="Semua Jurusan" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="ALL">Semua Jurusan</SelectItem>
-											<SelectItem value="PPLG">PPLG</SelectItem>
-											<SelectItem value="AKL">AKL</SelectItem>
-											<SelectItem value="MPLB">MPLB</SelectItem>
-											<SelectItem value="PM">PM</SelectItem>
-										</SelectContent>
-									</Select>
+								<Select name="className" defaultValue={className ?? "ALL"}>
+									<SelectTrigger className="w-[160px]">
+										<SelectValue placeholder="Semua Jurusan" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="ALL">Semua Jurusan</SelectItem>
+										<SelectItem value="PPLG">PPLG</SelectItem>
+										<SelectItem value="AKL">AKL</SelectItem>
+										<SelectItem value="MPLB">MPLB</SelectItem>
+										<SelectItem value="PM">PM</SelectItem>
+									</SelectContent>
+								</Select>
 								<Button type="submit" variant="default">Search</Button>
 								{(name || className) && (
 									<Button asChild type="button" variant="outline">
@@ -106,14 +139,14 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 							<Button variant="outline" size="sm" disabled>Prev</Button>
 						) : (
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), ...(className ? { className } : {}), page: String(page - 1) }).toString()}`}>Prev</Link>
+								<Link href={`/profiles?${createQueryString(name, className, page - 1)}`}>Prev</Link>
 							</Button>
 						)}
 						{!hasMore ? (
 							<Button variant="outline" size="sm" disabled>Next</Button>
 						) : (
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/profiles?${new URLSearchParams({ ...(name ? { name } : {}), ...(className ? { className } : {}), page: String(page + 1) }).toString()}`}>Next</Link>
+								<Link href={`/profiles?${createQueryString(name, className, page + 1)}`}>Next</Link>
 							</Button>
 						)}
 					</div>
@@ -149,7 +182,9 @@ export default async function ProfilesPage({ searchParams }: ProfilesPageProps) 
 												<TableCell>{r.absenceNumber ?? "-"}</TableCell>
 												<TableCell>{r.role ?? "-"}</TableCell>
 												<TableCell>
-													{r.updatedAt ? new Date(r.updatedAt as unknown as string).toLocaleString() : "-"}
+																						<TableCell>
+										{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
+									</TableCell>
 												</TableCell>
 												<TableCell className="text-right">
 													<div className="flex justify-end gap-2">

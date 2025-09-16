@@ -16,12 +16,8 @@ import {
 import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
-import { RotateCcw, ArrowUpDown, ArrowDownUp, Eye } from "lucide-react";
-import { DatePicker } from "~/components/date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Eye } from "lucide-react";
 import { FilterBar, type FilterBarValue } from "~/components/filter-bar";
 
 export default function AbsensiPage() {
@@ -49,7 +45,7 @@ export default function AbsensiPage() {
     for (const p of profiles ?? []) {
       // user_profiles uses `id` (UUID PK). Absences `userId` references this.
       if (p.id) {
-        map.set(p.id, { fullName: p.fullName, email: p.email, nis: (p as any).nis ?? null });
+        map.set(p.id, { fullName: p.fullName, email: p.email, nis: p.nis ?? null });
       }
     }
     return map;
@@ -64,7 +60,7 @@ export default function AbsensiPage() {
           <h1 className="text-xl font-semibold tracking-tight">Daftar Absensi</h1>
           <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
         </div>
-  <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
+        <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
       </div>
 
       <Card className="p-4">
