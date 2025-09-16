@@ -74,39 +74,56 @@ export default function StatistikSiswaDashboard() {
     ymd ? { tanggal: ymd } : undefined,
   );
 
+  // Users filtered untuk daftar (termasuk search) – ini tidak akan memengaruhi chart
   const filteredUsers = useMemo(() => {
     if (!users) return [] as UserProfile[];
     const list = users as UserProfile[];
-    if (kelas === "ALL") return list;
+    // Filter kelas dulu
+    let byKelas: UserProfile[];
+    if (kelas === "ALL") byKelas = list;
+    else {
+      const target = kelas.toLowerCase();
+      byKelas = list.filter((u) => {
+        const raw = (u.className ?? "").toLowerCase();
+        if (!raw) return false;
+        const c = raw.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+        if (!c) return false;
+        if (c === target) return true;
+        if (c.startsWith(target + " ")) return true;
+        if (c.includes(" " + target + " ")) return true;
+        if (c.endsWith(" " + target)) return true;
+        if (c.includes(target)) return true;
+        return false;
+      });
+    }
+    // Terapkan search hanya ke daftar, bukan ke chart
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      byKelas = byKelas.filter(u => (u.fullName ?? "").toLowerCase().includes(term));
+    }
+    return byKelas;
+  }, [users, kelas, search]);
+
+  // Basis chart: tidak terpengaruh search, hanya kelas & tanggal (lewat absensi/izin query)
+  const usersForChart = useMemo(() => {
+    if (!users) return [] as UserProfile[];
+    if (kelas === "ALL") return users as UserProfile[];
     const target = kelas.toLowerCase();
-    // Tokenize target to support jurusan like 'PPLG'
-    let result = list.filter((u) => {
+    return (users as UserProfile[]).filter(u => {
       const raw = (u.className ?? "").toLowerCase();
       if (!raw) return false;
-      // Normalize separators
       const c = raw.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
       if (!c) return false;
-      // Direct contains or word boundary contains
       if (c === target) return true;
       if (c.startsWith(target + " ")) return true;
       if (c.includes(" " + target + " ")) return true;
       if (c.endsWith(" " + target)) return true;
-      // Fallback: substring match
       if (c.includes(target)) return true;
       return false;
     });
-    if (search.trim()) {
-      const term = search.trim().toLowerCase();
-      result = result.filter(u => (u.fullName ?? "").toLowerCase().includes(term));
-    }
-    if (result.length === 0) {
-      // Debug one-time console note (harmless in production builds can be removed later)
-      console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0, 5).map(u => u.className) });
-    }
-    return result;
-  }, [users, kelas, search]);
+  }, [users, kelas]);
 
-  const statusMap = useMemo(
+  const statusMapList = useMemo(
     () => computeStatusMap(
       filteredUsers,
       (absensi as AbsensiRow[] | undefined) ?? [],
@@ -115,19 +132,28 @@ export default function StatistikSiswaDashboard() {
     [filteredUsers, absensi, izin],
   );
 
+  const statusMapChart = useMemo(
+    () => computeStatusMap(
+      usersForChart,
+      (absensi as AbsensiRow[] | undefined) ?? [],
+      (izin as PerizinanRow[] | undefined) ?? [],
+    ),
+    [usersForChart, absensi, izin],
+  );
+
   const chartData = useMemo(() => {
     const data = [
-      { name: "Nihil", value: statusMap.belum.length, fill: "#a3a3a3" },
-      { name: "Sudah Absen", value: statusMap.sudah.length, fill: "#3b82f6" },
-      { name: "Sakit", value: statusMap.sakit.length, fill: "#ef4444" },
-      { name: "Pergi", value: statusMap.pergi.length, fill: "#22c55e" },
+      { name: "Nihil", value: statusMapChart.belum.length, fill: "#a3a3a3" },
+      { name: "Sudah Absen", value: statusMapChart.sudah.length, fill: "#3b82f6" },
+      { name: "Sakit", value: statusMapChart.sakit.length, fill: "#ef4444" },
+      { name: "Pergi", value: statusMapChart.pergi.length, fill: "#22c55e" },
     ];
     const total = data.reduce((acc, d) => acc + d.value, 0);
     if (total === 0) {
-      return [{ name: "Tidak Ada Data", value: 1, fill: "#e5e7eb" }]; // placeholder slice
+      return [{ name: "Tidak Ada Data", value: 1, fill: "#e5e7eb" }];
     }
     return data;
-  }, [statusMap]);
+  }, [statusMapChart]);
 
   return (
     <Card className="flex flex-col w-full">
@@ -184,10 +210,10 @@ export default function StatistikSiswaDashboard() {
             <p className="text-xs text-muted-foreground">Tidak ada data untuk kelas ini.</p>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <LegendBox color="#3b82f6" label="Sudah" value={statusMap.sudah.length} />
-            <LegendBox color="#a3a3a3" label="Nihil" value={statusMap.belum.length} />
-            <LegendBox color="#ef4444" label="Sakit" value={statusMap.sakit.length} />
-            <LegendBox color="#22c55e" label="Pergi" value={statusMap.pergi.length} />
+            <LegendBox color="#3b82f6" label="Sudah" value={statusMapChart.sudah.length} />
+            <LegendBox color="#a3a3a3" label="Nihil" value={statusMapChart.belum.length} />
+            <LegendBox color="#ef4444" label="Sakit" value={statusMapChart.sakit.length} />
+            <LegendBox color="#22c55e" label="Pergi" value={statusMapChart.pergi.length} />
           </div>
         </div>
         {/* Right: Tabs with numeric indicators */}
@@ -200,16 +226,16 @@ export default function StatistikSiswaDashboard() {
               <RadixTabs.Trigger value="pergi" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Pergi</RadixTabs.Trigger>
             </RadixTabs.List>
             <RadixTabs.Content value="sudah">
-              <StatusList count={statusMap.sudah.length} items={statusMap.sudah} />
+              <StatusList count={statusMapList.sudah.length} items={statusMapList.sudah} />
             </RadixTabs.Content>
             <RadixTabs.Content value="belum">
-              <StatusList count={statusMap.belum.length} items={statusMap.belum} />
+              <StatusList count={statusMapList.belum.length} items={statusMapList.belum} />
             </RadixTabs.Content>
             <RadixTabs.Content value="sakit">
-              <StatusList count={statusMap.sakit.length} items={statusMap.sakit} />
+              <StatusList count={statusMapList.sakit.length} items={statusMapList.sakit} />
             </RadixTabs.Content>
             <RadixTabs.Content value="pergi">
-              <StatusList count={statusMap.pergi.length} items={statusMap.pergi} />
+              <StatusList count={statusMapList.pergi.length} items={statusMapList.pergi} />
             </RadixTabs.Content>
           </RadixTabs.Root>
         </div>
