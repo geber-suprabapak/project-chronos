@@ -40,7 +40,7 @@ export type DatePickerProps = {
 
 export function DatePicker({
     id = "date",
-    label = "Date",
+    label, // no default -> undefined means no label rendered
     value,
     onChange,
     placeholder = "Select a date",
@@ -58,9 +58,11 @@ export function DatePicker({
 
     return (
         <div className="flex flex-col gap-3">
-            <Label htmlFor={id} className="px-1">
-                {label}
-            </Label>
+            {label && (
+                <Label htmlFor={id} className="px-1">
+                    {label}
+                </Label>
+            )}
             <div className="relative flex gap-2">
                 <Input
                     id={id}

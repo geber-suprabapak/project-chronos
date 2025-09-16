@@ -4,21 +4,32 @@ import { api } from "~/trpc/react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "~/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "~/components/ui/select";
 import { Input } from "~/components/ui/input";
+import { DatePicker } from "~/components/date-picker";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
 type UserProfile = {
   id: string | number;
-  fullName?: string;
-  className?: string;
+  fullName?: string | null;
+  className?: string | null;
 };
+
+// Narrowed types for absensi & perizinan rows (partial fields we actually use)
+interface AbsensiRow { userId: string; }
+interface PerizinanRow { userId: string; kategoriIzin: string; }
 
 const kelasList = ["ALL", "PPLG", "AKL", "MPLB", "PM"];
 
-function computeStatusMap(users: UserProfile[], absensi: any[] = [], izin: any[] = []) {
-  const absensiUserIds = new Set(absensi.map((a) => a.userId));
+function computeStatusMap(
+  users: UserProfile[],
+  absensi: readonly AbsensiRow[] = [],
+  izin: readonly PerizinanRow[] = [],
+) {
+  const absensiUserIds = new Set<string | number>(absensi.map((a) => a.userId));
   const izinMap = new Map<string | number, string>();
-  izin.forEach((p) => izinMap.set(p.userId, p.kategoriIzin));
+  izin.forEach((p) => {
+    if (p.kategoriIzin) izinMap.set(p.userId, p.kategoriIzin);
+  });
 
   const sudah: UserProfile[] = [];
   const belum: UserProfile[] = [];
@@ -40,9 +51,28 @@ export default function StatistikSiswaDashboard() {
   const [kelas, setKelas] = useState<string>("ALL");
   const [search, setSearch] = useState<string>("");
   const [tab, setTab] = useState<string>("sudah");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  // Helper to format to YYYY-MM-DD (local date, zero pad)
+  function toYMD(d?: Date) {
+    if (!d) return undefined;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  const ymd = toYMD(selectedDate);
+
   const { data: users } = api.userProfiles.listRaw.useQuery();
-  const { data: absensi } = api.absences.listRaw.useQuery();
-  const { data: izin } = api.perizinan.listRaw.useQuery();
+  // Filter absences by date (param name: date)
+  const { data: absensi } = api.absences.list.useQuery(
+    ymd ? { date: ymd } : undefined,
+  );
+  // Filter perizinan by date (param name: tanggal)
+  const { data: izin } = api.perizinan.list.useQuery(
+    ymd ? { tanggal: ymd } : undefined,
+  );
 
   const filteredUsers = useMemo(() => {
     if (!users) return [] as UserProfile[];
@@ -51,7 +81,7 @@ export default function StatistikSiswaDashboard() {
     const target = kelas.toLowerCase();
     // Tokenize target to support jurusan like 'PPLG'
     let result = list.filter((u) => {
-      const raw = (u.className || "").toLowerCase();
+      const raw = (u.className ?? "").toLowerCase();
       if (!raw) return false;
       // Normalize separators
       const c = raw.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
@@ -67,17 +97,23 @@ export default function StatistikSiswaDashboard() {
     });
     if (search.trim()) {
       const term = search.trim().toLowerCase();
-      result = result.filter(u => (u.fullName || "").toLowerCase().includes(term));
+      result = result.filter(u => (u.fullName ?? "").toLowerCase().includes(term));
     }
     if (result.length === 0) {
       // Debug one-time console note (harmless in production builds can be removed later)
-      // eslint-disable-next-line no-console
-      console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0,5).map(u => u.className) });
+      console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0, 5).map(u => u.className) });
     }
     return result;
   }, [users, kelas, search]);
 
-  const statusMap = useMemo(() => computeStatusMap(filteredUsers, absensi ?? [], izin ?? []), [filteredUsers, absensi, izin]);
+  const statusMap = useMemo(
+    () => computeStatusMap(
+      filteredUsers,
+      (absensi as AbsensiRow[] | undefined) ?? [],
+      (izin as PerizinanRow[] | undefined) ?? [],
+    ),
+    [filteredUsers, absensi, izin],
+  );
 
   const chartData = useMemo(() => {
     const data = [
@@ -118,6 +154,14 @@ export default function StatistikSiswaDashboard() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="order-3">
+              <DatePicker
+                placeholder=""
+                locale="id-ID"
+                value={selectedDate}
+                onChange={setSelectedDate}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -191,7 +235,7 @@ function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
   // Deduplicate by stable key (id preferred, fallback to fullName)
   const seen = new Set<string>();
   const cleaned = items.filter((u) => {
-    const key = (u.id?.toString?.() || u.fullName || "null").trim();
+    const key = (u.id?.toString?.() ?? u.fullName ?? "null").trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -202,11 +246,11 @@ function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
       <div className="max-h-56 overflow-auto rounded border border-border/60 bg-muted/10">
         <ul className="divide-y divide-border/40 text-sm">
           {cleaned.map((u, idx) => {
-            const rawKey = (u.id?.toString?.() || u.fullName || "item").trim() || "item";
+            const rawKey = (u.id?.toString?.() ?? u.fullName ?? "item").trim() || "item";
             const key = rawKey === "" ? `item-${idx}` : rawKey;
             return (
               <li key={key} className="flex items-center px-3 py-1.5">
-                <span className="truncate">{u.fullName || "Tanpa Nama"}</span>
+                <span className="truncate">{u.fullName ?? "Tanpa Nama"}</span>
               </li>
             );
           })}
