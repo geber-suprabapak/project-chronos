@@ -35,7 +35,7 @@ export default function ShowProfilePage() {
 
   // Related data (small lists) for additional context
   const { data: allAbsences } = api.absences.list.useQuery(
-    { userId: profile?.id as string, limit: 5, offset: 0, sort: "desc" },
+    { userId: profile ? profile.id : "", limit: 5, offset: 0, sort: "desc" },
     { enabled: !!profile?.id }
   );
   const { data: recentLeaves } = api.perizinan.list.useQuery(

@@ -43,7 +43,7 @@ export function EditProfileForm({ id, initialData }: Props) {
       absenceNumber: initialData.absenceNumber ?? '',
       className: initialData.className ?? '',
       role: initialData.role?.toLowerCase() === 'admin' ? 'admin' : 'none',
-      nis: (initialData as any).nis ?? '',
+      nis: initialData.nis ?? '',
     }),
     [initialData],
   )

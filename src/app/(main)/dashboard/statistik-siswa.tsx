@@ -15,7 +15,16 @@ type UserProfile = {
 
 const kelasList = ["ALL", "PPLG", "AKL", "MPLB", "PM"];
 
-function computeStatusMap(users: UserProfile[], absensi: any[] = [], izin: any[] = []) {
+type AbsensiItem = {
+  userId: string | number;
+};
+
+type IzinItem = {
+  userId: string | number;
+  kategoriIzin: string;
+};
+
+function computeStatusMap(users: UserProfile[], absensi: AbsensiItem[] = [], izin: IzinItem[] = []) {
   const absensiUserIds = new Set(absensi.map((a) => a.userId));
   const izinMap = new Map<string | number, string>();
   izin.forEach((p) => izinMap.set(p.userId, p.kategoriIzin));
@@ -51,7 +60,7 @@ export default function StatistikSiswaDashboard() {
     const target = kelas.toLowerCase();
     // Tokenize target to support jurusan like 'PPLG'
     let result = list.filter((u) => {
-      const raw = (u.className || "").toLowerCase();
+      const raw = (u.className ?? "").toLowerCase();
       if (!raw) return false;
       // Normalize separators
       const c = raw.replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
@@ -67,12 +76,11 @@ export default function StatistikSiswaDashboard() {
     });
     if (search.trim()) {
       const term = search.trim().toLowerCase();
-      result = result.filter(u => (u.fullName || "").toLowerCase().includes(term));
+      result = result.filter(u => (u.fullName ?? "").toLowerCase().includes(term));
     }
     if (result.length === 0) {
       // Debug one-time console note (harmless in production builds can be removed later)
-      // eslint-disable-next-line no-console
-      console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0,5).map(u => u.className) });
+      console.debug("[Statistik] Filter kelas kosong", { target, availableExamples: list.slice(0, 5).map(u => u.className) });
     }
     return result;
   }, [users, kelas, search]);
@@ -185,13 +193,13 @@ function LegendBox({ color, label, value }: { color: string; label: string; valu
 }
 
 function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
-  if (!items || count === 0) {
+  if (items == null || count === 0) {
     return <div className="text-sm text-muted-foreground">Tidak ada data</div>;
   }
   // Deduplicate by stable key (id preferred, fallback to fullName)
   const seen = new Set<string>();
   const cleaned = items.filter((u) => {
-    const key = (u.id?.toString?.() || u.fullName || "null").trim();
+    const key = (u.id?.toString?.() ?? u.fullName ?? "null").trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -202,11 +210,11 @@ function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
       <div className="max-h-56 overflow-auto rounded border border-border/60 bg-muted/10">
         <ul className="divide-y divide-border/40 text-sm">
           {cleaned.map((u, idx) => {
-            const rawKey = (u.id?.toString?.() || u.fullName || "item").trim() || "item";
+            const rawKey = (u.id?.toString?.() ?? u.fullName ?? "item").trim() ?? "item";
             const key = rawKey === "" ? `item-${idx}` : rawKey;
             return (
               <li key={key} className="flex items-center px-3 py-1.5">
-                <span className="truncate">{u.fullName || "Tanpa Nama"}</span>
+                <span className="truncate">{u.fullName ?? "Tanpa Nama"}</span>
               </li>
             );
           })}
