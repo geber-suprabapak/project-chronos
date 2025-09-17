@@ -1,6 +1,7 @@
 
 "use client";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
+import { DownloadExcelButton } from "~/components/download-excel-button";
 
 import Link from "next/link";
 import { api } from "~/trpc/react";
@@ -87,7 +88,10 @@ export default function PerizinanPage() {
               Berikut adalah daftar semua perizinan yang tercatat.
             </CardDescription>
           </div>
-          <DownloadPdfButton tableId="perizinan-table" filename="perizinan.pdf" title="Data Perizinan" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
+          <div className="flex gap-2">
+            <DownloadExcelButton href="/api/export/perizinan" filename="perizinan.xlsx" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
+            <DownloadPdfButton tableId="perizinan-table" filename="perizinan.pdf" title="Data Perizinan" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -112,84 +116,126 @@ export default function PerizinanPage() {
               return (filter.sort ?? "desc") === "desc" ? db - da : da - db;
             });
             return (
-              <Table id="perizinan-table">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Deskripsi</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    // Skeleton loading state
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <Skeleton className="h-4 w-24" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-40" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-16" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-6 w-20" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="h-8 w-16 ml-auto" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : rows && rows.length > 0 ? (
-                    rows.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{formatDate(item.tanggal)}</TableCell>
-                        <TableCell>
-                          {(() => {
-                            const prof = profileByUserId.get(item.userId);
-                            return prof?.fullName ?? prof?.email ?? item.userId;
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="rounded-full px-2.5 py-1">
-                            {item.kategoriIzin}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{item.deskripsi}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={getBadgeVariant(item.approvalStatus)}
-                            className="rounded-full px-2.5 py-1 capitalize"
-                          >
-                            {item.approvalStatus ?? "pending"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Link href={`/perizinan/show/${item.id}`} passHref>
-                            <Button variant="outline" size="sm">
-                              Detail
-                            </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
+              <>
+                {/* Visible table for UI */}
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center">
-                        Tidak ada data perizinan.
-                      </TableCell>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Kategori</TableHead>
+                      <TableHead>Deskripsi</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      // Skeleton loading state
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Skeleton className="h-4 w-24" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-40" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-16" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-20" />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Skeleton className="h-8 w-16 ml-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : rows && rows.length > 0 ? (
+                      rows.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{formatDate(item.tanggal)}</TableCell>
+                          <TableCell>
+                            {(() => {
+                              const prof = profileByUserId.get(item.userId);
+                              return prof?.fullName ?? prof?.email ?? item.userId;
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="rounded-full px-2.5 py-1">
+                              {item.kategoriIzin}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{item.deskripsi}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={getBadgeVariant(item.approvalStatus)}
+                              className="rounded-full px-2.5 py-1 capitalize"
+                            >
+                              {item.approvalStatus ?? "pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/perizinan/show/${item.id}`} passHref>
+                              <Button variant="outline" size="sm">
+                                Detail
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center">
+                          Tidak ada data perizinan.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+                
+                {/* Hidden table for PDF export with optimized columns */}
+                <div className="hidden">
+                  <Table id="perizinan-table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tanggal</TableHead>
+                        <TableHead>Nama</TableHead>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead>Deskripsi</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows && rows.length > 0 ? (
+                        rows.map((item) => {
+                          const prof = profileByUserId.get(item.userId);
+                          const name = prof?.fullName ?? prof?.email ?? item.userId;
+                          
+                          return (
+                            <TableRow key={`${item.id}-pdf`}>
+                              <TableCell>{formatDate(item.tanggal)}</TableCell>
+                              <TableCell>{name}</TableCell>
+                              <TableCell>{item.kategoriIzin}</TableCell>
+                              <TableCell>{item.deskripsi}</TableCell>
+                              <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center">
+                            Tidak ada data perizinan.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             );
           })()}
         </CardContent>

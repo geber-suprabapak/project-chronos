@@ -13,6 +13,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
+import { DownloadExcelButton } from "~/components/download-excel-button";
 import {
 	Select,
 	SelectTrigger,
@@ -98,7 +99,10 @@ export default async function ProfilesPage({
 			<section className="space-y-4">
 				<div className="flex items-center justify-between">
 					<h1 className="text-xl font-semibold">User Profiles</h1>
-					<DownloadPdfButton tableId="profiles-table" filename="profiles.pdf" title="Data Siswa" className="px-4 py-2" disabled={rows.length === 0} />
+					<div className="flex gap-2">
+						<DownloadExcelButton href="/api/export/profiles" filename="profiles.xlsx" className="px-4 py-2" disabled={rows.length === 0} />
+						<DownloadPdfButton tableId="profiles-table" filename="profiles.pdf" title="Data Siswa" className="px-4 py-2" disabled={rows.length === 0} />
+					</div>
 				</div>
 				<Card className="rounded-lg border-0 shadow-sm bg-background">
 					<CardContent className="pt-6">
