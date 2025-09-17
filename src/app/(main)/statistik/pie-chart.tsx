@@ -1,79 +1,99 @@
 "use client";
 
-import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { api } from "~/trpc/react";
 import { useMemo } from "react";
 
 export function StatistikPieChart() {
-  // Ambil semua user, absensi, dan perizinan
   const { data: users, isLoading: loadingUsers } = api.userProfiles.listRaw.useQuery();
   const { data: absensi, isLoading: loadingAbsensi } = api.absences.listRaw.useQuery();
   const { data: izin, isLoading: loadingIzin } = api.perizinan.listRaw.useQuery();
 
-  // Always call hooks at the top level
-  const chartData = useMemo(() => {
-    if (!users || !absensi || !izin) return [];
-    const userIds = new Set(users.map((u) => u.id));
-    type IzinItem = {
-      kategoriIzin: string;
-    };
+  const bars = useMemo(() => {
+    if (!users || !absensi || !izin) return [] as Array<{ jurusan: string; hadir: number; izin: number; total: number }>;
+    const jurusanList = ["PPLG", "AKL", "MPLB", "PM"] as const;
+    const profileJurusan = new Map<string, string>();
+    for (const u of users) {
+      const cls = (u.className ?? "").toUpperCase();
+      const j = jurusanList.find((jj) => cls.includes(jj)) ?? "PPLG";
+      profileJurusan.set(u.id, j);
+    }
+    const map: Record<string, { hadir: number; izin: number }> = Object.fromEntries(
+      jurusanList.map((j) => [j, { hadir: 0, izin: 0 }])
+    ) as Record<string, { hadir: number; izin: number }>;
 
-    const sudahAbsen = new Set(absensi.map((a) => a.userId));
-    const belumAbsen = new Set([...userIds]);
-    sudahAbsen.forEach((id) => belumAbsen.delete(id));
-    let pergi = 0;
-    let sakit = 0;
-    izin.forEach((p: IzinItem) => {
-      if (p.kategoriIzin === "pergi") pergi++;
-      if (p.kategoriIzin === "sakit") sakit++;
+    const hadirUserIds = new Set(absensi.map((a) => a.userId));
+    for (const uid of hadirUserIds) {
+      const j = profileJurusan.get(uid);
+      if (!j) continue;
+      if (!map[j]) map[j] = { hadir: 0, izin: 0 };
+      map[j].hadir += 1;
+    }
+
+    for (const p of izin) {
+      const kategori = (p.kategoriIzin ?? "").toLowerCase();
+      if (kategori !== "sakit" && kategori !== "pergi") continue;
+      const j = profileJurusan.get(p.userId);
+      if (!j) continue;
+      if (!map[j]) map[j] = { hadir: 0, izin: 0 };
+      map[j].izin += 1;
+    }
+
+    return jurusanList.map((j) => {
+      const hadir = map[j]?.hadir ?? 0;
+      const izinCount = map[j]?.izin ?? 0;
+      return { jurusan: j, hadir, izin: izinCount, total: hadir + izinCount };
     });
-    return [
-      { name: "Belum Absen", value: belumAbsen.size, fill: "#a3a3a3" }, // abu-abu
-      { name: "Sudah Absen", value: sudahAbsen.size, fill: "#3b82f6" }, // biru
-      { name: "Sakit", value: sakit, fill: "#ef4444" }, // merah
-      { name: "Pergi", value: pergi, fill: "#22c55e" }, // hijau
-    ];
   }, [users, absensi, izin]);
 
-  // Only render chart if all data is loaded and chartData is available
-  if (loadingUsers || loadingAbsensi || loadingIzin || !users || !absensi || !izin) {
-    return null;
-  }
+  const yMax = useMemo(() => {
+    if (!bars || bars.length === 0) return 1;
+    return Math.max(...bars.map((b) => b.total)) || 1;
+  }, [bars]);
+
+  const yTicks = useMemo(() => {
+    const max = yMax;
+    const step = max <= 10 ? 1 : max <= 20 ? 2 : max <= 50 ? 5 : max <= 100 ? 10 : Math.ceil(max / 10);
+    const ticks: number[] = [];
+    for (let v = 0; v <= max; v += step) ticks.push(v);
+    if (ticks[ticks.length - 1] !== max) ticks.push(max);
+    return ticks;
+  }, [yMax]);
+
+  if (loadingUsers || loadingAbsensi || loadingIzin || !users || !absensi || !izin) return null;
 
   return (
     <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart Kehadiran</CardTitle>
-        <CardDescription>Rekap harian</CardDescription>
+      <CardHeader className="items-start pb-0">
+        <CardTitle>Bar Chart Kehadiran</CardTitle>
+        <CardDescription>Hadir (biru) vs Izin/Sakit (merah)</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-row items-start gap-12 pb-0">
-        <div style={{ minWidth: 200, minHeight: 200, maxWidth: 220, maxHeight: 220 }}>
-          <ResponsiveContainer width={200} height={200}>
-            <PieChart>
-              <Tooltip />
-              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">
-                {chartData.map((entry, idx) => (
-                  <Cell key={`cell-${idx}`} fill={entry.fill} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex flex-col gap-2 justify-center items-start" style={{ height: 200, marginLeft: '8px' }}>
-          {chartData.map((entry) => (
-            <div key={entry.name} className="flex items-center gap-2">
-              <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: entry.fill, border: 'none' }} />
-              <span className="text-muted-foreground text-base font-medium">{entry.name}:</span>
-              <span className="text-foreground font-semibold">{entry.value}</span>
-            </div>
-          ))}
+      <CardContent className="flex flex-col items-start gap-6 pb-4">
+        <div className="self-start">
+          <BarChart
+            accessibilityLayer
+            data={bars}
+            width={640}
+            height={260}
+            barCategoryGap={18}
+            barGap={6}
+            margin={{ top: 24 }}
+          >
+            <CartesianGrid vertical={false} />
+            <YAxis
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+              width={28}
+              domain={[0, yMax]}
+              ticks={yTicks}
+            />
+            <XAxis dataKey="jurusan" tickLine={false} tickMargin={10} axisLine={false} />
+            <Bar dataKey="hadir" fill="var(--chart-1)" radius={4} />
+            <Bar dataKey="izin" fill="#ef4444" radius={4} />
+          </BarChart>
         </div>
       </CardContent>
     </Card>
