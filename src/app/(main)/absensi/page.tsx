@@ -1,6 +1,7 @@
 
 "use client";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
+import { DownloadExcelButton } from "~/components/download-excel-button";
 
 import { useMemo, useState } from "react";
 import { api } from "~/trpc/react";
@@ -60,7 +61,10 @@ export default function AbsensiPage() {
           <h1 className="text-xl font-semibold tracking-tight">Daftar Absensi</h1>
           <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
         </div>
-        <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
+        <div className="flex gap-2">
+          <DownloadExcelButton href="/api/export/absences" filename="absensi.xlsx" disabled={loading || (absences && absences.length === 0)} />
+          <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
+        </div>
       </div>
 
       <Card className="p-4">
@@ -102,47 +106,81 @@ export default function AbsensiPage() {
                 return (a.status ?? "").toLowerCase() === status.toLowerCase();
               });
               return (
-                <Table id="absensi-table">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Lokasi</TableHead>
-                      <TableHead>Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows2.map((a) => {
-                      const prof = profileByUserId.get(a.userId);
-                      const name = prof?.fullName ?? prof?.email ?? a.userId;
-                      const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                      const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
-                      return (
-                        <TableRow key={`${a.id}`}>
-                          <TableCell>{tanggal}</TableCell>
-                          <TableCell>{name}</TableCell>
-                          <TableCell>{a.status ?? "-"}</TableCell>
-                          <TableCell>{lokasi || "-"}</TableCell>
-                          <TableCell>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button asChild variant="outline" size="icon" aria-label="Detail absensi">
-                                    <Link href={`/absensi/show/${a.id}`}>
-                                      <Eye className="h-4 w-4" />
-                                    </Link>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Detail</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
+                <>
+                  {/* Main UI table */}
+                  <div className="mb-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Nama</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Lokasi</TableHead>
+                          <TableHead>Aksi</TableHead>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {rows2.map((a) => {
+                          const prof = profileByUserId.get(a.userId);
+                          const name = prof?.fullName ?? prof?.email ?? a.userId;
+                          const tanggal = typeof a.date === "string" ? a.date : String(a.date);
+                          const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
+                          return (
+                            <TableRow key={`${a.id}`}>
+                              <TableCell>{tanggal}</TableCell>
+                              <TableCell>{name}</TableCell>
+                              <TableCell>{a.status ?? "-"}</TableCell>
+                              <TableCell>{lokasi || "-"}</TableCell>
+                              <TableCell>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button asChild variant="outline" size="icon" aria-label="Detail absensi">
+                                        <Link href={`/absensi/show/${a.id}`}>
+                                          <Eye className="h-4 w-4" />
+                                        </Link>
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Detail</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {/* Hidden table for PDF export with optimized columns */}
+                  <div className="hidden">
+                    <Table id="absensi-table">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Nama</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Alasan</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows2.map((a) => {
+                          const prof = profileByUserId.get(a.userId);
+                          const name = prof?.fullName ?? prof?.email ?? a.userId;
+                          const tanggal = typeof a.date === "string" ? a.date : String(a.date);
+                          return (
+                            <TableRow key={`${a.id}-pdf`}>
+                              <TableCell>{tanggal}</TableCell>
+                              <TableCell>{name}</TableCell>
+                              <TableCell>{a.status ?? "-"}</TableCell>
+                              <TableCell>{a.reason ?? "-"}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               );
             })()}
           </>
