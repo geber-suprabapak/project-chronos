@@ -185,11 +185,9 @@ export default async function ProfilesPage({
 												<TableCell>{r.className ?? "-"}</TableCell>
 												<TableCell>{r.absenceNumber ?? "-"}</TableCell>
 												<TableCell>{r.role ?? "-"}</TableCell>
-												<TableCell>
-																						<TableCell>
-										{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
-									</TableCell>
-												</TableCell>
+																	<TableCell>
+																		{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
+																	</TableCell>
 												<TableCell className="text-right">
 													<div className="flex justify-end gap-2">
 														{r?.id ? (
