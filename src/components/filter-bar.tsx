@@ -78,8 +78,8 @@ export function FilterBar({ value, onChange, statuses = [], labels, placeholders
                         />
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
+                                <Button
+                                    variant="ghost"
                                     className="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0"
                                 >
                                     <CalendarIcon className="size-3.5" />
