@@ -127,7 +127,7 @@ export const perizinan = pgTable(
 export const perizinanRelations = relations(perizinan, ({ one }) => ({
   userProfile: one(userProfiles, {
     fields: [perizinan.userId],
-    references: [userProfiles.id],
+    references: [userProfiles.userId],
   }),
 }));
 

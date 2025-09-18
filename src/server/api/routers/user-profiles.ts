@@ -93,19 +93,15 @@ export const userProfilesRouter = createTRPCRouter({
 				className: z.string().optional(),
 				role: z.string().optional(),
 				nis: z.string().optional(),
+				gender: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const [row] = await ctx.db
 				.insert(userProfiles)
 				.values({
-					email: input.email,
-					fullName: input.fullName,
-					avatarUrl: input.avatarUrl,
-					absenceNumber: input.absenceNumber,
-					className: input.className,
-					role: input.role,
-					nis: input.nis,
+					...input,
+					userId: ctx.user.id, // Assuming userId comes from context
 				})
 				.returning();
 
@@ -126,6 +122,7 @@ export const userProfilesRouter = createTRPCRouter({
 						className: z.string().optional(),
 						role: z.string().optional(),
 						nis: z.string().optional(),
+						gender: z.string().optional(),
 					})
 					.refine((d) => Object.keys(d).length > 0, {
 						message: "No fields to update",
@@ -156,6 +153,7 @@ export const userProfilesRouter = createTRPCRouter({
 						className: z.string().optional(),
 						role: z.string().optional(),
 						nis: z.string().optional(),
+						gender: z.string().optional(),
 					})
 					.refine((d) => Object.keys(d).length > 0, {
 						message: "No fields to update",
