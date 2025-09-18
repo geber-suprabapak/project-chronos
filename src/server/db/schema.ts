@@ -11,6 +11,8 @@ import {
   boolean,
   date,
   doublePrecision,
+  bigint,
+  integer,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -25,20 +27,27 @@ import {
  */
 
 // absences
-export const absences = pgTable("absences", {
-  // Match new SQL schema: UUID primary key with default gen_random_uuid()
-  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
-  userId: uuid("user_id").notNull(),
-  date: date("date").notNull(),
-  reason: text("reason"),
-  photoUrl: text("photo_url"),
-  latitude: doublePrecision("latitude"),
-  longitude: doublePrecision("longitude"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .default(sql`now()`)
-    .notNull(),
-  status: text("status").notNull(),
-});
+export const absences = pgTable(
+  "absences",
+  {
+    // Match new SQL schema: UUID primary key with default gen_random_uuid()
+    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
+    userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
+    date: date("date").notNull(),
+    reason: text("reason"),
+    photoUrl: text("photo_url"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+    status: text("status").notNull(),
+  },
+  (t) => [
+    // Match the DB check constraint: status IN ('Hadir', 'Datang', 'Pulang')
+    sql`CONSTRAINT absences_status_check CHECK (${t.status} = ANY (ARRAY['Hadir','Datang','Pulang']))`,
+  ],
+);
 
 // user_profiles
 export const userProfiles = pgTable(
@@ -48,12 +57,14 @@ export const userProfiles = pgTable(
       .default(sql`gen_random_uuid()`)
       .notNull()
       .primaryKey(),
+    userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
     nis: text("nis"),
     fullName: text("full_name"),
-    email: text("email").notNull(),
+    email: text("email"),
     avatarUrl: text("avatar_url"),
     absenceNumber: text("absence_number"),
     className: text("class_name"),
+    gender: text("gender"), // New field from schema
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
@@ -63,7 +74,7 @@ export const userProfiles = pgTable(
     role: text("role"),
   },
   (t) => [
-    uniqueIndex("user_profiles_email_unique").on(t.email),
+    uniqueIndex("user_profiles_user_id_unique").on(t.userId),
   ],
 );
 
@@ -79,31 +90,37 @@ export const perizinan = pgTable(
       .default(sql`gen_random_uuid()`)
       .notNull()
       .primaryKey(),
-    userId: uuid("user_id").notNull(),
+    userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
+    // New schema uses timestamptz for tanggal with default now()
+    tanggal: timestamp("tanggal", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
     kategoriIzin: text("kategori_izin").notNull(),
-    deskripsi: text("deskripsi").notNull(),
-    status: boolean("status").default(false).notNull(),
+    deskripsi: text("deskripsi"),
     linkFoto: text("link_foto"),
+    approvalStatus: text("approval_status")
+      .default(sql`'pending'`)
+      .notNull(),
+    status: boolean("status").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
-    approvedBy: uuid("approved_by"),
+    approvedBy: uuid("approved_by"), // Foreign key to auth.users(id)
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     rejectionReason: text("rejection_reason"),
-    // New schema uses timestamptz for tanggal
-    tanggal: timestamp("tanggal", { withTimezone: true }).notNull(),
-    // Helper column maintained by trigger for per-day uniqueness and filtering
-    tanggalUtcDate: date("tanggal_utc_date"),
-    approvalStatus: text("approval_status").default(sql`'pending'`),
     rejectedAt: timestamp("rejected_at", { withTimezone: true }),
     rejectedBy: text("rejected_by"),
+    // Helper column maintained by trigger for per-day uniqueness and filtering
+    tanggalUtcDate: date("tanggal_utc_date"),
   },
   (t) => [
     // Match the DB check constraint: kategori_izin IN ('sakit', 'pergi')
     sql`CONSTRAINT perizinan_kategori_izin_check CHECK (${t.kategoriIzin} = ANY (ARRAY['sakit','pergi']))`,
+    // Match the DB check constraint: approval_status IN ('pending', 'approved', 'rejected')
+    sql`CONSTRAINT perizinan_approval_status_check CHECK (${t.approvalStatus} = ANY (ARRAY['pending','approved','rejected']))`,
   ],
 );
 
@@ -113,3 +130,13 @@ export const perizinanRelations = relations(perizinan, ({ one }) => ({
     references: [userProfiles.id],
   }),
 }));
+
+// biodata_siswa - Student master data for registration
+export const biodataSiswa = pgTable("biodata_siswa", {
+  nis: bigint("nis", { mode: "bigint" }).primaryKey().notNull(),
+  nama: text("nama"),
+  kelas: text("kelas"),
+  absen: integer("absen"),
+  kelamin: text("kelamin"),
+  activated: boolean("activated").default(false).notNull(),
+});
