@@ -14,6 +14,7 @@ type FormValues = {
   avatarUrl: string
   absenceNumber: string
   className: string
+  gender: 'Laki-laki' | 'Perempuan' | ''
   role: 'admin' | 'none'
   nis: string
 }
@@ -27,6 +28,7 @@ type Props = {
     avatarUrl: string | null
     absenceNumber: string | null
     className: string | null
+    gender: string | null
     role: string | null
     nis?: string | null
   }
@@ -42,6 +44,7 @@ export function EditProfileForm({ id, initialData }: Props) {
       avatarUrl: initialData.avatarUrl ?? '',
       absenceNumber: initialData.absenceNumber ?? '',
       className: initialData.className ?? '',
+      gender: (initialData.gender as FormValues['gender']) ?? '',
       role: initialData.role?.toLowerCase() === 'admin' ? 'admin' : 'none',
       nis: initialData.nis ?? '',
     }),
@@ -70,8 +73,8 @@ export function EditProfileForm({ id, initialData }: Props) {
     setIsDirty(true)
   }
 
-  const handleSelectChange = (value: string) => {
-    setFormValues((prev) => ({ ...prev, role: value as FormValues['role'] }))
+  const handleSelectChange = (value: string, field: keyof FormValues) => {
+    setFormValues((prev) => ({ ...prev, [field]: value }))
     setIsDirty(true)
   }
 
@@ -86,6 +89,7 @@ export function EditProfileForm({ id, initialData }: Props) {
         avatarUrl: v.avatarUrl || undefined,
         absenceNumber: v.absenceNumber || undefined,
         className: v.className || undefined,
+        gender: v.gender || undefined,
         role: v.role === 'admin' ? 'admin' : undefined,
         nis: v.nis || undefined,
       },
@@ -117,8 +121,20 @@ export function EditProfileForm({ id, initialData }: Props) {
           <Input id="absenceNumber" name="absenceNumber" value={formValues.absenceNumber} onChange={handleChange} />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="gender">Gender</Label>
+          <Select value={formValues.gender} onValueChange={(value) => handleSelectChange(value, 'gender')}>
+            <SelectTrigger aria-label="Gender" id="gender">
+              <SelectValue placeholder="Pilih jenis kelamin" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+              <SelectItem value="Perempuan">Perempuan</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="role">Role</Label>
-          <Select value={formValues.role} onValueChange={handleSelectChange}>
+          <Select value={formValues.role} onValueChange={(value) => handleSelectChange(value, 'role')}>
             <SelectTrigger aria-label="Role" id="role">
               <SelectValue placeholder="None" />
             </SelectTrigger>

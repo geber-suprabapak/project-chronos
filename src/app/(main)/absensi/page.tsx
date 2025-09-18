@@ -82,16 +82,16 @@ export default function AbsensiPage() {
         ) : (
           <>
             {/* Reusable filter bar */}
-            <FilterBar
-              value={filter}
-              statuses={["Hadir", "Pulang"]}
-              onChange={(next) => {
-                setDate(next.date ?? "");
-                setQuery(next.query ?? "");
-                setStatus(next.status ?? "");
-                setSort(next.sort ?? "desc");
-              }}
-            />
+              <FilterBar
+                value={filter}
+                statuses={["Hadir", "Datang", "Pulang"]}
+                onChange={(next) => {
+                  setDate(next.date ?? "");
+                  setQuery(next.query ?? "");
+                  setStatus(next.status ?? "");
+                  setSort(next.sort ?? "desc");
+                }}
+              />
 
             {(() => {
               const rows = (absences ?? []).filter((a) => {
