@@ -1,7 +1,8 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 import { env } from "~/env.js";
 
 // If you have generated types from your Supabase project, import them here:
@@ -22,4 +23,38 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   return browserClient;
 }
 
-export type { SupabaseClient };
+/**
+ * React hook to get the current authenticated user
+ * Use this in client components to access user data and check auth status
+ */
+export function useUser() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const client = getSupabaseBrowserClient();
+    
+    // Get initial user state
+    const getUser = async () => {
+      const { data: { user } } = await client.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    
+    void getUser();
+    
+    // Set up auth state listener
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return { user, loading };
+}
+
+export type { SupabaseClient, User };

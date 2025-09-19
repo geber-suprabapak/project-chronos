@@ -11,6 +11,32 @@ import { biodataSiswa } from "~/server/db/schema";
  * via the RPC function get_biodata_siswa() for security when checking student registration.
  */
 export const biodataSiswaRouter = createTRPCRouter({
+    // Check user auth status and role
+    checkAuth: protectedProcedure
+        .query(async ({ ctx }) => {
+            // Cek status koneksi database
+            try {
+                const dbCheck = await ctx.db.execute(sql`SELECT current_user, current_setting('role')`)
+                
+                // Return auth info untuk debugging
+                return {
+                    success: true,
+                    user: {
+                        id: ctx.user?.id,
+                        email: ctx.user?.email,
+                        role: ctx.user?.app_metadata?.role,
+                    },
+                    dbConnection: dbCheck[0],
+                    hasAdminAccess: ctx.user?.app_metadata?.role === 'admin' || ctx.user?.app_metadata?.role === 'superadmin',
+                };
+            } catch (e) {
+                return {
+                    success: false,
+                    error: e instanceof Error ? e.message : String(e)
+                };
+            }
+        }),
+    
     // GET BIODATA FOR REGISTRATION CHECK (using RPC function)
     // This uses the secure RPC function from the schema
     getForRegistration: protectedProcedure
