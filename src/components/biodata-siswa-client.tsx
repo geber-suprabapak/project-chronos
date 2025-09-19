@@ -34,7 +34,7 @@ export function BiodataSiswaClient() {
     const { user, loading } = useUser();
     const [userRole, setUserRole] = useState<string | null>(null);
     const [hasAdminAccess, setHasAdminAccess] = useState<boolean>(false);
-    
+
     // Get auth status from server
     const { data: authCheck } = api.biodataSiswa.checkAuth.useQuery();
 
@@ -44,38 +44,38 @@ export function BiodataSiswaClient() {
             console.log("User logged in:", user);
             console.log("User metadata:", user.app_metadata);
             console.log("User role:", user.app_metadata?.role);
-            
+
             // Set user role dari metadata
             const role = user.app_metadata?.role || null;
             setUserRole(role);
-            
+
             // Set admin access jika role adalah admin atau superadmin
             const isAdmin = role === 'admin' || role === 'superadmin';
             setHasAdminAccess(isAdmin);
-            
+
             if (!isAdmin) {
                 toast.warning("Anda tidak memiliki akses admin. Beberapa fitur mungkin dibatasi.");
             }
         }
     }, [user]);
-    
+
     // Periksa hasil auth check dari server jika sudah tersedia
     useEffect(() => {
         if (authCheck && authCheck.success) {
             console.log("Server auth check result:", authCheck);
-            
+
             // Perbarui status admin berdasarkan hasil dari server
             if (authCheck.hasAdminAccess !== undefined) {
                 setHasAdminAccess(!!authCheck.hasAdminAccess);
             }
-            
+
             // Perbarui informasi role jika ada
             if (authCheck.user?.role) {
                 setUserRole(String(authCheck.user.role));
             }
         }
     }, [authCheck]);
-    
+
     // State untuk pagination dan filter
     const [currentPage, setCurrentPage] = useState(1);
     const [searchNama, setSearchNama] = useState('');
@@ -166,7 +166,7 @@ export function BiodataSiswaClient() {
 
     const handleAddSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Cek hak akses admin terlebih dahulu
         if (!hasAdminAccess) {
             toast.error('Anda tidak memiliki hak akses untuk menambahkan data. Hubungi administrator.');
@@ -177,14 +177,14 @@ export function BiodataSiswaClient() {
             toast.error('Semua field wajib diisi');
             return;
         }
-        
+
         try {
             // Validasi input NIS
             if (!/^\d+$/.test(formData.nis)) {
                 toast.error('NIS harus berupa angka');
                 return;
             }
-            
+
             // Validasi input absen
             const absenNum = parseInt(formData.absen);
             if (isNaN(absenNum) || absenNum <= 0) {
@@ -194,7 +194,7 @@ export function BiodataSiswaClient() {
 
             console.log("Mencoba menambah data dengan user:", user?.id, user?.email);
             console.log("Role user:", userRole);
-            
+
             createMutation.mutate({
                 nis: BigInt(formData.nis),
                 nama: formData.nama,
@@ -207,7 +207,7 @@ export function BiodataSiswaClient() {
             console.error("Error saat validasi form:", error);
             toast.error('Format data tidak valid, mohon periksa kembali');
         }
-    };    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    }; const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -270,7 +270,7 @@ export function BiodataSiswaClient() {
             toast.error('Anda tidak memiliki hak akses untuk mengimpor data. Hubungi administrator.');
             return;
         }
-        
+
         if (csvData.length === 0) {
             toast.error('Tidak ada data untuk diimport');
             return;
@@ -278,7 +278,7 @@ export function BiodataSiswaClient() {
 
         console.log("Mencoba import data CSV dengan user:", user?.id, user?.email);
         console.log("Role user:", userRole);
-        
+
         bulkCreateMutation.mutate({
             data: csvData,
             replaceExisting,
@@ -312,7 +312,7 @@ export function BiodataSiswaClient() {
                                 </p>
                                 <Alert className={hasAdminAccess ? 'bg-green-50' : 'bg-yellow-50'}>
                                     <AlertDescription>
-                                        {hasAdminAccess 
+                                        {hasAdminAccess
                                             ? 'Anda memiliki akses admin. Semua fitur tersedia.'
                                             : <AdminInstructions showCompact={true} />}
                                     </AlertDescription>
@@ -328,7 +328,7 @@ export function BiodataSiswaClient() {
                     </div>
                 </CardContent>
             </Card>
-            
+
             {/* Stats Cards */}
             {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -456,8 +456,8 @@ export function BiodataSiswaClient() {
                             <div className="flex gap-2">
                                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                                     <DialogTrigger asChild>
-                                        <Button disabled={!hasAdminAccess} 
-                                                title={!hasAdminAccess ? "Anda tidak memiliki akses admin" : ""}>
+                                        <Button disabled={!hasAdminAccess}
+                                            title={!hasAdminAccess ? "Anda tidak memiliki akses admin" : ""}>
                                             Tambah Siswa {!hasAdminAccess && "🔒"}
                                         </Button>
                                     </DialogTrigger>
@@ -547,8 +547,8 @@ export function BiodataSiswaClient() {
 
                                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline" disabled={!hasAdminAccess} 
-                                                title={!hasAdminAccess ? "Anda tidak memiliki akses admin" : ""}>
+                                        <Button variant="outline" disabled={!hasAdminAccess}
+                                            title={!hasAdminAccess ? "Anda tidak memiliki akses admin" : ""}>
                                             Import CSV {!hasAdminAccess && "🔒"}
                                         </Button>
                                     </DialogTrigger>

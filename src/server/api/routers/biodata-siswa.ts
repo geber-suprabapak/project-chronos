@@ -17,7 +17,7 @@ export const biodataSiswaRouter = createTRPCRouter({
             // Cek status koneksi database
             try {
                 const dbCheck = await ctx.db.execute(sql`SELECT current_user, current_setting('role')`)
-                
+
                 // Return auth info untuk debugging
                 return {
                     success: true,
@@ -36,7 +36,7 @@ export const biodataSiswaRouter = createTRPCRouter({
                 };
             }
         }),
-    
+
     // GET BIODATA FOR REGISTRATION CHECK (using RPC function)
     // This uses the secure RPC function from the schema
     getForRegistration: protectedProcedure

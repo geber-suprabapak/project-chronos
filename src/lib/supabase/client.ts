@@ -33,16 +33,16 @@ export function useUser() {
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
-    
+
     // Get initial user state
     const getUser = async () => {
       const { data: { user } } = await client.auth.getUser();
       setUser(user);
       setLoading(false);
     };
-    
+
     void getUser();
-    
+
     // Set up auth state listener
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
