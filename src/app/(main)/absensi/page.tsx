@@ -42,11 +42,11 @@ export default function AbsensiPage() {
   } = api.userProfiles.listRaw.useQuery();
 
   const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email: string; nis?: string | null }>();
+    const map = new Map<string, { fullName?: string | null; email: string | null; nis?: string | null }>();
     for (const p of profiles ?? []) {
       // user_profiles uses `id` (UUID PK). Absences `userId` references this.
       if (p.id) {
-        map.set(p.id, { fullName: p.fullName, email: p.email, nis: p.nis ?? null });
+        map.set(p.id, { fullName: p.fullName ?? null, email: p.email ?? null, nis: p.nis ?? null });
       }
     }
     return map;
@@ -82,16 +82,16 @@ export default function AbsensiPage() {
         ) : (
           <>
             {/* Reusable filter bar */}
-              <FilterBar
-                value={filter}
-                statuses={["Hadir", "Datang", "Pulang"]}
-                onChange={(next) => {
-                  setDate(next.date ?? "");
-                  setQuery(next.query ?? "");
-                  setStatus(next.status ?? "");
-                  setSort(next.sort ?? "desc");
-                }}
-              />
+            <FilterBar
+              value={filter}
+              statuses={["Hadir", "Datang", "Pulang"]}
+              onChange={(next) => {
+                setDate(next.date ?? "");
+                setQuery(next.query ?? "");
+                setStatus(next.status ?? "");
+                setSort(next.sort ?? "desc");
+              }}
+            />
 
             {(() => {
               const rows = (absences ?? []).filter((a) => {
@@ -151,7 +151,7 @@ export default function AbsensiPage() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   {/* Hidden table for PDF export with optimized columns */}
                   <div className="hidden">
                     <Table id="absensi-table">

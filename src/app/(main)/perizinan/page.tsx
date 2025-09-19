@@ -53,7 +53,7 @@ export default function PerizinanPage() {
   const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
   const { data: profiles } = api.userProfiles.listRaw.useQuery();
   const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email: string }>();
+    const map = new Map<string, { fullName?: string | null; email: string | null }>();
     for (const p of profiles ?? []) {
       if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email });
     }
@@ -196,7 +196,7 @@ export default function PerizinanPage() {
                     )}
                   </TableBody>
                 </Table>
-                
+
                 {/* Hidden table for PDF export with optimized columns */}
                 <div className="hidden">
                   <Table id="perizinan-table">
@@ -214,7 +214,7 @@ export default function PerizinanPage() {
                         rows.map((item) => {
                           const prof = profileByUserId.get(item.userId);
                           const name = prof?.fullName ?? prof?.email ?? item.userId;
-                          
+
                           return (
                             <TableRow key={`${item.id}-pdf`}>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>

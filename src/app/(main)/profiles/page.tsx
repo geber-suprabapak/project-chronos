@@ -23,16 +23,19 @@ import {
 } from "~/components/ui/select";
 // Next.js App Router page component with search params
 
-export default async function ProfilesPage({ 
-  searchParams 
+export default async function ProfilesPage({
+	searchParams
 }: {
-  searchParams?: Record<string, string | string[] | undefined>
+	searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
+	// Await searchParams for Next.js 15 compatibility
+	const resolvedSearchParams = await searchParams;
+
 	// Process searchParams safely
 	const params = {
-		name: typeof searchParams?.name === 'string' ? searchParams.name : '',
-		className: typeof searchParams?.className === 'string' ? searchParams.className : '',
-		page: typeof searchParams?.page === 'string' ? searchParams.page : '',
+		name: typeof resolvedSearchParams?.name === 'string' ? resolvedSearchParams.name : '',
+		className: typeof resolvedSearchParams?.className === 'string' ? resolvedSearchParams.className : '',
+		page: typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : '',
 	};
 
 	// Akses searchParams dengan aman menggunakan params
@@ -55,7 +58,7 @@ export default async function ProfilesPage({
 	let rows: Array<{
 		id: string | number | null;
 		fullName: string | null;
-		email: string;
+		email: string | null;
 		className: string | null;
 		absenceNumber: string | null;
 		role: string | null;
@@ -67,12 +70,12 @@ export default async function ProfilesPage({
 
 	try {
 		// Pastikan parameter dikirim dengan benar dan sesuai dengan definisi input router
-	const params = {
-		limit,
-		offset,
-		name: name || undefined, // Hanya kirim jika ada nilai
-		className: className && className !== "ALL" ? className : undefined // Hanya kirim jika bukan ALL dan ada nilai
-	};		console.log("Loading profiles with params:", params);
+		const params = {
+			limit,
+			offset,
+			name: name || undefined, // Hanya kirim jika ada nilai
+			className: className && className !== "ALL" ? className : undefined // Hanya kirim jika bukan ALL dan ada nilai
+		}; console.log("Loading profiles with params:", params);
 		const res = await api.userProfiles.list(params);
 
 		if (res) {
@@ -186,9 +189,9 @@ export default async function ProfilesPage({
 												<TableCell>{r.absenceNumber ?? "-"}</TableCell>
 												<TableCell>{r.role ?? "-"}</TableCell>
 												<TableCell>
-																						<TableCell>
-										{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
-									</TableCell>
+													<TableCell>
+														{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
+													</TableCell>
 												</TableCell>
 												<TableCell className="text-right">
 													<div className="flex justify-end gap-2">
