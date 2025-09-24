@@ -7,6 +7,7 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { DatePicker } from "~/components/date-picker";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "~/components/ui/select";
 
 export default function AttendanceConfigUnifiedPage() {
   // Radius settings
@@ -70,7 +71,19 @@ export default function AttendanceConfigUnifiedPage() {
                 onChange={(d)=> setSpecialForm(f=>({ ...f, date: d ? d.toISOString().split('T')[0]! : '' }))}
               />
             </div>
-            <div className="flex flex-col gap-1"><label className="text-xs font-medium">Tipe</label><select className="border rounded px-2 py-1 h-9" value={specialForm.type} onChange={e=>setSpecialForm(f=>({...f,type:e.target.value}))}><option value="holiday">Libur</option><option value="early_dismissal">Pulang Awal</option><option value="custom">Custom</option></select></div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium">Tipe</label>
+              <Select value={specialForm.type} onValueChange={(val)=> setSpecialForm(f=>({...f, type: val as typeof f.type}))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="holiday">Libur</SelectItem>
+                  <SelectItem value="early_dismissal">Pulang Awal</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col gap-1"><label className="text-xs font-medium">Nama</label><Input value={specialForm.name} onChange={e=>setSpecialForm(f=>({...f,name:e.target.value}))} placeholder="Opsional" /></div>
             <div className="flex flex-col gap-1"><label className="text-xs font-medium">Mulai (override)</label><Input type="time" value={specialForm.startTime} onChange={e=>setSpecialForm(f=>({...f,startTime:e.target.value}))} /></div>
             <div className="flex flex-col gap-1"><label className="text-xs font-medium">Akhir (override)</label><Input type="time" value={specialForm.endTime} onChange={e=>setSpecialForm(f=>({...f,endTime:e.target.value}))} /></div>
