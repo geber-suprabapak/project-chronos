@@ -140,3 +140,36 @@ export const biodataSiswa = pgTable("biodata_siswa", {
   kelamin: text("kelamin"),
   activated: boolean("activated").default(false).notNull(),
 });
+
+// ========== Attendance Configuration Tables ==========
+
+// Single row with geofence center + radius
+export const attendanceSettings = pgTable("attendance_settings", {
+  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
+  centerLatitude: doublePrecision("center_latitude").notNull(),
+  centerLongitude: doublePrecision("center_longitude").notNull(),
+  radiusMeters: integer("radius_meters").notNull().default(100),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`).notNull(),
+});
+
+// Default hours per day (1=Senin ... 7=Minggu). Mostly we will use 1..5.
+export const attendanceDefaultHours = pgTable("attendance_default_hours", {
+  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
+  dayOfWeek: integer("day_of_week").notNull(), // 1-7
+  startTime: text("start_time").notNull(), // HH:MM (24h)
+  endTime: text("end_time").notNull(), // HH:MM (24h)
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`).notNull(),
+});
+
+// Special days: holiday / early dismissal / custom override
+export const attendanceSpecialDays = pgTable("attendance_special_days", {
+  id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
+  date: date("date").notNull(),
+  type: text("type").notNull(), // holiday | early_dismissal | custom
+  name: text("name"),
+  startTime: text("start_time"), // optional override
+  endTime: text("end_time"), // optional override
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sql`now()`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sql`now()`).notNull(),
+});

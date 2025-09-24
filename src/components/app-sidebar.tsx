@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, BarChart2 } from "lucide-react";
+import { SquareTerminal, Users, CalendarDays, BarChart2, MapPin } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -46,6 +46,11 @@ const navItems = [
     title: "Statistik Siswa",
     url: "/statistik",
     icon: BarChart2,
+  },
+  {
+    title: "Zona & Jadwal Absensi",
+    url: "/admin/attendance",
+    icon: MapPin,
   }
 ];
 

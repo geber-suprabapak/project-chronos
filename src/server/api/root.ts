@@ -3,6 +3,9 @@ import { absencesRouter } from "~/server/api/routers/absences";
 import { perizinanRouter } from "~/server/api/routers/perizinan";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { userProfilesRouter } from "~/server/api/routers/user-profiles";
+import { attendanceSettingsRouter } from "~/server/api/routers/attendance/attendance-settings";
+import { attendanceDefaultHoursRouter } from "~/server/api/routers/attendance/attendance-default-hours";
+import { attendanceSpecialDaysRouter } from "~/server/api/routers/attendance/attendance-special-days";
 
 /**
  * This is the primary router for your server.
@@ -14,6 +17,9 @@ export const appRouter = createTRPCRouter({
   absences: absencesRouter,
   perizinan: perizinanRouter,
   userProfiles: userProfilesRouter,
+  attendanceSettings: attendanceSettingsRouter,
+  attendanceDefaultHours: attendanceDefaultHoursRouter,
+  attendanceSpecialDays: attendanceSpecialDaysRouter,
 });
 
 // export type definition of API
