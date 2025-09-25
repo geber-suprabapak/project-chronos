@@ -55,7 +55,7 @@ export default async function ProfilesPage({
 	let rows: Array<{
 		id: string | number | null;
 		fullName: string | null;
-		email: string;
+		email: string | null;
 		className: string | null;
 		absenceNumber: string | null;
 		role: string | null;
