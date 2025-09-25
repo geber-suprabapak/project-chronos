@@ -24,7 +24,7 @@ type Props = {
   initialData: {
     id: string | number
     fullName: string | null
-    email: string
+    email: string | null
     avatarUrl: string | null
     absenceNumber: string | null
     className: string | null

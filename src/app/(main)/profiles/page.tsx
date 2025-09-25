@@ -55,7 +55,7 @@ export default async function ProfilesPage({
 	let rows: Array<{
 		id: string | number | null;
 		fullName: string | null;
-		email: string;
+		email: string; // coerce null -> '' when assigning
 		className: string | null;
 		absenceNumber: string | null;
 		role: string | null;
@@ -76,8 +76,8 @@ export default async function ProfilesPage({
 		const res = await api.userProfiles.list(params);
 
 		if (res) {
-			// Pastikan data diproses dengan benar
-			rows = Array.isArray(res.data) ? res.data : [];
+			// Pastikan data diproses dengan benar; paksa email menjadi string non-null
+			rows = Array.isArray(res.data) ? res.data.map(r => ({ ...r, email: (r as any).email ?? '' })) : [];
 			total = res.meta?.total ?? 0;
 			hasMore = Boolean(res.meta?.hasMore);
 

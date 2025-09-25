@@ -55,7 +55,7 @@ export default function PerizinanPage() {
   const profileByUserId = useMemo(() => {
     const map = new Map<string, { fullName?: string | null; email: string }>();
     for (const p of profiles ?? []) {
-      if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email });
+      if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email ?? "" });
     }
     return map;
   }, [profiles]);
