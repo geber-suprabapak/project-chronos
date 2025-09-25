@@ -79,30 +79,29 @@ export default function PerizinanPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-2 sm:p-4 md:p-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div>
             <CardTitle>Daftar Perizinan</CardTitle>
             <CardDescription>
               Berikut adalah daftar semua perizinan yang tercatat.
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
             <DownloadExcelButton href="/api/export/perizinan" filename="perizinan.xlsx" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
             <DownloadPdfButton tableId="perizinan-table" filename="perizinan.pdf" title="Data Perizinan" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <FilterBar
-              value={filter}
-              onChange={setFilter}
-              statuses={["approved", "rejected", "pending"]}
-              labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
-              placeholders={{ query: "Nama...", status: "Pilih status" }}
-            />
-          </div>
+          <FilterBar
+            value={filter}
+            onChange={setFilter}
+            statuses={["approved", "rejected", "pending"]}
+            labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
+            placeholders={{ query: "Nama...", status: "Pilih status" }}
+            className="mb-4"
+          />
           {(() => {
             const q = (filter.query ?? "").trim().toLowerCase();
             let rows = (perizinan ?? []).filter((p) => {
@@ -118,80 +117,16 @@ export default function PerizinanPage() {
             return (
               <>
                 {/* Visible table for UI */}
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Deskripsi</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      // Skeleton loading state
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell>
-                            <Skeleton className="h-4 w-24" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-40" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-16" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-full" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-6 w-20" />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Skeleton className="h-8 w-16 ml-auto" />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : rows && rows.length > 0 ? (
-                      rows.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{formatDate(item.tanggal)}</TableCell>
-                          <TableCell>
-                            {(() => {
-                              const prof = profileByUserId.get(item.userId);
-                              return prof?.fullName ?? prof?.email ?? item.userId;
-                            })()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="rounded-full px-2.5 py-1">
-                              {item.kategoriIzin}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{item.deskripsi}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={getBadgeVariant(item.approvalStatus)}
-                              className="rounded-full px-2.5 py-1 capitalize"
-                            >
-                              {item.approvalStatus ?? "pending"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Link href={`/perizinan/show/${item.id}`} passHref>
-                              <Button variant="outline" size="sm">
-                                Detail
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
+                <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center">
-                          Tidak ada data perizinan.
-                        </TableCell>
+                        <TableHead>Tanggal</TableHead>
+                        <TableHead>Nama</TableHead>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead>Deskripsi</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     )}
                   </TableBody>
