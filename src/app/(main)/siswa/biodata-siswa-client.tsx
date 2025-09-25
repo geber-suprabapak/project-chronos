@@ -30,7 +30,7 @@ import { toast } from 'sonner';
 export function BiodataSiswaClient() {
     // State untuk pagination dan filter
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchNama, setSearchNama] = useState('');
+    const [searchNama, setSearchNama] = useState(''); // Search by name or NIS
     const [filterKelas, setFilterKelas] = useState<string>('all');
     const [filterKelamin, setFilterKelamin] = useState<string>('all');
     const [filterActivated, setFilterActivated] = useState<boolean | undefined>(undefined);
@@ -76,7 +76,10 @@ export function BiodataSiswaClient() {
         kelas: filterKelas === 'all' ? undefined : filterKelas?.trim() || undefined,
         kelamin: filterKelamin === 'all' ? undefined : (filterKelamin?.trim() as 'L' | 'P') || undefined,
         activated: filterActivated,
-    }); const { data: stats } = api.biodataSiswa.getStats.useQuery();
+    });
+
+    const { data: stats } = api.biodataSiswa.getStats.useQuery();
+    const { data: uniqueClasses } = api.biodataSiswa.getUniqueClasses.useQuery();
 
     // Mutations
     const createMutation = api.biodataSiswa.create.useMutation({
@@ -276,10 +279,10 @@ export function BiodataSiswaClient() {
                         {/* Baris 1: Search dan Filter */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                                <Label htmlFor="search-nama">Cari Nama</Label>
+                                <Label htmlFor="search-nama">Cari Nama/NIS</Label>
                                 <Input
                                     id="search-nama"
-                                    placeholder="Masukkan nama siswa"
+                                    placeholder="Masukkan nama siswa atau NIS"
                                     value={searchNama}
                                     onChange={(e) => setSearchNama(e.target.value)}
                                 />
@@ -292,12 +295,11 @@ export function BiodataSiswaClient() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Semua Kelas</SelectItem>
-                                        <SelectItem value="X RPL">X RPL</SelectItem>
-                                        <SelectItem value="XI RPL">XI RPL</SelectItem>
-                                        <SelectItem value="XII RPL">XII RPL</SelectItem>
-                                        <SelectItem value="X AKL">X AKL</SelectItem>
-                                        <SelectItem value="XI AKL">XI AKL</SelectItem>
-                                        <SelectItem value="XII AKL">XII AKL</SelectItem>
+                                        {uniqueClasses?.map((kelas) => (
+                                            <SelectItem key={kelas} value={kelas}>
+                                                {kelas}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -382,12 +384,31 @@ export function BiodataSiswaClient() {
                                             </div>
                                             <div>
                                                 <Label htmlFor="kelas">Kelas</Label>
-                                                <Input
-                                                    id="kelas"
+                                                <Select
                                                     value={formData.kelas}
-                                                    onChange={(e) => setFormData({ ...formData, kelas: e.target.value })}
-                                                    required
-                                                />
+                                                    onValueChange={(value) => setFormData({ ...formData, kelas: value })}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Pilih kelas" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {uniqueClasses?.map((kelas) => (
+                                                            <SelectItem key={kelas} value={kelas}>
+                                                                {kelas}
+                                                            </SelectItem>
+                                                        )) ?? (
+                                                                <SelectItem value="" disabled>Loading...</SelectItem>
+                                                            )}
+                                                    </SelectContent>
+                                                </Select>
+                                                {/* Tambahkan input manual jika diperlukan */}
+                                                <div className="mt-2">
+                                                    <Input
+                                                        placeholder="Atau ketik kelas baru"
+                                                        value={formData.kelas}
+                                                        onChange={(e) => setFormData({ ...formData, kelas: e.target.value })}
+                                                    />
+                                                </div>
                                             </div>
                                             <div>
                                                 <Label htmlFor="absen">No. Absen</Label>

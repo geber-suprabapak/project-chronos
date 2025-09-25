@@ -51,7 +51,19 @@ export const biodataSiswaRouter = createTRPCRouter({
             const conditions = [];
 
             if (input?.nama?.trim()) {
-                conditions.push(ilike(biodataSiswa.nama, `%${input.nama}%`));
+                const searchTerm = input.nama.trim();
+
+                // Check if search term is numeric (could be NIS)
+                if (/^\d+$/.test(searchTerm)) {
+                    // Search by both NIS and name
+                    const nisSearch = BigInt(searchTerm);
+                    conditions.push(
+                        sql`(${biodataSiswa.nama} ILIKE ${'%' + searchTerm + '%'} OR ${biodataSiswa.nis} = ${nisSearch})`
+                    );
+                } else {
+                    // Search only by name
+                    conditions.push(ilike(biodataSiswa.nama, `%${searchTerm}%`));
+                }
             }
 
             if (input?.kelas?.trim()) {
@@ -303,6 +315,17 @@ export const biodataSiswaRouter = createTRPCRouter({
                 .returning();
             return row ?? null;
         }),
+
+    // GET UNIQUE CLASSES: daftar kelas yang unik untuk filter
+    getUniqueClasses: protectedProcedure.query(async ({ ctx }) => {
+        const result = await ctx.db
+            .selectDistinct({ kelas: biodataSiswa.kelas })
+            .from(biodataSiswa)
+            .where(sql`${biodataSiswa.kelas} IS NOT NULL AND ${biodataSiswa.kelas} != ''`)
+            .orderBy(biodataSiswa.kelas);
+
+        return result.map(row => row.kelas).filter(kelas => kelas !== null);
+    }),
 
     // GET STATS: statistik data siswa
     getStats: protectedProcedure.query(async ({ ctx }) => {

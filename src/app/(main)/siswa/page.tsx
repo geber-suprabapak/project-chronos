@@ -1,5 +1,5 @@
 import React from 'react';
-import { BiodataSiswaClient } from '~/components/biodata-siswa-client';
+import { BiodataSiswaClient } from './biodata-siswa-client';
 
 /**
  * Halaman Data Siswa / Biodata Siswa
