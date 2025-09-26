@@ -2,9 +2,8 @@ import { api } from "~/trpc/server";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { EditProfileForm } from "~/components/profiles/edit-profile-form";
 
-export default async function EditProfilePage({ params }: { params?: Promise<Record<string, string>> }) {
-	const resolvedParams = params ? await params : undefined;
-	const id = resolvedParams?.id;
+export default async function EditProfilePage({ params }: { params: { id: string } }) {
+	const id = params?.id;
 	if (!id) {
 		return (
 			<div className="p-6">
@@ -15,6 +14,15 @@ export default async function EditProfilePage({ params }: { params?: Promise<Rec
 
 	let data: Awaited<ReturnType<typeof api.userProfiles.getById>> | null = null;
 	try {
+		// Disallow admin from editing
+		const me = await api.userProfiles.getCurrent();
+		if ((me?.role ?? "").toLowerCase() === "admin") {
+			return (
+				<div className="p-6">
+					<p className="text-amber-600">Akses ditolak: Admin tidak diperbolehkan mengedit profil.</p>
+				</div>
+			);
+		}
 		data = await api.userProfiles.getById({ id });
 		if (!data) {
 			return (

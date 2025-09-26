@@ -1,5 +1,5 @@
 "use client";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Separator } from "~/components/ui/separator";
 import { User } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { DeleteProfileButton } from "~/components/profiles/delete-profile-button";
 
 // Helper to format date or datetime; handles date-only strings without timezone skew
 const formatDate = (input: string | Date | null | undefined) => {
@@ -25,6 +26,7 @@ const formatDate = (input: string | Date | null | undefined) => {
 };
 
 export default function ShowProfilePage() {
+  const router = useRouter();
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
 
@@ -43,10 +45,13 @@ export default function ShowProfilePage() {
     { enabled: !!profile?.id }
   );
 
+  const { data: me } = api.userProfiles.getCurrent.useQuery();
+  const isAdmin = (me?.role ?? "").toLowerCase() === "admin";
   if (!id) return <div className="p-8">Invalid ID.</div>;
   if (isLoading) return <SkeletonLayout />;
   if (error) return <div className="p-8 text-red-500">Error: {error.message}</div>;
   if (!profile) return <div className="p-8">Profil tidak ditemukan.</div>;
+  // Render actions depending on role: admin sees Delete, others see Edit
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8">
@@ -78,6 +83,15 @@ export default function ShowProfilePage() {
               <Row label="Role" value={profile.role ?? "-"} />
               <Row label="Dibuat" value={formatDate(profile.createdAt as unknown as Date)} />
               <Row label="Diupdate" value={formatDate(profile.updatedAt as unknown as Date)} />
+              <div className="flex gap-2 pt-2">
+                {isAdmin ? (
+                  typeof profile.id === "string" ? <DeleteProfileButton id={profile.id} onDeleted={() => router.push("/profiles")} /> : null
+                ) : (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/profiles/edit/${String(profile.id)}`}>Edit</Link>
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

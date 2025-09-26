@@ -2,12 +2,20 @@ import { z } from "zod";
 import { and, eq, ilike, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userProfiles } from "~/server/db/schema";
+import { TRPCError } from "@trpc/server";
 
 /**
  * tRPC router untuk tabel `user_profiles` (Supabase).
  * Fokus pada operasi MUTATION (create, update, delete, upsert).
  */
 export const userProfilesRouter = createTRPCRouter({
+	// GET CURRENT USER PROFILE (by auth user id)
+	getCurrent: protectedProcedure.query(async ({ ctx }) => {
+		const row = await ctx.db.query.userProfiles.findFirst({
+			where: (table, { eq }) => eq(table.userId, ctx.user.id),
+		});
+		return row ?? null;
+	}),
 	// GET BY ID
 	getById: protectedProcedure
 		.input(z.object({ id: z.string().uuid() }))
@@ -130,6 +138,13 @@ export const userProfilesRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			// Disallow update when current user has role 'admin'
+			const me = await ctx.db.query.userProfiles.findFirst({
+				where: (table, { eq }) => eq(table.userId, ctx.user.id),
+			});
+			if ((me?.role ?? "").toLowerCase() === "admin") {
+				throw new TRPCError({ code: "UNAUTHORIZED", message: "Admin tidak diperbolehkan mengedit profil" });
+			}
 			const [row] = await ctx.db
 				.update(userProfiles)
 				.set({ ...input.data, updatedAt: new Date() })
@@ -161,6 +176,13 @@ export const userProfilesRouter = createTRPCRouter({
 			})
 		)
 		.mutation(async ({ ctx, input }) => {
+			// Disallow update when current user has role 'admin'
+			const me = await ctx.db.query.userProfiles.findFirst({
+				where: (table, { eq }) => eq(table.userId, ctx.user.id),
+			});
+			if ((me?.role ?? "").toLowerCase() === "admin") {
+				throw new TRPCError({ code: "UNAUTHORIZED", message: "Admin tidak diperbolehkan mengedit profil" });
+			}
 			const [row] = await ctx.db
 				.update(userProfiles)
 				.set({ ...input.data, updatedAt: new Date() })

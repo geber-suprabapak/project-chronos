@@ -9,6 +9,7 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
+import { DeleteProfileButton } from "~/components/profiles/delete-profile-button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
@@ -64,8 +65,12 @@ export default async function ProfilesPage({
 	}> = [];
 	let total = 0;
 	let hasMore = false;
+	let isAdmin = false;
 
 	try {
+		// Get current user profile to determine role/permissions
+		const me = await api.userProfiles.getCurrent();
+		isAdmin = (me?.role ?? "").toLowerCase() === "admin";
 		// Pastikan parameter dikirim dengan benar dan sesuai dengan definisi input router
 		const params = {
 			limit,
@@ -201,9 +206,14 @@ export default async function ProfilesPage({
 																	<Button asChild variant="secondary" size="sm">
 																		<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
 																	</Button>
-																	<Button asChild variant="outline" size="sm">
-																		<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-																	</Button>
+																	{isAdmin ? null : (
+																		<Button asChild variant="outline" size="sm">
+																			<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
+																		</Button>
+																	)}
+																	{isAdmin && typeof r.id === "string" ? (
+																		<DeleteProfileButton id={r.id} />
+																	) : null}
 																</>
 															) : (
 																<>
