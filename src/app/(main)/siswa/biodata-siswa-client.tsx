@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import Link from 'next/link';
 import { api } from '~/trpc/react';
 import {
     Table,
@@ -921,7 +922,7 @@ export function BiodataSiswaClient() {
                                         {siswa.activated ? 'Aktif' : 'Non-Aktif'}
                                     </Badge>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                <div className="grid grid-cols-3 gap-2 text-sm mb-3">
                                     <div>
                                         <span className="text-muted-foreground">Kelas:</span>
                                         <div className="font-medium">{siswa.kelas}</div>
@@ -938,6 +939,13 @@ export function BiodataSiswaClient() {
                                             </Badge>
                                         </div>
                                     </div>
+                                </div>
+                                <div className="flex justify-end">
+                                    <Link href={`/siswa/edit/${siswa.nis.toString()}`}>
+                                        <Button size="sm" variant="outline" className="h-7 px-3 text-xs">
+                                            Edit
+                                        </Button>
+                                    </Link>
                                 </div>
                             </CardContent>
                         </Card>
@@ -973,12 +981,13 @@ export function BiodataSiswaClient() {
                                 <TableHead>No. Absen</TableHead>
                                 <TableHead>Jenis Kelamin</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead className="w-24">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         Loading...
                                     </TableCell>
                                 </TableRow>
@@ -1007,11 +1016,18 @@ export function BiodataSiswaClient() {
                                                 {siswa.activated ? 'Aktif' : 'Tidak Aktif'}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>
+                                            <Link href={`/siswa/edit/${siswa.nis.toString()}`}>
+                                                <Button size="sm" variant="outline" className="h-8 px-2">
+                                                    Edit
+                                                </Button>
+                                            </Link>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={8} className="h-24 text-center">
                                         Tidak ada data siswa ditemukan
                                     </TableCell>
                                 </TableRow>
