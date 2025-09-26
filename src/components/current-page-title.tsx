@@ -13,7 +13,7 @@ function toTitleCase(input: string) {
 export function CurrentPageTitle({ className }: { className?: string }) {
   const pathname = usePathname();
 
-  // Example paths in this app: /dashboard, /absensi, /perizinan, /perizinan/show/[id], /profiles, /profiles/edit/[id]
+  // Example paths in this app: /dashboard, /absensi, /perizinan, /perizinan/show/[id], /profiles, /profiles/show/[id]
   const segments = React.useMemo(
     () => pathname.split("/").filter(Boolean),
     [pathname],
@@ -38,8 +38,8 @@ export function CurrentPageTitle({ className }: { className?: string }) {
       }
       break;
     case "profiles":
-      if (second === "edit") {
-        title = "Profiles — Edit";
+      if (second === "show") {
+        title = "Profiles — Detail";
       } else {
         title = "Profiles";
       }
