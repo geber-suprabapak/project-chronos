@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { downloadTableAsPDF } from "~/lib/pdf";
 import { Button } from "~/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 
 // Banner muncul setiap tanggal 25 (hari apa saja) di seluruh halaman (main)
 // sampai admin melakukan backup (ditandai lokal) atau menekan tombol "Tandai Selesai".
@@ -13,7 +13,7 @@ export function MonthlyBackupBanner() {
   const [visible, setVisible] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
 
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
   const day = today.getDate();
   const ymKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`; // YYYY-MM
   const storageKey = `backup_done_${ymKey}`;
@@ -40,7 +40,7 @@ export function MonthlyBackupBanner() {
 
     // Expose helper for manual reset in console: window.__resetMonthlyBackup()
     try {
-      (window as any).__resetMonthlyBackup = () => {
+      (window as typeof window & { __resetMonthlyBackup?: () => void }).__resetMonthlyBackup = () => {
         localStorage.removeItem(storageKey);
         setVisible(true);
         toast.info("Banner backup dimunculkan kembali.");
@@ -109,7 +109,7 @@ export function MonthlyBackupBanner() {
 
   return (
     <Card
-      className="fixed top-4 right-4 w-100 z-50 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800 shadow-lg"
+      className="fixed top-4 right-4 w-96 z-50 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800 shadow-lg"
       role="alert"
     >
       <CardContent className="p-3">
@@ -122,11 +122,28 @@ export function MonthlyBackupBanner() {
               Backup data absensi sekarang
             </p>
           </div>
-          <div>
+          <div className="flex gap-2 ml-4">
+            <Button
+              size="sm"
+              className="h-8 px-3 text-xs"
+              onClick={handleBackupExcel}
+              disabled={isBackingUp}
+            >
+              {isBackingUp ? "..." : "Excel"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-xs"
+              onClick={handleBackupNow}
+              disabled={isBackingUp}
+            >
+              {isBackingUp ? "..." : "PDF"}
+            </Button>
             <Button
               size="sm"
               variant="ghost"
-              className="h-10 px-2 text-xs text-orange-600 dark:text-orange-400"
+              className="h-8 px-2 text-xs text-orange-600 dark:text-orange-400"
               onClick={markDone}
             >
               Selesai

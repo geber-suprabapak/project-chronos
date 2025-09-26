@@ -76,8 +76,8 @@ export default async function ProfilesPage({
 		const res = await api.userProfiles.list(params);
 
 		if (res) {
-			// Pastikan data diproses dengan benar; paksa email menjadi string non-null
-			rows = Array.isArray(res.data) ? res.data.map(r => ({ ...r, email: (r as any).email ?? '' })) : [];
+			// Pastikan data diproses dengan benar
+			rows = Array.isArray(res.data) ? res.data.map(r => ({ ...r, email: r.email ?? '' })) : [];
 			total = res.meta?.total ?? 0;
 			hasMore = Boolean(res.meta?.hasMore);
 
