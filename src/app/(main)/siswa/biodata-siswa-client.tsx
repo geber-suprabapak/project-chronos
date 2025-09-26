@@ -229,42 +229,42 @@ export function BiodataSiswaClient() {
     const hasMore = siswaData?.meta.hasMore ?? false;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6 p-2 md:p-0">
             {/* Stats Cards */}
             {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Total Siswa</CardTitle>
+                        <CardHeader className="pb-1 md:pb-2">
+                            <CardTitle className="text-xs md:text-sm">Total Siswa</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.total}</div>
+                        <CardContent className="pt-0">
+                            <div className="text-lg md:text-2xl font-bold">{stats.total}</div>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Siswa Aktif</CardTitle>
+                        <CardHeader className="pb-1 md:pb-2">
+                            <CardTitle className="text-xs md:text-sm">Siswa Aktif</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{stats.activated}</div>
+                        <CardContent className="pt-0">
+                            <div className="text-lg md:text-2xl font-bold text-green-600">{stats.activated}</div>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Laki-laki</CardTitle>
+                        <CardHeader className="pb-1 md:pb-2">
+                            <CardTitle className="text-xs md:text-sm">Laki-laki</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
+                        <CardContent className="pt-0">
+                            <div className="text-lg md:text-2xl font-bold">
                                 {stats.genderStats.find(g => g.kelamin === 'L')?.count ?? 0}
                             </div>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">Perempuan</CardTitle>
+                        <CardHeader className="pb-1 md:pb-2">
+                            <CardTitle className="text-xs md:text-sm">Perempuan</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
+                        <CardContent className="pt-0">
+                            <div className="text-lg md:text-2xl font-bold">
                                 {stats.genderStats.find(g => g.kelamin === 'P')?.count ?? 0}
                             </div>
                         </CardContent>
@@ -274,19 +274,22 @@ export function BiodataSiswaClient() {
 
             {/* Filter dan Actions */}
             <Card>
-                <CardContent className="pt-6">
-                    <div className="flex flex-col gap-4">
-                        {/* Baris 1: Search dan Filter */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                                <Label htmlFor="search-nama">Cari Nama/NIS</Label>
-                                <Input
-                                    id="search-nama"
-                                    placeholder="Masukkan nama siswa atau NIS"
-                                    value={searchNama}
-                                    onChange={(e) => setSearchNama(e.target.value)}
-                                />
-                            </div>
+                <CardContent className="pt-4 md:pt-6">
+                    <div className="flex flex-col gap-3 md:gap-4">
+                        {/* Search - prioritas utama di mobile */}
+                        <div>
+                            <Label htmlFor="search-nama" className="text-sm">Cari Nama/NIS</Label>
+                            <Input
+                                id="search-nama"
+                                placeholder="Masukkan nama siswa atau NIS"
+                                value={searchNama}
+                                onChange={(e) => setSearchNama(e.target.value)}
+                                className="mt-1"
+                            />
+                        </div>
+
+                        {/* Filter - collapsed di mobile, expanded di desktop */}
+                        <div className="hidden md:grid md:grid-cols-3 gap-4">
                             <div>
                                 <Label>Kelas</Label>
                                 <Select value={filterKelas} onValueChange={setFilterKelas}>
@@ -334,13 +337,60 @@ export function BiodataSiswaClient() {
                             </div>
                         </div>
 
-                        {/* Baris 2: Actions */}
-                        <div className="flex flex-wrap gap-2 justify-between">
+                        {/* Mobile filters - horizontal scroll */}
+                        <div className="md:hidden flex gap-2 overflow-x-auto pb-2">
+                            <div className="min-w-[120px]">
+                                <Select value={filterKelas} onValueChange={setFilterKelas}>
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Kelas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Semua</SelectItem>
+                                        {uniqueClasses?.map((kelas) => (
+                                            <SelectItem key={kelas} value={kelas}>
+                                                {kelas}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="min-w-[100px]">
+                                <Select value={filterKelamin} onValueChange={setFilterKelamin}>
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Semua</SelectItem>
+                                        <SelectItem value="L">L</SelectItem>
+                                        <SelectItem value="P">P</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="min-w-[100px]">
+                                <Select
+                                    value={filterActivated === undefined ? "all" : filterActivated.toString()}
+                                    onValueChange={(value) => setFilterActivated(value === "all" ? undefined : value === "true")}
+                                >
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Semua</SelectItem>
+                                        <SelectItem value="true">Aktif</SelectItem>
+                                        <SelectItem value="false">Non-Aktif</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col md:flex-row gap-2 md:justify-between">
                             <div className="flex gap-2">
-                                <Button onClick={() => setCurrentPage(1)}>
+                                <Button size="sm" onClick={() => setCurrentPage(1)}>
                                     Search
                                 </Button>
                                 <Button
+                                    size="sm"
                                     variant="outline"
                                     onClick={() => {
                                         setSearchNama('');
@@ -353,10 +403,13 @@ export function BiodataSiswaClient() {
                                     Reset
                                 </Button>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 md:gap-2 overflow-x-auto">
                                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                                     <DialogTrigger asChild>
-                                        <Button>Tambah Siswa</Button>
+                                        <Button size="sm" className="whitespace-nowrap">
+                                            <span className="hidden md:inline">Tambah Siswa</span>
+                                            <span className="md:hidden">Tambah</span>
+                                        </Button>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-md">
                                         <DialogHeader>
@@ -463,7 +516,10 @@ export function BiodataSiswaClient() {
 
                                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline">Import CSV</Button>
+                                        <Button size="sm" variant="outline" className="whitespace-nowrap">
+                                            <span className="hidden md:inline">Import CSV</span>
+                                            <span className="md:hidden">Import</span>
+                                        </Button>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-2xl">
                                         <DialogHeader>
@@ -531,17 +587,47 @@ export function BiodataSiswaClient() {
                                     </DialogContent>
                                 </Dialog>
 
-                                <DownloadExcelButton
-                                    href="/api/export/biodata-siswa"
-                                    filename="biodata-siswa.xlsx"
-                                    disabled={rows.length === 0}
-                                />
-                                <DownloadPdfButton
-                                    tableId="biodata-siswa-table"
-                                    filename="biodata-siswa.pdf"
-                                    title="Data Siswa"
-                                    disabled={rows.length === 0}
-                                />
+                                <div className="hidden md:flex gap-2">
+                                    <DownloadExcelButton
+                                        href="/api/export/biodata-siswa"
+                                        filename="biodata-siswa.xlsx"
+                                        disabled={rows.length === 0}
+                                    />
+                                    <DownloadPdfButton
+                                        tableId="biodata-siswa-table"
+                                        filename="biodata-siswa.pdf"
+                                        title="Data Siswa"
+                                        disabled={rows.length === 0}
+                                    />
+                                </div>
+                                {/* Mobile download menu */}
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline" className="md:hidden">
+                                            Export
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-sm">
+                                        <DialogHeader>
+                                            <DialogTitle>Export Data</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="flex flex-col gap-2">
+                                            <DownloadExcelButton
+                                                href="/api/export/biodata-siswa"
+                                                filename="biodata-siswa.xlsx"
+                                                disabled={rows.length === 0}
+                                                className="w-full"
+                                            />
+                                            <DownloadPdfButton
+                                                tableId="biodata-siswa-table"
+                                                filename="biodata-siswa.pdf"
+                                                title="Data Siswa"
+                                                disabled={rows.length === 0}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </div>
                     </div>
@@ -551,32 +637,98 @@ export function BiodataSiswaClient() {
             <Separator />
 
             {/* Pagination Info */}
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                    Menampilkan {rows.length ? offset + 1 : 0}-{offset + rows.length} dari {total} data
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 text-sm text-muted-foreground">
+                <span className="text-xs md:text-sm">
+                    <span className="hidden md:inline">Menampilkan </span>
+                    {rows.length ? offset + 1 : 0}-{offset + rows.length} dari {total}
+                    <span className="hidden md:inline"> data</span>
                 </span>
-                <div className="flex gap-2">
+                <div className="flex gap-1 md:gap-2">
                     <Button
                         variant="outline"
                         size="sm"
                         disabled={currentPage <= 1}
                         onClick={() => setCurrentPage(currentPage - 1)}
+                        className="text-xs md:text-sm px-2 md:px-4"
                     >
-                        Prev
+                        <span className="md:hidden">‹</span>
+                        <span className="hidden md:inline">Prev</span>
                     </Button>
+                    <span className="flex items-center px-2 text-xs md:text-sm">
+                        {currentPage}
+                    </span>
                     <Button
                         variant="outline"
                         size="sm"
                         disabled={!hasMore}
                         onClick={() => setCurrentPage(currentPage + 1)}
+                        className="text-xs md:text-sm px-2 md:px-4"
                     >
-                        Next
+                        <span className="md:hidden">›</span>
+                        <span className="hidden md:inline">Next</span>
                     </Button>
                 </div>
             </div>
 
-            {/* Data Table */}
-            <Card className="overflow-hidden">
+            {/* Data Display - Mobile Cards & Desktop Table */}
+
+            {/* Mobile Card Layout */}
+            <div className="md:hidden space-y-3">
+                {isLoading ? (
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="text-center">Loading...</div>
+                        </CardContent>
+                    </Card>
+                ) : rows.length ? (
+                    rows.map((siswa) => (
+                        <Card key={siswa.nis.toString()}>
+                            <CardContent className="p-4">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <div className="font-medium text-base">{siswa.nama}</div>
+                                        <div className="text-sm text-muted-foreground font-mono">
+                                            NIS: {siswa.nis.toString()}
+                                        </div>
+                                    </div>
+                                    <Badge variant={siswa.activated ? 'default' : 'destructive'} className="text-xs">
+                                        {siswa.activated ? 'Aktif' : 'Non-Aktif'}
+                                    </Badge>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                    <div>
+                                        <span className="text-muted-foreground">Kelas:</span>
+                                        <div className="font-medium">{siswa.kelas}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Absen:</span>
+                                        <div className="font-medium">{siswa.absen}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Gender:</span>
+                                        <div>
+                                            <Badge variant={siswa.kelamin === 'L' ? 'default' : 'secondary'} className="text-xs">
+                                                {siswa.kelamin}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : (
+                    <Card>
+                        <CardContent className="p-8">
+                            <div className="text-center text-muted-foreground">
+                                Tidak ada data siswa ditemukan
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            {/* Desktop Table Layout */}
+            <Card className="hidden md:block overflow-hidden">
                 <CardContent className="p-0">
                     <Table id="biodata-siswa-table">
                         <TableHeader>
