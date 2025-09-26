@@ -29,12 +29,14 @@ export default async function DashLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar />
       <SidebarInset>
-        {/* Top toolbar with trigger */}
-        <div className="flex h-12 items-center gap-3 border-b px-3">
+        {/* Top toolbar with trigger - Sticky Header */}
+        <div className="sticky top-0 z-50 flex h-12 items-center gap-3 border-b px-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger />
           <CurrentPageTitle className="text-base" />
         </div>
-        {children}
+        <div className="flex-1">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
