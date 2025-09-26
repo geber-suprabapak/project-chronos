@@ -39,6 +39,12 @@ export function BiodataSiswaClient() {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
+    // State untuk selection dan bulk delete
+    const [selectedSiswa, setSelectedSiswa] = useState<Set<string>>(new Set());
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
     // Form state
     const [formData, setFormData] = useState({
         nis: '',
@@ -105,6 +111,18 @@ export function BiodataSiswaClient() {
         },
         onError: (error) => {
             toast.error(`Error import: ${error.message}`);
+        },
+    });
+
+    const bulkDeleteMutation = api.biodataSiswa.bulkDelete.useMutation({
+        onSuccess: (result) => {
+            toast.success(`${result.deletedCount} data siswa berhasil dihapus`);
+            setSelectedSiswa(new Set());
+            resetDeleteState();
+            void refetch();
+        },
+        onError: (error) => {
+            toast.error(`Error menghapus data: ${error.message}`);
         },
     });
 
@@ -224,6 +242,54 @@ export function BiodataSiswaClient() {
         });
     };
 
+    // Selection handlers
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const allNis = rows.map(siswa => siswa.nis.toString());
+            setSelectedSiswa(new Set(allNis));
+        } else {
+            setSelectedSiswa(new Set());
+        }
+    };
+
+    const handleSelectSiswa = (nis: string, checked: boolean) => {
+        const newSelected = new Set(selectedSiswa);
+        if (checked) {
+            newSelected.add(nis);
+        } else {
+            newSelected.delete(nis);
+        }
+        setSelectedSiswa(newSelected);
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedSiswa.size === 0) {
+            toast.error('Pilih minimal satu siswa untuk dihapus');
+            return;
+        }
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        setIsDeleteDialogOpen(false);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const handleFinalDelete = () => {
+        const nisList = Array.from(selectedSiswa).map(nis => BigInt(nis));
+        bulkDeleteMutation.mutate({ nisList });
+    };
+
+    const resetDeleteState = () => {
+        setIsDeleteDialogOpen(false);
+        setIsDeleteConfirmOpen(false);
+        setDeleteConfirmText('');
+    };
+
+    const getSelectedStudentsInfo = () => {
+        return rows.filter(siswa => selectedSiswa.has(siswa.nis.toString()));
+    };
+
     const rows = siswaData?.data ?? [];
     const total = siswaData?.meta.total ?? 0;
     const hasMore = siswaData?.meta.hasMore ?? false;
@@ -270,6 +336,38 @@ export function BiodataSiswaClient() {
                         </CardContent>
                     </Card>
                 </div>
+            )}
+
+            {/* Bulk Actions Toolbar - muncul ketika ada siswa yang dipilih */}
+            {selectedSiswa.size > 0 && (
+                <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+                    <CardContent className="py-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                                    {selectedSiswa.size} siswa dipilih
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSelectedSiswa(new Set())}
+                                    className="border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50"
+                                >
+                                    Batal Pilih
+                                </Button>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={handleBulkDelete}
+                                disabled={bulkDeleteMutation.isPending}
+                                className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                            >
+                                {bulkDeleteMutation.isPending ? 'Menghapus...' : `Hapus ${selectedSiswa.size} Siswa`}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Filter dan Actions */}
@@ -386,7 +484,13 @@ export function BiodataSiswaClient() {
                         {/* Actions */}
                         <div className="flex flex-col md:flex-row gap-2 md:justify-between">
                             <div className="flex gap-2">
-                                <Button size="sm" onClick={() => setCurrentPage(1)}>
+                                <Button
+                                    size="sm"
+                                    onClick={() => {
+                                        setCurrentPage(1);
+                                        setSelectedSiswa(new Set()); // Reset selection saat search
+                                    }}
+                                >
                                     Search
                                 </Button>
                                 <Button
@@ -398,6 +502,7 @@ export function BiodataSiswaClient() {
                                         setFilterKelamin('all');
                                         setFilterActivated(undefined);
                                         setCurrentPage(1);
+                                        setSelectedSiswa(new Set()); // Reset selection saat reset filter
                                     }}
                                 >
                                     Reset
@@ -634,6 +739,113 @@ export function BiodataSiswaClient() {
                 </CardContent>
             </Card>
 
+            {/* Dialog Konfirmasi Hapus - Tahap 1 */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-orange-600 dark:text-orange-400">Konfirmasi Hapus Data</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="p-4 bg-orange-50 dark:bg-orange-950/50 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <p className="text-sm text-orange-800 dark:text-orange-200 mb-2">
+                                <strong>Peringatan:</strong> Anda akan menghapus {selectedSiswa.size} data siswa.
+                            </p>
+                            <p className="text-xs text-orange-700 dark:text-orange-300">
+                                Data yang dihapus tidak dapat dikembalikan. Pastikan Anda yakin dengan tindakan ini.
+                            </p>
+                        </div>
+
+                        {/* Preview siswa yang akan dihapus */}
+                        <div className="max-h-32 overflow-y-auto">
+                            <div className="text-sm font-medium mb-2 text-foreground">Siswa yang akan dihapus:</div>
+                            <div className="space-y-1">
+                                {getSelectedStudentsInfo().slice(0, 5).map((siswa) => (
+                                    <div key={siswa.nis.toString()} className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                                        <span className="font-medium text-foreground">{siswa.nama}</span>
+                                        <span className="text-muted-foreground"> (NIS: {siswa.nis.toString()}, {siswa.kelas})</span>
+                                    </div>
+                                ))}
+                                {getSelectedStudentsInfo().length > 5 && (
+                                    <div className="text-xs text-muted-foreground text-center">
+                                        ... dan {getSelectedStudentsInfo().length - 5} siswa lainnya
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsDeleteDialogOpen(false)}
+                                className="flex-1"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleConfirmDelete}
+                                className="flex-1"
+                            >
+                                Lanjutkan
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>            {/* Dialog Konfirmasi Hapus - Tahap 2 (Final Confirmation) */}
+            <Dialog open={isDeleteConfirmOpen} onOpenChange={(open) => {
+                if (!open) resetDeleteState();
+                setIsDeleteConfirmOpen(open);
+            }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600 dark:text-red-400">Konfirmasi Akhir</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="p-4 bg-red-50 dark:bg-red-950/50 rounded-lg border border-red-200 dark:border-red-800">
+                            <p className="text-sm text-red-800 dark:text-red-200 font-medium mb-2">
+                                ⚠️ PERHATIAN: Tindakan ini tidak dapat dibatalkan!
+                            </p>
+                            <p className="text-xs text-red-700 dark:text-red-300">
+                                {selectedSiswa.size} data siswa akan dihapus secara permanen dari database.
+                                Pastikan Anda benar-benar yakin sebelum melanjutkan.
+                            </p>
+                        </div>
+
+                        <div className="p-3 border dark:border-gray-700 rounded-lg bg-card">
+                            <p className="text-sm font-medium text-center text-foreground">
+                                Ketik <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-foreground">HAPUS</code> untuk mengkonfirmasi
+                            </p>
+                            <Input
+                                placeholder="Ketik HAPUS untuk konfirmasi"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                className="mt-2"
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => resetDeleteState()}
+                                className="flex-1"
+                                disabled={bulkDeleteMutation.isPending}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleFinalDelete}
+                                className="flex-1"
+                                disabled={deleteConfirmText !== 'HAPUS' || bulkDeleteMutation.isPending}
+                            >
+                                {bulkDeleteMutation.isPending ? 'Menghapus...' : 'Hapus Sekarang'}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <Separator />
 
             {/* Pagination Info */}
@@ -648,7 +860,10 @@ export function BiodataSiswaClient() {
                         variant="outline"
                         size="sm"
                         disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage(currentPage - 1)}
+                        onClick={() => {
+                            setCurrentPage(currentPage - 1);
+                            setSelectedSiswa(new Set()); // Reset selection saat pindah halaman
+                        }}
                         className="text-xs md:text-sm px-2 md:px-4"
                     >
                         <span className="md:hidden">‹</span>
@@ -661,7 +876,10 @@ export function BiodataSiswaClient() {
                         variant="outline"
                         size="sm"
                         disabled={!hasMore}
-                        onClick={() => setCurrentPage(currentPage + 1)}
+                        onClick={() => {
+                            setCurrentPage(currentPage + 1);
+                            setSelectedSiswa(new Set()); // Reset selection saat pindah halaman
+                        }}
                         className="text-xs md:text-sm px-2 md:px-4"
                     >
                         <span className="md:hidden">›</span>
@@ -685,10 +903,18 @@ export function BiodataSiswaClient() {
                         <Card key={siswa.nis.toString()}>
                             <CardContent className="p-4">
                                 <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <div className="font-medium text-base">{siswa.nama}</div>
-                                        <div className="text-sm text-muted-foreground font-mono">
-                                            NIS: {siswa.nis.toString()}
+                                    <div className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedSiswa.has(siswa.nis.toString())}
+                                            onChange={(e) => handleSelectSiswa(siswa.nis.toString(), e.target.checked)}
+                                            className="h-4 w-4 mt-1"
+                                        />
+                                        <div>
+                                            <div className="font-medium text-base">{siswa.nama}</div>
+                                            <div className="text-sm text-muted-foreground font-mono">
+                                                NIS: {siswa.nis.toString()}
+                                            </div>
                                         </div>
                                     </div>
                                     <Badge variant={siswa.activated ? 'default' : 'destructive'} className="text-xs">
@@ -733,6 +959,14 @@ export function BiodataSiswaClient() {
                     <Table id="biodata-siswa-table">
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12">
+                                    <input
+                                        type="checkbox"
+                                        checked={rows.length > 0 && selectedSiswa.size === rows.length}
+                                        onChange={(e) => handleSelectAll(e.target.checked)}
+                                        className="h-4 w-4"
+                                    />
+                                </TableHead>
                                 <TableHead>NIS</TableHead>
                                 <TableHead>Nama Lengkap</TableHead>
                                 <TableHead>Kelas</TableHead>
@@ -744,13 +978,21 @@ export function BiodataSiswaClient() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
+                                    <TableCell colSpan={7} className="h-24 text-center">
                                         Loading...
                                     </TableCell>
                                 </TableRow>
                             ) : rows.length ? (
                                 rows.map((siswa) => (
                                     <TableRow key={siswa.nis.toString()}>
+                                        <TableCell>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedSiswa.has(siswa.nis.toString())}
+                                                onChange={(e) => handleSelectSiswa(siswa.nis.toString(), e.target.checked)}
+                                                className="h-4 w-4"
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-mono">{siswa.nis.toString()}</TableCell>
                                         <TableCell className="font-medium">{siswa.nama}</TableCell>
                                         <TableCell>{siswa.kelas}</TableCell>
@@ -769,7 +1011,7 @@ export function BiodataSiswaClient() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-24 text-center">
+                                    <TableCell colSpan={7} className="h-24 text-center">
                                         Tidak ada data siswa ditemukan
                                     </TableCell>
                                 </TableRow>

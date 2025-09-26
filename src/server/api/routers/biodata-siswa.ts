@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, sql, inArray } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { biodataSiswa } from "~/server/db/schema";
 
@@ -316,7 +316,47 @@ export const biodataSiswaRouter = createTRPCRouter({
             return row ?? null;
         }),
 
-    // GET UNIQUE CLASSES: daftar kelas yang unik untuk filter
+    // BULK DELETE: hapus multiple siswa berdasarkan array NIS
+    bulkDelete: protectedProcedure
+        .input(
+            z.object({
+                nisList: z.array(z.bigint()).min(1, "Minimal satu NIS harus dipilih"),
+            }),
+        )
+        .mutation(async ({ ctx, input }) => {
+            const { nisList } = input;
+
+            // Get data before deletion for logging
+            const studentsToDelete = await ctx.db
+                .select({
+                    nis: biodataSiswa.nis,
+                    nama: biodataSiswa.nama,
+                    kelas: biodataSiswa.kelas,
+                })
+                .from(biodataSiswa)
+                .where(inArray(biodataSiswa.nis, nisList));
+
+            if (studentsToDelete.length === 0) {
+                throw new Error("Tidak ada data siswa yang ditemukan untuk dihapus");
+            }
+
+            // Delete the records
+            const deletedRows = await ctx.db
+                .delete(biodataSiswa)
+                .where(inArray(biodataSiswa.nis, nisList))
+                .returning({
+                    nis: biodataSiswa.nis,
+                    nama: biodataSiswa.nama,
+                });
+
+            console.log(`Bulk delete: ${deletedRows.length} students deleted by user ${ctx.user?.email}`,
+                deletedRows.map(r => ({ nis: r.nis.toString(), nama: r.nama })));
+
+            return {
+                deletedCount: deletedRows.length,
+                deletedStudents: deletedRows,
+            };
+        }),    // GET UNIQUE CLASSES: daftar kelas yang unik untuk filter
     getUniqueClasses: protectedProcedure.query(async ({ ctx }) => {
         const result = await ctx.db
             .selectDistinct({ kelas: biodataSiswa.kelas })
