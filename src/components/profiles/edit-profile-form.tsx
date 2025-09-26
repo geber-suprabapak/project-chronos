@@ -10,7 +10,7 @@ import { Button } from '~/components/ui/button'
 
 type FormValues = {
   fullName: string
-  email: string
+  email: string | null
   avatarUrl: string
   absenceNumber: string
   className: string
@@ -84,14 +84,14 @@ export function EditProfileForm({ id, initialData }: Props) {
     updateMutation.mutate({
       id,
       data: {
-        fullName: v.fullName || undefined,
-        email: v.email || undefined,
-        avatarUrl: v.avatarUrl || undefined,
-        absenceNumber: v.absenceNumber || undefined,
-        className: v.className || undefined,
-        gender: v.gender || undefined,
+        fullName: v.fullName ?? undefined,
+        email: v.email ?? undefined,
+        avatarUrl: v.avatarUrl ?? undefined,
+        absenceNumber: v.absenceNumber ?? undefined,
+        className: v.className ?? undefined,
+        gender: v.gender ?? undefined,
         role: v.role === 'admin' ? 'admin' : undefined,
-        nis: v.nis || undefined,
+        nis: v.nis ?? undefined,
       },
     })
     setIsDirty(false)
@@ -106,7 +106,7 @@ export function EditProfileForm({ id, initialData }: Props) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" value={formValues.email} onChange={handleChange} />
+          <Input id="email" name="email" type="email" value={formValues.email ?? ''} onChange={handleChange} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="nis">NIS</Label>
