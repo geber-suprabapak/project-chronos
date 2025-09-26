@@ -77,7 +77,7 @@ export default async function ProfilesPage({
 
 		if (res) {
 			// Pastikan data diproses dengan benar
-			rows = Array.isArray(res.data) ? res.data : [];
+			rows = Array.isArray(res.data) ? res.data.map(r => ({ ...r, email: r.email ?? '' })) : [];
 			total = res.meta?.total ?? 0;
 			hasMore = Boolean(res.meta?.hasMore);
 

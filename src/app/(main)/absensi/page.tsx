@@ -44,7 +44,6 @@ export default function AbsensiPage() {
   const profileByUserId = useMemo(() => {
     const map = new Map<string, { fullName?: string | null; email?: string | null; nis?: string | null }>();
     for (const p of profiles ?? []) {
-      // user_profiles uses `id` (UUID PK). Absences `userId` references this.
       if (p.id) {
         map.set(p.id, { fullName: p.fullName, email: p.email ?? '', nis: p.nis ?? null });
       }

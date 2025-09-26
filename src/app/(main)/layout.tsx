@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "~/lib/supabase/server";
 import { AppSidebar } from "~/components/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "~/components/ui/sidebar";
 import { CurrentPageTitle } from "~/components/current-page-title";
+import { MonthlyBackupBanner } from "~/components/monthly-backup-banner";
 
 // Layout untuk semua halaman dalam grup (dash)
 // - Mengecek autentikasi sekali di sini (server component)
@@ -29,6 +30,8 @@ export default async function DashLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar />
       <SidebarInset>
+        {/* Banner backup bulanan (tgl 25) */}
+        <MonthlyBackupBanner />
         {/* Top toolbar with trigger */}
         <div className="flex h-12 items-center gap-3 border-b px-3">
           <SidebarTrigger />

@@ -21,6 +21,13 @@ const config = {
         port: '',
         // Allow both public and signed URLs
         pathname: '/storage/v1/object/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'stagingdb.hyacine.my.id',
+        port: '',
+        // Allow both public and signed URLs
+        pathname: '/storage/v1/object/**',
       }
     ],
   },
