@@ -10,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { Calendar } from "~/components/ui/calendar"
-import { DatePicker } from "~/components/date-picker"
 
 export type FilterBarValue = {
     date?: string // YYYY-MM-DD

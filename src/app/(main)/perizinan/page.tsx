@@ -128,9 +128,55 @@ export default function PerizinanPage() {
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        Array.from({ length: 5 }).map((_, index) => (
+                          <TableRow key={index}>
+                            <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                          </TableRow>
+                        ))
+                      ) : rows && rows.length > 0 ? (
+                        rows.map((item) => {
+                          const prof = profileByUserId.get(item.userId);
+                          const name = prof?.fullName ?? prof?.email ?? item.userId;
+
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>{formatDate(item.tanggal)}</TableCell>
+                              <TableCell>{name}</TableCell>
+                              <TableCell className="capitalize">{item.kategoriIzin}</TableCell>
+                              <TableCell className="max-w-xs truncate">{item.deskripsi}</TableCell>
+                              <TableCell>
+                                <Badge variant={getBadgeVariant(item.approvalStatus)}>
+                                  {item.approvalStatus ?? "pending"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button asChild variant="outline" size="sm">
+                                  <Link href={`/perizinan/show/${item.id}`}>
+                                    Detail
+                                  </Link>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center">
+                            Tidak ada data perizinan.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
 
                 {/* Hidden table for PDF export with optimized columns */}
                 <div className="hidden">

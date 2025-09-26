@@ -224,72 +224,13 @@ export default async function ProfilesPage({
 									})
 								) : (
 									<TableRow>
-										<TableHead className="w-[120px]">ID</TableHead>
-										<TableHead className="w-[220px]">Full Name</TableHead>
-										<TableHead>Email</TableHead>
-										<TableHead>NIS</TableHead>
-										<TableHead>Class</TableHead>
-										<TableHead>Absence #</TableHead>
-										<TableHead>Role</TableHead>
-										<TableHead>Updated At</TableHead>
-										<TableHead className="w-[120px] text-right">Actions</TableHead>
+										<TableCell colSpan={9} className="h-24 text-center">
+											No results.
+										</TableCell>
 									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{rows.length ? (
-										rows.map((r, idx) => {
-											// Stable key: prefer id; otherwise use a fallback including NIS/email and index
-											const rowKey = r?.id ? `id:${String(r.id)}` : `f:${r.nis ?? r.email ?? 'unknown'}:${idx}`;
-											return (
-												<TableRow key={rowKey}>
-													<TableCell className="font-mono text-xs">{r?.id ? String(r.id) : "-"}</TableCell>
-													<TableCell className="font-medium">{r.fullName ?? "-"}</TableCell>
-													<TableCell>{r.email}</TableCell>
-													<TableCell>{r.nis ?? "-"}</TableCell>
-													<TableCell>{r.className ?? "-"}</TableCell>
-													<TableCell>{r.absenceNumber ?? "-"}</TableCell>
-													<TableCell>{r.role ?? "-"}</TableCell>
-													<TableCell>
-														<TableCell>
-															{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
-														</TableCell>
-													</TableCell>
-													<TableCell className="text-right">
-														<div className="flex justify-end gap-2">
-															{r?.id ? (
-																<>
-																	<Button asChild variant="secondary" size="sm">
-																		<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
-																	</Button>
-																	<Button asChild variant="outline" size="sm">
-																		<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-																	</Button>
-																</>
-															) : (
-																<>
-																	<Button variant="secondary" size="sm" disabled>
-																		Detail
-																	</Button>
-																	<Button variant="outline" size="sm" disabled>
-																		Edit
-																	</Button>
-																</>
-															)}
-														</div>
-													</TableCell>
-												</TableRow>
-											);
-										})
-									) : (
-										<TableRow>
-											<TableCell colSpan={9} className="h-24 text-center">
-												No results.
-											</TableCell>
-										</TableRow>
-									)}
-								</TableBody>
-							</Table>
-						</div>
+								)}
+							</TableBody>
+						</Table>
 					</CardContent>
 				</Card>
 			</section>
