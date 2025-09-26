@@ -25,11 +25,11 @@ export function MonthlyBackupBanner() {
       if (params.has("showBackupBanner")) {
         forceShow = true;
       }
-    } catch {}
+    } catch { }
 
     if (forceShow) {
       setVisible(true);
-    } else if (day === 25) {
+    } else if (day <= 27) {
       try {
         const done = localStorage.getItem(storageKey) === "done";
         if (!done) setVisible(true);
@@ -45,11 +45,11 @@ export function MonthlyBackupBanner() {
         setVisible(true);
         toast.info("Banner backup dimunculkan kembali.");
       };
-    } catch {}
+    } catch { }
   }, [day, storageKey]);
 
   const markDone = useCallback(() => {
-    try { localStorage.setItem(storageKey, "done"); } catch {}
+    try { localStorage.setItem(storageKey, "done"); } catch { }
     setVisible(false);
     toast.success("Backup ditandai selesai.");
   }, [storageKey]);
@@ -109,30 +109,31 @@ export function MonthlyBackupBanner() {
 
   return (
     <Card
-      className="fixed top-4 right-4 w-[380px] md:w-[420px] z-50 border-amber-300 dark:border-amber-400 bg-amber-200 dark:bg-amber-300 text-amber-950 shadow-xl"
+      className="fixed top-4 right-4 w-100 z-50 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800 shadow-lg"
       role="alert"
     >
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">Segera backup data siswa</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0 pb-2 text-xs leading-relaxed">
-        Lakukan backup PDF data absensi hari ini (tanggal 25). Notifikasi ini akan tetap muncul sampai Anda menandai selesai.
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h3 className="font-medium text-sm text-orange-900 dark:text-orange-100">
+              Backup Bulanan
+            </h3>
+            <p className="text-xs text-orange-700 dark:text-orange-300">
+              Backup data absensi sekarang
+            </p>
+          </div>
+          <div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-10 px-2 text-xs text-orange-600 dark:text-orange-400"
+              onClick={markDone}
+            >
+              Selesai
+            </Button>
+          </div>
+        </div>
       </CardContent>
-      <CardFooter className="pt-0 flex flex-col gap-2">
-        <div className="flex w-full gap-2">
-          <Button size="sm" className="flex-1" onClick={handleBackupNow} disabled={isBackingUp}>
-            {isBackingUp ? "Memproses..." : "Backup (PDF)"}
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={handleBackupExcel} disabled={isBackingUp}>
-            {isBackingUp ? "..." : "Backup (Excel)"}
-          </Button>
-        </div>
-        <div className="flex w-full justify-end">
-          <Button size="sm" variant="ghost" className="text-xs" onClick={markDone}>
-            Tandai Selesai
-          </Button>
-        </div>
-      </CardFooter>
     </Card>
   );
 }
