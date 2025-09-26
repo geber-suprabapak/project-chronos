@@ -25,7 +25,9 @@ export function MonthlyBackupBanner() {
       if (params.has("showBackupBanner")) {
         forceShow = true;
       }
-    } catch { }
+    } catch (err) {
+      console.error("Failed to parse URL parameters in MonthlyBackupBanner:", err);
+    }
 
     if (forceShow) {
       setVisible(true);
