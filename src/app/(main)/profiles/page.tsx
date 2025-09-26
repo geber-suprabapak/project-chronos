@@ -26,13 +26,16 @@ import {
 export default async function ProfilesPage({
 	searchParams
 }: {
-	searchParams?: Record<string, string | string[] | undefined>
+	searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
+	// Await searchParams for Next.js 15 compatibility
+	const resolvedSearchParams = await searchParams;
+
 	// Process searchParams safely
 	const params = {
-		name: typeof searchParams?.name === 'string' ? searchParams.name : '',
-		className: typeof searchParams?.className === 'string' ? searchParams.className : '',
-		page: typeof searchParams?.page === 'string' ? searchParams.page : '',
+		name: typeof resolvedSearchParams?.name === 'string' ? resolvedSearchParams.name : '',
+		className: typeof resolvedSearchParams?.className === 'string' ? resolvedSearchParams.className : '',
+		page: typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : '',
 	};
 
 	// Akses searchParams dengan aman menggunakan params
@@ -159,77 +162,75 @@ export default async function ProfilesPage({
 					</div>
 				</div>
 				<Card className="overflow-hidden">
-					<CardContent className="p-0 sm:p-6">
-						<div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
-							<Table id="profiles-table">
-								<TableHeader>
-									<TableRow>
-										<TableHead className="w-[120px]">ID</TableHead>
-										<TableHead className="w-[220px]">Full Name</TableHead>
-										<TableHead>Email</TableHead>
-										<TableHead>NIS</TableHead>
-										<TableHead>Class</TableHead>
-										<TableHead>Absence #</TableHead>
-										<TableHead>Role</TableHead>
-										<TableHead>Updated At</TableHead>
-										<TableHead className="w-[120px] text-right">Actions</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{rows.length ? (
-										rows.map((r, idx) => {
-											// Stable key: prefer id; otherwise use a fallback including NIS/email and index
-											const rowKey = r?.id ? `id:${String(r.id)}` : `f:${r.nis ?? r.email ?? 'unknown'}:${idx}`;
-											return (
-												<TableRow key={rowKey}>
-													<TableCell className="font-mono text-xs">{r?.id ? String(r.id) : "-"}</TableCell>
-													<TableCell className="font-medium">{r.fullName ?? "-"}</TableCell>
-													<TableCell>{r.email}</TableCell>
-													<TableCell>{r.nis ?? "-"}</TableCell>
-													<TableCell>{r.className ?? "-"}</TableCell>
-													<TableCell>{r.absenceNumber ?? "-"}</TableCell>
-													<TableCell>{r.role ?? "-"}</TableCell>
+					<CardContent>
+						<Table id="profiles-table">
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-[120px]">ID</TableHead>
+									<TableHead className="w-[220px]">Full Name</TableHead>
+									<TableHead>Email</TableHead>
+									<TableHead>NIS</TableHead>
+									<TableHead>Class</TableHead>
+									<TableHead>Absence #</TableHead>
+									<TableHead>Role</TableHead>
+									<TableHead>Updated At</TableHead>
+									<TableHead className="w-[120px] text-right">Actions</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{rows.length ? (
+									rows.map((r, idx) => {
+										// Stable key: prefer id; otherwise use a fallback including NIS/email and index
+										const rowKey = r?.id ? `id:${String(r.id)}` : `f:${r.nis ?? r.email ?? 'unknown'}:${idx}`;
+										return (
+											<TableRow key={rowKey}>
+												<TableCell className="font-mono text-xs">{r?.id ? String(r.id) : "-"}</TableCell>
+												<TableCell className="font-medium">{r.fullName ?? "-"}</TableCell>
+												<TableCell>{r.email}</TableCell>
+												<TableCell>{r.nis ?? "-"}</TableCell>
+												<TableCell>{r.className ?? "-"}</TableCell>
+												<TableCell>{r.absenceNumber ?? "-"}</TableCell>
+												<TableCell>{r.role ?? "-"}</TableCell>
+												<TableCell>
 													<TableCell>
-														<TableCell>
-															{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
-														</TableCell>
+														{r.updatedAt ? new Date(r.updatedAt as string).toLocaleString() : "-"}
 													</TableCell>
-													<TableCell className="text-right">
-														<div className="flex justify-end gap-2">
-															{r?.id ? (
-																<>
-																	<Button asChild variant="secondary" size="sm">
-																		<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
-																	</Button>
-																	<Button asChild variant="outline" size="sm">
-																		<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-																	</Button>
-																</>
-															) : (
-																<>
-																	<Button variant="secondary" size="sm" disabled>
-																		Detail
-																	</Button>
-																	<Button variant="outline" size="sm" disabled>
-																		Edit
-																	</Button>
-																</>
-															)}
-														</div>
-													</TableCell>
-												</TableRow>
-											);
-										})
-									) : (
-										<TableRow>
-											<TableCell colSpan={9} className="h-24 text-center">
-												No results.
-											</TableCell>
-										</TableRow>
-									)}
-								</TableBody>
-							</Table>
-						</div>
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex justify-end gap-2">
+														{r?.id ? (
+															<>
+																<Button asChild variant="secondary" size="sm">
+																	<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
+																</Button>
+																<Button asChild variant="outline" size="sm">
+																	<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
+																</Button>
+															</>
+														) : (
+															<>
+																<Button variant="secondary" size="sm" disabled>
+																	Detail
+																</Button>
+																<Button variant="outline" size="sm" disabled>
+																	Edit
+																</Button>
+															</>
+														)}
+													</div>
+												</TableCell>
+											</TableRow>
+										);
+									})
+								) : (
+									<TableRow>
+										<TableCell colSpan={9} className="h-24 text-center">
+											No results.
+										</TableCell>
+									</TableRow>
+								)}
+							</TableBody>
+						</Table>
 					</CardContent>
 				</Card>
 			</section>
