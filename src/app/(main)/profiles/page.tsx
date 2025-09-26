@@ -55,7 +55,7 @@ export default async function ProfilesPage({
 	let rows: Array<{
 		id: string | number | null;
 		fullName: string | null;
-		email: string; // coerce null -> '' when assigning
+		email: string | null;
 		className: string | null;
 		absenceNumber: string | null;
 		role: string | null;
@@ -197,23 +197,13 @@ export default async function ProfilesPage({
 													<TableCell className="text-right">
 														<div className="flex justify-end gap-2">
 															{r?.id ? (
-																<>
-																	<Button asChild variant="secondary" size="sm">
-																		<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
-																	</Button>
-																	<Button asChild variant="outline" size="sm">
-																		<Link href={`/profiles/edit/${String(r.id)}`}>Edit</Link>
-																	</Button>
-																</>
+																<Button asChild variant="secondary" size="sm">
+																	<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
+																</Button>
 															) : (
-																<>
-																	<Button variant="secondary" size="sm" disabled>
-																		Detail
-																	</Button>
-																	<Button variant="outline" size="sm" disabled>
-																		Edit
-																	</Button>
-																</>
+																<Button variant="secondary" size="sm" disabled>
+																	Detail
+																</Button>
 															)}
 														</div>
 													</TableCell>

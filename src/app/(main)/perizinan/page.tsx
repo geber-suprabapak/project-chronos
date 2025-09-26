@@ -53,9 +53,9 @@ export default function PerizinanPage() {
   const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
   const { data: profiles } = api.userProfiles.listRaw.useQuery();
   const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email: string }>();
+    const map = new Map<string, { fullName?: string | null; email?: string | null }>();
     for (const p of profiles ?? []) {
-      if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email ?? "" });
+      if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email ?? '' });
     }
     return map;
   }, [profiles]);

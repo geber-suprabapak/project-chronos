@@ -5,7 +5,7 @@ import { userProfiles } from "~/server/db/schema";
 
 /**
  * tRPC router untuk tabel `user_profiles` (Supabase).
- * Fokus pada operasi MUTATION (create, update, delete, upsert).
+ * Fokus pada operasi READ-ONLY (get, list).
  */
 export const userProfilesRouter = createTRPCRouter({
 	// GET BY ID
@@ -82,104 +82,7 @@ export const userProfilesRouter = createTRPCRouter({
 		const rows = await ctx.db.select().from(userProfiles);
 		return rows;
 	}),
-	// CREATE: membuat user_profile baru
-	create: protectedProcedure
-		.input(
-			z.object({
-				email: z.string().email(),
-				fullName: z.string().min(1).optional(),
-				avatarUrl: z.string().url().optional(),
-				absenceNumber: z.string().optional(),
-				className: z.string().optional(),
-				role: z.string().optional(),
-				nis: z.string().optional(),
-				gender: z.string().optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const [row] = await ctx.db
-				.insert(userProfiles)
-				.values({
-					...input,
-					userId: ctx.user.id, // Assuming userId comes from context
-				})
-				.returning();
 
-			return row;
-		}),
-
-	// UPDATE by id: memperbarui field-profile tertentu
-	updateById: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: z
-					.object({
-						email: z.string().email().optional(),
-						fullName: z.string().min(1).optional(),
-						avatarUrl: z.string().url().optional(),
-						absenceNumber: z.string().optional(),
-						className: z.string().optional(),
-						role: z.string().optional(),
-						nis: z.string().optional(),
-						gender: z.string().optional(),
-					})
-					.refine((d) => Object.keys(d).length > 0, {
-						message: "No fields to update",
-					}),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const [row] = await ctx.db
-				.update(userProfiles)
-				.set({ ...input.data, updatedAt: new Date() })
-				.where(eq(userProfiles.id, input.id))
-				.returning();
-
-			return row ?? null; // null bila tidak ada row ter-update
-		}),
-
-	// UPDATE (alias): sama dengan updateById untuk konsistensi nama hook di FE
-	update: protectedProcedure
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: z
-					.object({
-						email: z.string().email().optional(),
-						fullName: z.string().min(1).optional(),
-						avatarUrl: z.string().url().optional(),
-						absenceNumber: z.string().optional(),
-						className: z.string().optional(),
-						role: z.string().optional(),
-						nis: z.string().optional(),
-						gender: z.string().optional(),
-					})
-					.refine((d) => Object.keys(d).length > 0, {
-						message: "No fields to update",
-					}),
-			})
-		)
-		.mutation(async ({ ctx, input }) => {
-			const [row] = await ctx.db
-				.update(userProfiles)
-				.set({ ...input.data, updatedAt: new Date() })
-				.where(eq(userProfiles.id, input.id))
-				.returning();
-
-			return row ?? null;
-		}),
-
-	// DELETE by id
-	deleteById: protectedProcedure
-		.input(z.object({ id: z.string().uuid() }))
-		.mutation(async ({ ctx, input }) => {
-			const [row] = await ctx.db
-				.delete(userProfiles)
-				.where(eq(userProfiles.id, input.id))
-				.returning();
-			return row ?? null;
-		}),
 
 	// (removed) upsertByUserId: not applicable; table has no user_id column
 });
