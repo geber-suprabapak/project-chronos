@@ -7,6 +7,7 @@ import { Input } from "~/components/ui/input";
 import { DatePicker } from "~/components/date-picker";
 import * as RadixTabs from "@radix-ui/react-tabs";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import AreaAverageAttendance from "./area-average-attendance";
 
 type UserProfile = {
   id: string | number;
@@ -52,6 +53,7 @@ export default function StatistikSiswaDashboard() {
   const [search, setSearch] = useState<string>("");
   const [tab, setTab] = useState<string>("sudah");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [chartYear, setChartYear] = useState<number>(new Date().getFullYear());
 
   // Helper to format to YYYY-MM-DD (local date, zero pad)
   function toYMD(d?: Date) {
@@ -73,6 +75,9 @@ export default function StatistikSiswaDashboard() {
   const { data: izin } = api.perizinan.list.useQuery(
     ymd ? { tanggal: ymd } : undefined,
   );
+  // Raw data for time-series (across many dates)
+  const { data: absensiRaw } = api.absences.listRaw.useQuery();
+  const { data: izinRaw } = api.perizinan.listRaw.useQuery();
 
   // Users filtered untuk daftar (termasuk search) – ini tidak akan memengaruhi chart
   const filteredUsers = useMemo(() => {
@@ -141,6 +146,19 @@ export default function StatistikSiswaDashboard() {
     [usersForChart, absensi, izin],
   );
 
+  // Lists under tabs should reflect the same base as chart; apply search if provided
+  const statusMapForList = useMemo(() => {
+    if (!search.trim()) return statusMapChart;
+    const term = search.trim().toLowerCase();
+    const filterByName = (arr: UserProfile[]) => arr.filter(u => (u.fullName ?? "").toLowerCase().includes(term));
+    return {
+      sudah: filterByName(statusMapChart.sudah),
+      belum: filterByName(statusMapChart.belum),
+      sakit: filterByName(statusMapChart.sakit),
+      pergi: filterByName(statusMapChart.pergi),
+    };
+  }, [statusMapChart, search]);
+
   const chartData = useMemo(() => {
     const data = [
       { name: "Nihil", value: statusMapChart.belum.length, fill: "#a3a3a3" },
@@ -155,8 +173,66 @@ export default function StatistikSiswaDashboard() {
     return data;
   }, [statusMapChart]);
 
+  // Build area-chart monthly series (Jan..Dec) for selected year (or current year)
+  type RawAbsensi = { date: string | Date; userId: string };
+  type RawIzin = { tanggal: string | Date; userId: string };
+  const areaSeries = useMemo(() => {
+    const totalUsers = usersForChart.length;
+    if (!totalUsers) return [] as { label: string; sudah: number; izin: number }[];
+
+    const year = chartYear;
+    const allowedUserIds = new Set((usersForChart as UserProfile[]).map(u => String(u.id)));
+
+    const monthNames = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+    // For average per day in a month: collect per-day sets, then average sizes
+    const presentByMonthDay = new Map<number, Map<string, Set<string>>>();
+    const izinByMonthDay = new Map<number, Map<string, Set<string>>>();
+
+    (absensiRaw as RawAbsensi[] | undefined)?.forEach((a) => {
+      const dt = a.date instanceof Date ? a.date : new Date(String(a.date));
+      if (!isFinite(dt.getTime()) || dt.getFullYear() !== year) return;
+      const month = dt.getMonth();
+      const d = dt.toISOString().slice(0,10);
+      const uid = String(a.userId);
+      if (!allowedUserIds.has(uid)) return;
+      if (!presentByMonthDay.has(month)) presentByMonthDay.set(month, new Map());
+      const map = presentByMonthDay.get(month)!;
+      if (!map.has(d)) map.set(d, new Set());
+      map.get(d)!.add(uid);
+    });
+
+    (izinRaw as RawIzin[] | undefined)?.forEach((p) => {
+      const dt = p.tanggal instanceof Date ? p.tanggal : new Date(String(p.tanggal));
+      if (!isFinite(dt.getTime()) || dt.getFullYear() !== year) return;
+      const month = dt.getMonth();
+      const d = dt.toISOString().slice(0,10);
+      const uid = String(p.userId);
+      if (!allowedUserIds.has(uid)) return;
+      if (!izinByMonthDay.has(month)) izinByMonthDay.set(month, new Map());
+      const map = izinByMonthDay.get(month)!;
+      if (!map.has(d)) map.set(d, new Set());
+      map.get(d)!.add(uid);
+    });
+
+    const series: { label: string; sudah: number; izin: number }[] = [];
+    for (let m = 0; m < 12; m++) {
+      const pDays = Array.from(presentByMonthDay.get(m)?.values() ?? []);
+      const iDays = Array.from(izinByMonthDay.get(m)?.values() ?? []);
+      const pSum = pDays.reduce((acc, set) => acc + set.size, 0);
+      const iSum = iDays.reduce((acc, set) => acc + set.size, 0);
+      const pAvg = pDays.length ? Math.round(pSum / pDays.length) : 0;
+      const iAvg = iDays.length ? Math.round(iSum / iDays.length) : 0;
+      const label = monthNames[m] ?? `M${m + 1}`;
+      series.push({ label, sudah: pAvg, izin: iAvg });
+    }
+
+    return series;
+  }, [usersForChart, absensiRaw, izinRaw, chartYear]);
+
   return (
-    <Card className="flex flex-col w-full">
+    <>
+      <Card className="flex flex-col w-full">
       <CardHeader className="items-start pb-2">
         <div className="flex flex-wrap items-center justify-between w-full gap-4">
           <div>
@@ -226,21 +302,33 @@ export default function StatistikSiswaDashboard() {
               <RadixTabs.Trigger value="pergi" className="px-2 py-1 data-[state=active]:bg-primary/10 rounded">Pergi</RadixTabs.Trigger>
             </RadixTabs.List>
             <RadixTabs.Content value="sudah">
-              <StatusList count={statusMapList.sudah.length} items={statusMapList.sudah} />
+              <StatusList count={statusMapForList.sudah.length} items={statusMapForList.sudah} />
             </RadixTabs.Content>
             <RadixTabs.Content value="belum">
-              <StatusList count={statusMapList.belum.length} items={statusMapList.belum} />
+              <StatusList count={statusMapForList.belum.length} items={statusMapForList.belum} />
             </RadixTabs.Content>
             <RadixTabs.Content value="sakit">
-              <StatusList count={statusMapList.sakit.length} items={statusMapList.sakit} />
+              <StatusList count={statusMapForList.sakit.length} items={statusMapForList.sakit} />
             </RadixTabs.Content>
             <RadixTabs.Content value="pergi">
-              <StatusList count={statusMapList.pergi.length} items={statusMapList.pergi} />
+              <StatusList count={statusMapForList.pergi.length} items={statusMapForList.pergi} />
             </RadixTabs.Content>
           </RadixTabs.Root>
         </div>
       </CardContent>
     </Card>
+      {/* Area chart full-width under Rekap Kehadiran */}
+      <div className="mt-6">
+        <AreaAverageAttendance
+          title="Rata-rata Kehadiran"
+          description="Biru: Sudah absen, Merah: Tidak masuk/pergi"
+          data={areaSeries}
+          year={chartYear}
+          onPrevYear={() => setChartYear((y) => y - 1)}
+          onNextYear={() => setChartYear((y) => y + 1)}
+        />
+      </div>
+    </>
   );
 }
 
@@ -261,7 +349,7 @@ function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
   // Deduplicate by stable key (id preferred, fallback to fullName)
   const seen = new Set<string>();
   const cleaned = items.filter((u) => {
-    const key = (u.id?.toString?.() ?? u.fullName ?? "null").trim();
+    const key = String(u.id ?? (u.fullName ?? "null")).trim();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -272,7 +360,7 @@ function StatusList({ count, items }: { count: number; items: UserProfile[] }) {
       <div className="max-h-56 overflow-auto rounded border border-border/60 bg-muted/10">
         <ul className="divide-y divide-border/40 text-sm">
           {cleaned.map((u, idx) => {
-            const rawKey = (u.id?.toString?.() ?? u.fullName ?? "item").trim() || "item";
+            const rawKey = (String(u.id ?? (u.fullName ?? "")) || "item").trim() || "item";
             const key = rawKey === "" ? `item-${idx}` : rawKey;
             return (
               <li key={key} className="flex items-center px-3 py-1.5">
