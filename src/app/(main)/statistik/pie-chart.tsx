@@ -48,14 +48,14 @@ export function StatistikPieChart() {
   }
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col w-full">
       <CardHeader className="items-center pb-0">
         <CardTitle>Pie Chart Kehadiran</CardTitle>
         <CardDescription>Rekap harian</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-row items-start gap-12 pb-0">
-        <div style={{ minWidth: 200, minHeight: 200, maxWidth: 220, maxHeight: 220 }}>
-          <ResponsiveContainer width={200} height={200}>
+      <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12 pb-0">
+        <div className="w-full max-w-[220px] h-[200px]">
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Tooltip />
               <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">

@@ -42,11 +42,10 @@ export default function AbsensiPage() {
   } = api.userProfiles.listRaw.useQuery();
 
   const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email: string; nis?: string | null }>();
+    const map = new Map<string, { fullName?: string | null; email?: string | null; nis?: string | null }>();
     for (const p of profiles ?? []) {
-      // user_profiles uses `id` (UUID PK). Absences `userId` references this.
       if (p.id) {
-        map.set(p.id, { fullName: p.fullName, email: p.email, nis: p.nis ?? null });
+        map.set(p.id, { fullName: p.fullName, email: p.email ?? '', nis: p.nis ?? null });
       }
     }
     return map;
@@ -55,19 +54,19 @@ export default function AbsensiPage() {
   const loading = absencesLoading || profilesLoading;
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between mb-2">
+    <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Daftar Absensi</h1>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Absensi</h1>
           <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <DownloadExcelButton href="/api/export/absences" filename="absensi.xlsx" disabled={loading || (absences && absences.length === 0)} />
           <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
         </div>
       </div>
 
-      <Card className="p-4">
+      <Card className="p-2 sm:p-4 overflow-hidden">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
@@ -91,6 +90,7 @@ export default function AbsensiPage() {
                 setStatus(next.status ?? "");
                 setSort(next.sort ?? "desc");
               }}
+              className="mb-4"
             />
 
             {(() => {
@@ -108,7 +108,7 @@ export default function AbsensiPage() {
               return (
                 <>
                   {/* Main UI table */}
-                  <div className="mb-4">
+                  <div className="mb-4 w-full overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -151,7 +151,7 @@ export default function AbsensiPage() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   {/* Hidden table for PDF export with optimized columns */}
                   <div className="hidden">
                     <Table id="absensi-table">
