@@ -3,6 +3,7 @@ import { absencesRouter } from "~/server/api/routers/absences";
 import { perizinanRouter } from "~/server/api/routers/perizinan";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { userProfilesRouter } from "~/server/api/routers/user-profiles";
+import { biodataSiswaRouter } from "~/server/api/routers/biodata-siswa";
 
 /**
  * This is the primary router for your server.
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   absences: absencesRouter,
   perizinan: perizinanRouter,
   userProfiles: userProfilesRouter,
+  biodataSiswa: biodataSiswaRouter,
 });
 
 // export type definition of API
