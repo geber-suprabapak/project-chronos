@@ -78,8 +78,16 @@ export const userProfiles = pgTable(
   ],
 );
 
+export const absencesRelations = relations(absences, ({ one }) => ({
+  userProfile: one(userProfiles, {
+    fields: [absences.userId],
+    references: [userProfiles.userId],
+  }),
+}));
+
 export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
   perizinan: many(perizinan),
+  absences: many(absences),
 }));
 
 // perizinan

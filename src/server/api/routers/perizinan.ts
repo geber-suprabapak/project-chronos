@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { perizinan } from "~/server/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -46,28 +46,32 @@ export const perizinanRouter = createTRPCRouter({
         conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
       if (typeof input?.status === "boolean")
         conditions.push(eq(perizinan.status, input.status));
-  // Filter per hari: gunakan kolom tanggal_utc_date (DATE) yang diisi oleh trigger
-  if (input?.tanggal) conditions.push(eq(perizinan.tanggalUtcDate, input.tanggal));
+      // Filter per hari: gunakan kolom tanggal_utc_date (DATE) yang diisi oleh trigger
+      if (input?.tanggal) conditions.push(eq(perizinan.tanggalUtcDate, input.tanggal));
 
       const where = conditions.length ? and(...conditions) : undefined;
 
-      const rows = await ctx.db
-        .select()
-        .from(perizinan)
-        .where(where ?? undefined)
-        .limit(input?.limit ?? 20)
-        .offset(input?.offset ?? 0)
-        .orderBy(perizinan.createdAt);
+      const rows = await ctx.db.query.perizinan.findMany({
+        where: where,
+        limit: input?.limit ?? 20,
+        offset: input?.offset ?? 0,
+        orderBy: (perizinan, { asc }) => [asc(perizinan.createdAt)],
+        with: {
+          userProfile: true,
+        },
+      });
 
       return rows;
     }),
 
   // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
   listRaw: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
-      .from(perizinan)
-      .orderBy(desc(perizinan.createdAt));
+    const rows = await ctx.db.query.perizinan.findMany({
+      orderBy: (perizinan, { desc }) => [desc(perizinan.createdAt)],
+      with: {
+        userProfile: true,
+      },
+    });
     return rows;
   }),
 

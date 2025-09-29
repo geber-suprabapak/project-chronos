@@ -3,7 +3,7 @@
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
 import {
@@ -34,24 +34,7 @@ export default function AbsensiPage() {
     error: absencesError,
   } = api.absences.list.useQuery({ limit: 50, offset: 0, sort, date: date || undefined, status: status || undefined });
 
-  // Fetch user profiles (raw) to map userId -> fullName/email
-  const {
-    data: profiles,
-    isLoading: profilesLoading,
-    error: profilesError,
-  } = api.userProfiles.listRaw.useQuery();
-
-  const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email?: string | null; nis?: string | null }>();
-    for (const p of profiles ?? []) {
-      if (p.id) {
-        map.set(p.id, { fullName: p.fullName, email: p.email ?? '', nis: p.nis ?? null });
-      }
-    }
-    return map;
-  }, [profiles]);
-
-  const loading = absencesLoading || profilesLoading;
+  const loading = absencesLoading;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
@@ -74,9 +57,9 @@ export default function AbsensiPage() {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : absencesError || profilesError ? (
+        ) : absencesError ? (
           <div className="text-red-600">
-            {absencesError?.message ?? profilesError?.message ?? "Terjadi kesalahan saat memuat data."}
+            {absencesError?.message ?? "Terjadi kesalahan saat memuat data."}
           </div>
         ) : (
           <>
@@ -97,8 +80,7 @@ export default function AbsensiPage() {
               const rows = (absences ?? []).filter((a) => {
                 const q = query.trim().toLowerCase();
                 if (!q) return true;
-                const prof = profileByUserId.get(a.userId);
-                const hayName = `${prof?.fullName ?? ""}`.toLowerCase();
+                const hayName = `${a.userProfile?.fullName ?? ""}`.toLowerCase();
                 return hayName.includes(q);
               });
               const rows2 = rows.filter((a) => {
@@ -121,8 +103,7 @@ export default function AbsensiPage() {
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
-                          const prof = profileByUserId.get(a.userId);
-                          const name = prof?.fullName ?? prof?.email ?? a.userId;
+                          const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
                           return (
@@ -165,8 +146,7 @@ export default function AbsensiPage() {
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
-                          const prof = profileByUserId.get(a.userId);
-                          const name = prof?.fullName ?? prof?.email ?? a.userId;
+                          const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           return (
                             <TableRow key={`${a.id}-pdf`}>
