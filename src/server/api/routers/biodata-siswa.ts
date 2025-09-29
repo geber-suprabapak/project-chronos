@@ -40,10 +40,10 @@ export const biodataSiswaRouter = createTRPCRouter({
 
             if (input?.nama && input.nama.trim().length > 0) {
                 const searchTerm = input.nama.trim();
-                
+
                 // Check if the search term is a number (NIS search)
                 const isNumeric = /^\d+$/.test(searchTerm);
-                
+
                 if (isNumeric) {
                     // Search by NIS (convert to bigint for comparison)
                     try {
