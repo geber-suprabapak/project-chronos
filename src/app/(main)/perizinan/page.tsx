@@ -5,7 +5,7 @@ import { DownloadExcelButton } from "~/components/download-excel-button";
 
 import Link from "next/link";
 import { api } from "~/trpc/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -51,14 +51,7 @@ const getBadgeVariant = (status: string | null) => {
 
 export default function PerizinanPage() {
   const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
-  const { data: profiles } = api.userProfiles.listRaw.useQuery();
-  const profileByUserId = useMemo(() => {
-    const map = new Map<string, { fullName?: string | null; email?: string | null }>();
-    for (const p of profiles ?? []) {
-      if (p.id) map.set(p.id, { fullName: p.fullName, email: p.email ?? '' });
-    }
-    return map;
-  }, [profiles]);
+
   const {
     data: perizinan,
     isLoading,
@@ -106,7 +99,7 @@ export default function PerizinanPage() {
             const q = (filter.query ?? "").trim().toLowerCase();
             let rows = (perizinan ?? []).filter((p) => {
               if (!q) return true;
-              const name = profileByUserId.get(p.userId)?.fullName ?? profileByUserId.get(p.userId)?.email ?? "";
+              const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
               return name.toLowerCase().includes(q);
             });
             rows = rows.sort((a, b) => {
@@ -159,10 +152,7 @@ export default function PerizinanPage() {
                           <TableRow key={item.id}>
                             <TableCell>{formatDate(item.tanggal)}</TableCell>
                             <TableCell>
-                              {(() => {
-                                const prof = profileByUserId.get(item.userId);
-                                return prof?.fullName ?? prof?.email ?? item.userId;
-                              })()}
+                              {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="rounded-full px-2.5 py-1">
@@ -213,8 +203,7 @@ export default function PerizinanPage() {
                     <TableBody>
                       {rows && rows.length > 0 ? (
                         rows.map((item) => {
-                          const prof = profileByUserId.get(item.userId);
-                          const name = prof?.fullName ?? prof?.email ?? item.userId;
+                          const name = item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId;
 
                           return (
                             <TableRow key={`${item.id}-pdf`}>

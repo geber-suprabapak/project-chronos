@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -60,12 +60,7 @@ export default function ShowAbsensiPage() {
     { enabled: !!id }
   );
 
-  const { data: profiles } = api.userProfiles.listRaw.useQuery(undefined, { enabled: true });
-
-  const user = useMemo(() => {
-    if (!absence || !profiles) return null;
-    return profiles.find((p) => p.id === absence.userId) ?? null;
-  }, [absence, profiles]);
+  const user = absence?.userProfile ?? null;
 
   if (!id) return <div className="p-8">Invalid ID.</div>;
   if (isLoading) return <SkeletonLayout />;

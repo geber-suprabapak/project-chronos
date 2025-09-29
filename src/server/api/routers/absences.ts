@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { absences } from "~/server/db/schema";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -48,27 +48,29 @@ export const absencesRouter = createTRPCRouter({
 
       const where = conditions.length ? and(...conditions) : undefined;
 
-      const rows = await ctx.db
-        .select()
-        .from(absences)
-        .where(where ?? undefined)
-        .limit(input?.limit ?? 20)
-        .offset(input?.offset ?? 0)
-        .orderBy(
-          (input?.sort ?? "asc") === "desc"
-            ? desc(absences.date)
-            : asc(absences.date),
-        );
+      const rows = await ctx.db.query.absences.findMany({
+        where: where,
+        limit: input?.limit ?? 20,
+        offset: input?.offset ?? 0,
+        orderBy: (absences, { desc, asc }) => [
+          (input?.sort ?? "asc") === "desc" ? desc(absences.date) : asc(absences.date)
+        ],
+        with: {
+          userProfile: true,
+        },
+      });
 
       return rows;
     }),
 
   // Mengambil seluruh data absensi (tanpa pagination) - gunakan hati-hati untuk dataset besar.
   listRaw: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
-      .from(absences)
-      .orderBy(desc(absences.date));
+    const rows = await ctx.db.query.absences.findMany({
+      orderBy: (absences, { desc }) => [desc(absences.date)],
+      with: {
+        userProfile: true,
+      },
+    });
     return rows;
   }),
 
@@ -78,6 +80,9 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.absences.findFirst({
         where: (table, { eq }) => eq(table.id, input.id),
+        with: {
+          userProfile: true,
+        },
       });
       return row ?? null;
     }),
