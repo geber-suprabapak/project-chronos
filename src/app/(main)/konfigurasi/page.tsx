@@ -6,8 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
+import { Badge } from "~/components/ui/badge";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
+import { MapPin, Settings, Save, RotateCcw, Info, CheckCircle } from "lucide-react";
 
 export default function ConfigurationPage() {
     const [formData, setFormData] = useState({
@@ -101,143 +104,207 @@ export default function ConfigurationPage() {
 
     if (isLoading) {
         return (
-            <div className="container mx-auto p-6">
-                <div className="animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-8"></div>
-                    <div className="h-64 bg-gray-200 rounded"></div>
+            <div className="container mx-auto p-6 space-y-6">
+                <div className="space-y-2">
+                    <div className="h-8 bg-muted rounded animate-pulse"></div>
+                    <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
                 </div>
+                <Card>
+                    <CardHeader>
+                        <div className="h-6 bg-muted rounded animate-pulse"></div>
+                        <div className="h-4 bg-muted rounded w-2/3 animate-pulse"></div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <div className="h-4 bg-muted rounded animate-pulse"></div>
+                                <div className="h-10 bg-muted rounded animate-pulse"></div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="h-4 bg-muted rounded animate-pulse"></div>
+                                <div className="h-10 bg-muted rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="h-4 bg-muted rounded animate-pulse"></div>
+                            <div className="h-10 bg-muted rounded animate-pulse"></div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     return (
-        <div className="container mx-auto p-6 max-w-2xl">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Konfigurasi Lokasi</h1>
-                <p className="text-gray-600 mt-2">
-                    Atur lokasi dan jarak toleransi untuk sistem absensi
-                </p>
+        <div className="container mx-auto p-6 max-w-4xl space-y-6">
+            {/* Header */}
+            <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                        <Settings className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Konfigurasi Lokasi</h1>
+                        <p className="text-muted-foreground">
+                            Atur lokasi dan jarak toleransi untuk sistem absensi
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Pengaturan Lokasi Absensi</CardTitle>
-                    <CardDescription>
-                        Tentukan titik koordinat dan radius area yang diizinkan untuk melakukan absensi.
-                        Jarak diukur dalam meter dari titik koordinat yang ditentukan.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="latitude">Latitude</Label>
-                                <Input
-                                    id="latitude"
-                                    type="number"
-                                    step="any"
-                                    placeholder="Contoh: -7.4503"
-                                    value={formData.latitude}
-                                    onChange={(e) => handleInputChange("latitude", e.target.value)}
-                                    required
-                                />
-                                <p className="text-sm text-gray-500">
-                                    Nilai antara -90 hingga 90
-                                </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Configuration Form */}
+                <div className="lg:col-span-2">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center space-x-2">
+                                <MapPin className="h-5 w-5 text-primary" />
+                                <div>
+                                    <CardTitle>Pengaturan Lokasi Absensi</CardTitle>
+                                    <CardDescription>
+                                        Tentukan titik koordinat dan radius area yang diizinkan untuk melakukan absensi
+                                    </CardDescription>
+                                </div>
                             </div>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="latitude">Latitude</Label>
+                                        <Input
+                                            id="latitude"
+                                            type="number"
+                                            step="any"
+                                            placeholder="Contoh: -7.4503"
+                                            value={formData.latitude}
+                                            onChange={(e) => handleInputChange("latitude", e.target.value)}
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Nilai antara -90 hingga 90
+                                        </p>
+                                    </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="longitude">Longitude</Label>
-                                <Input
-                                    id="longitude"
-                                    type="number"
-                                    step="any"
-                                    placeholder="Contoh: 110.2241"
-                                    value={formData.longitude}
-                                    onChange={(e) => handleInputChange("longitude", e.target.value)}
-                                    required
-                                />
-                                <p className="text-sm text-gray-500">
-                                    Nilai antara -180 hingga 180
-                                </p>
-                            </div>
-                        </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="longitude">Longitude</Label>
+                                        <Input
+                                            id="longitude"
+                                            type="number"
+                                            step="any"
+                                            placeholder="Contoh: 110.2241"
+                                            value={formData.longitude}
+                                            onChange={(e) => handleInputChange("longitude", e.target.value)}
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Nilai antara -180 hingga 180
+                                        </p>
+                                    </div>
+                                </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="distance">Jarak Toleransi (meter)</Label>
-                            <Input
-                                id="distance"
-                                type="number"
-                                min="1"
-                                max="10000"
-                                placeholder="Contoh: 500"
-                                value={formData.distance}
-                                onChange={(e) => handleInputChange("distance", e.target.value)}
-                                required
-                            />
-                            <p className="text-sm text-gray-500">
-                                Radius area dalam meter (1 - 10,000 meter)
-                            </p>
-                        </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="distance">Jarak Toleransi (meter)</Label>
+                                    <Input
+                                        id="distance"
+                                        type="number"
+                                        min="1"
+                                        max="10000"
+                                        placeholder="Contoh: 500"
+                                        value={formData.distance}
+                                        onChange={(e) => handleInputChange("distance", e.target.value)}
+                                        required
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Radius area dalam meter (1 - 10,000 meter)
+                                    </p>
+                                </div>
 
-                        <Separator />
+                                <Separator />
 
-                        <div className="flex gap-4">
-                            <Button
-                                type="submit"
-                                disabled={upsertMutation.isPending}
-                                className="flex-1"
-                            >
-                                {upsertMutation.isPending ? "Menyimpan..." : "Simpan Konfigurasi"}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleReset}
-                                disabled={resetMutation.isPending}
-                            >
-                                {resetMutation.isPending ? "Mereset..." : "Reset Default"}
-                            </Button>
-                        </div>
-                    </form>
+                                <div className="flex gap-3">
+                                    <Button
+                                        type="submit"
+                                        disabled={upsertMutation.isPending}
+                                        className="flex-1"
+                                    >
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {upsertMutation.isPending ? "Menyimpan..." : "Simpan Konfigurasi"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleReset}
+                                        disabled={resetMutation.isPending}
+                                    >
+                                        <RotateCcw className="mr-2 h-4 w-4" />
+                                        {resetMutation.isPending ? "Mereset..." : "Reset"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
 
+                {/* Sidebar */}
+                <div className="space-y-6">
+                    {/* Current Configuration */}
                     {config && (
-                        <>
-                            <Separator className="my-6" />
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <h3 className="font-medium text-gray-900 mb-3">Konfigurasi Saat Ini</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-600">Latitude:</span>
-                                        <p className="font-medium">{config.latitude}</p>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center space-x-2">
+                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                    <span>Konfigurasi Aktif</span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                        <span className="text-sm font-medium">Latitude</span>
+                                        <Badge variant="secondary" className="font-mono">
+                                            {config.latitude}
+                                        </Badge>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-600">Longitude:</span>
-                                        <p className="font-medium">{config.longitude}</p>
+                                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                        <span className="text-sm font-medium">Longitude</span>
+                                        <Badge variant="secondary" className="font-mono">
+                                            {config.longitude}
+                                        </Badge>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-600">Jarak Toleransi:</span>
-                                        <p className="font-medium">{config.distance} meter</p>
+                                    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                                        <span className="text-sm font-medium">Radius</span>
+                                        <Badge variant="secondary">
+                                            {config.distance} meter
+                                        </Badge>
                                     </div>
                                 </div>
-                                <div className="mt-3 text-xs text-gray-500">
-                                    Terakhir diupdate: {new Date(config.updatedAt).toLocaleString("id-ID")}
-                                </div>
-                            </div>
-                        </>
+                            </CardContent>
+                        </Card>
                     )}
-                </CardContent>
-            </Card>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">💡 Tips Penggunaan</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Gunakan Google Maps untuk mendapatkan koordinat yang akurat</li>
-                    <li>• Jarak toleransi 100-500 meter cocok untuk area sekolah/kantor</li>
-                    <li>• Koordinat akan digunakan untuk validasi lokasi saat absensi</li>
-                    <li>• Pastikan koordinat sesuai dengan lokasi fisik institusi</li>
-                </ul>
+                    {/* Tips */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center space-x-2">
+                                <Info className="h-5 w-5 text-blue-500" />
+                                <span>Tips Penggunaan</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription>
+                                    <ul className="space-y-2 text-sm">
+                                        <li>• Gunakan Google Maps untuk mendapatkan koordinat yang akurat</li>
+                                        <li>• Jarak toleransi 100-500 meter cocok untuk area sekolah/kantor</li>
+                                        <li>• Koordinat akan digunakan untuk validasi lokasi saat absensi</li>
+                                        <li>• Pastikan koordinat sesuai dengan lokasi fisik institusi</li>
+                                    </ul>
+                                </AlertDescription>
+                            </Alert>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

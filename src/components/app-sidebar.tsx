@@ -51,6 +51,21 @@ const navItems = [
     title: "Statistik Siswa",
     url: "/statistik",
     icon: BarChart2,
+  },
+  {
+    title: "Konfigurasi",
+    url: "/konfigurasi",
+    icon: SquareTerminal,
+    items: [
+      {
+        title: "Settings",
+        url: "/konfigurasi",
+      },
+      {
+        title: "Management Data",
+        url: "/konfigurasi/management",
+      },
+    ],
   }
 ];
 

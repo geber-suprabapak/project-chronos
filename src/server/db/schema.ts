@@ -155,10 +155,4 @@ export const configuration = pgTable("configuration", {
   longitude: doublePrecision("longitude").notNull(),
   latitude: doublePrecision("latitude").notNull(),
   distance: integer("distance").notNull(), // distance in meters
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .default(sql`now()`)
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .default(sql`now()`)
-    .notNull(),
 });
