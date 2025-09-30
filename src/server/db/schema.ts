@@ -148,3 +148,17 @@ export const biodataSiswa = pgTable("biodata_siswa", {
   kelamin: text("kelamin"),
   activated: boolean("activated").default(false).notNull(),
 });
+
+// configuration - System configuration for location settings
+export const configuration = pgTable("configuration", {
+  id: integer("id").primaryKey().notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  distance: integer("distance").notNull(), // distance in meters
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+});
