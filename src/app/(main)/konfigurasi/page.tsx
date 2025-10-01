@@ -13,22 +13,11 @@ import { Alert, AlertDescription } from "~/components/ui/alert";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import {
-    MapPin, Save, RotateCcw, Settings, Globe, Target, CheckCircle2,
-    Database, Plus, Edit, Trash2, Eye, EyeOff, Building2, Users,
+    MapPin, Save, RotateCcw, Settings, Globe, Target,
+    Database, Plus, Edit, Trash2, Building2,
     Activity, BarChart3, Power, PowerOff, Info
 } from "lucide-react";
 import LocationPicker from "~/components/location-picker";
-
-type LocationData = {
-    id: number;
-    name: string;
-    latitude: number;
-    longitude: number;
-    distance: number;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-};
 
 export default function ConfigurationPage() {
     const [formData, setFormData] = useState({
@@ -49,7 +38,7 @@ export default function ConfigurationPage() {
 
     // Queries
     const { data: locations, isLoading: locationsLoading, refetch: refetchLocations } = api.location.getAll.useQuery();
-    const { data: activeLocations, refetch: refetchActive } = api.location.getActive.useQuery();
+    const { refetch: refetchActive } = api.location.getActive.useQuery();
     const { data: stats, refetch: refetchStats } = api.location.getStats.useQuery();
 
     // Mutations
