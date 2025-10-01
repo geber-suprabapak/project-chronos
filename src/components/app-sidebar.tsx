@@ -60,11 +60,7 @@ const navItems = [
       {
         title: "Settings",
         url: "/konfigurasi",
-      },
-      {
-        title: "Management Data",
-        url: "/konfigurasi/management",
-      },
+      }
     ],
   }
 ];

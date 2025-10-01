@@ -6,6 +6,8 @@ import {
 } from "~/server/api/trpc";
 import { location } from "~/server/db/schema";
 
+type LocationRow = typeof location.$inferSelect;
+
 export const locationRouter = createTRPCRouter({
     // Get current active location (primary location for system)
     get: protectedProcedure.query(async ({ ctx }) => {
@@ -92,7 +94,7 @@ export const locationRouter = createTRPCRouter({
             })
         }))
         .mutation(async ({ ctx, input }) => {
-            const updateData: Record<string, unknown> = {
+            const updateData: any = {
                 ...input.data,
                 updatedAt: sql`CURRENT_TIMESTAMP`,
             };
@@ -154,7 +156,7 @@ export const locationRouter = createTRPCRouter({
             value: z.union([z.string(), z.number()]),
         }))
         .mutation(async ({ ctx, input }) => {
-            const updateData: Record<string, unknown> = {
+            const updateData: any = {
                 [input.field]: input.value,
                 updatedAt: sql`CURRENT_TIMESTAMP`,
             };

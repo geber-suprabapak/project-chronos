@@ -7,6 +7,7 @@ import {
   pgTable,
   uuid,
   text,
+  varchar,
   timestamp,
   boolean,
   date,
@@ -149,10 +150,14 @@ export const biodataSiswa = pgTable("biodata_siswa", {
   activated: boolean("activated").default(false).notNull(),
 });
 
-// configuration - System configuration for location settings
-export const configuration = pgTable("configuration", {
+// location - System configuration for location settings
+export const location = pgTable("location", {
   id: integer("id").primaryKey().notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
   longitude: doublePrecision("longitude").notNull(),
   latitude: doublePrecision("latitude").notNull(),
   distance: integer("distance").notNull(), // distance in meters
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
