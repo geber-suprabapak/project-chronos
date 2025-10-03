@@ -363,7 +363,7 @@ export default function JadwalPage() {
                     <CardTitle className="flex items-center space-x-2">
                         <Settings className="h-5 w-5" />
                         <span>
-                            {selectedDayId 
+                            {selectedDayId
                                 ? `Edit Jadwal - ${DAY_MAP[schedules?.find(s => s.id === selectedDayId)?.hari as DayKey]?.label ?? ""}`
                                 : "Edit Jadwal Absensi"
                             }

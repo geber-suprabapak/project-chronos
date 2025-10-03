@@ -22,7 +22,7 @@ export const jadwalRouter = createTRPCRouter({
 
     // Get schedule by day
     getByHari: protectedProcedure
-        .input(z.object({ 
+        .input(z.object({
             hari: z.enum(HARI_ENUM)
         }))
         .query(async ({ ctx, input }) => {
@@ -117,7 +117,7 @@ export const jadwalRouter = createTRPCRouter({
         })))
         .mutation(async ({ ctx, input }) => {
             const results = [];
-            
+
             for (const item of input) {
                 const updateData: Record<string, unknown> = {
                     ...item.data,
