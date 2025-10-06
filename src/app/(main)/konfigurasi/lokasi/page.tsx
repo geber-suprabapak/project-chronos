@@ -14,7 +14,7 @@ import { api } from "~/trpc/react";
 import {
     MapPin, Save, RotateCcw, Settings, Globe, Target,
     Edit, Trash2, Building2,
-    Activity, BarChart3, Power, PowerOff, Info, Search, Loader2
+    Activity, Power, PowerOff, Info, Search, Loader2, Plus, X
 } from "lucide-react";
 import LocationPicker from "~/components/location-picker";
 
@@ -26,6 +26,7 @@ export default function ConfigurationPage() {
         distance: "",
     });
     const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+    const [showForm, setShowForm] = useState(false);
 
     // Search location states
     const [searchQuery, setSearchQuery] = useState("");
@@ -76,6 +77,8 @@ export default function ConfigurationPage() {
     const updateMutation = api.location.updateById.useMutation({
         onSuccess: () => {
             toast.success("Lokasi berhasil diupdate!");
+            setShowForm(false);
+            setSelectedLocationId(null);
             void refetchLocations();
             void refetchActive();
             void refetchStats();
@@ -103,6 +106,7 @@ export default function ConfigurationPage() {
             if (selectedLocationId) {
                 setSelectedLocationId(null);
             }
+            setShowForm(false);
             void refetchLocations();
             void refetchActive();
             void refetchStats();
@@ -295,12 +299,13 @@ export default function ConfigurationPage() {
         }, 300);
     };
 
-    // Utility: get next available location ID (reserve 1 for primary)
+    // Utility: get next available location ID (only 2 or 3 allowed)
     const getNextLocationId = () => {
         const used = new Set((locations ?? []).map((l) => l.id));
-        let candidate = 2; // reserve 1 for primary
-        while (used.has(candidate)) candidate += 1;
-        return candidate;
+        // Only allow IDs 2 and 3 (ID 1 is reserved as default)
+        if (!used.has(2)) return 2;
+        if (!used.has(3)) return 3;
+        return null; // Max 3 locations reached
     };
 
     // Handle search result selection
@@ -313,6 +318,7 @@ export default function ConfigurationPage() {
         const pickedDistance = Number.parseInt(formData.distance || "", 10);
         const safeDistance = Number.isFinite(pickedDistance) ? pickedDistance : 500;
 
+        // Only fill form fields, do NOT auto-create
         setFormData((prev) => ({
             ...prev,
             name: prev.name?.trim() ? prev.name : pickedName,
@@ -321,28 +327,7 @@ export default function ConfigurationPage() {
             distance: prev.distance || String(safeDistance),
         }));
 
-        // Auto-create if not in edit mode
-        if (!selectedLocationId) {
-            const newId = getNextLocationId();
-            createMutation.mutate(
-                {
-                    id: newId,
-                    name: pickedName,
-                    latitude: lat,
-                    longitude: lng,
-                    distance: safeDistance,
-                    isActive: true,
-                },
-                {
-                    onSuccess: () => {
-                        setSelectedLocationId(newId);
-                        toast.success(`Lokasi "${pickedName}" dibuat dan dipilih`);
-                    },
-                }
-            );
-        } else {
-            toast.success(`Lokasi "${pickedName}" dipilih`);
-        }
+        toast.success(`Lokasi "${pickedName}" dipilih. Klik "Simpan" untuk menyimpan.`);
 
         // Close search UI
         setSearchQuery("");
@@ -350,8 +335,66 @@ export default function ConfigurationPage() {
         setSearchResults([]);
     };
 
+    const handleOpenForm = (locationId: number | null = null) => {
+        if (locationId) {
+            // Edit mode
+            const location = locations?.find(loc => loc.id === locationId);
+            if (location) {
+                setSelectedLocationId(locationId);
+                setFormData({
+                    name: location.name,
+                    latitude: location.latitude.toString(),
+                    longitude: location.longitude.toString(),
+                    distance: location.distance.toString(),
+                });
+            }
+        } else {
+            // Create new mode
+            const nextId = getNextLocationId();
+            if (nextId === null) {
+                toast.error("Maksimal 3 lokasi. Hapus lokasi lain terlebih dahulu.");
+                return;
+            }
+            setSelectedLocationId(null);
+            setFormData({
+                name: "",
+                latitude: "",
+                longitude: "",
+                distance: "500",
+            });
+        }
+        setShowForm(true);
+        // Scroll to form
+        setTimeout(() => {
+            document.getElementById('location-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    };
+
+    const handleCloseForm = () => {
+        setShowForm(false);
+        setSelectedLocationId(null);
+        setSearchQuery("");
+        setShowSearchResults(false);
+        setSearchResults([]);
+        // Reset form after a short delay to avoid visual glitch
+        setTimeout(() => {
+            setFormData({
+                name: "",
+                latitude: "",
+                longitude: "",
+                distance: "",
+            });
+        }, 200);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Prevent editing ID 1
+        if (selectedLocationId === 1) {
+            toast.error("Lokasi default (ID #1) tidak dapat diubah");
+            return;
+        }
 
         const name = formData.name.trim();
         const latitude = parseFloat(formData.latitude);
@@ -386,21 +429,51 @@ export default function ConfigurationPage() {
             distance,
         };
 
-        if (selectedLocationId) {
-            // Update existing location
+        if (selectedLocationId && selectedLocationId !== 1) {
+            // Update existing location (not ID 1)
             updateMutation.mutate({
                 id: selectedLocationId,
                 data: payload,
             });
-        } else {
-            // Upsert primary location
-            upsertMutation.mutate(payload);
+        } else if (!selectedLocationId) {
+            // Create new location with next available ID
+            const nextId = getNextLocationId();
+
+            if (nextId === null) {
+                toast.error("Maksimal 3 lokasi. Hapus lokasi lain terlebih dahulu.");
+                return;
+            }
+
+            createMutation.mutate(
+                {
+                    id: nextId,
+                    name,
+                    latitude,
+                    longitude,
+                    distance,
+                    isActive: true,
+                },
+                {
+                    onSuccess: () => {
+                        toast.success(`Lokasi "${name}" berhasil dibuat dengan ID #${nextId}`);
+                        setShowForm(false);
+                        setSelectedLocationId(null);
+                        void refetchLocations();
+                        void refetchActive();
+                        void refetchStats();
+                    },
+                }
+            );
         }
     };
 
     // Removed unused manual create handler and dialog-related state
 
     const handleToggleActive = (id: number) => {
+        if (id === 1) {
+            toast.error("Lokasi default (ID #1) selalu aktif dan tidak dapat dinonaktifkan");
+            return;
+        }
         toggleActiveMutation.mutate({ id });
     };
 
@@ -451,68 +524,55 @@ export default function ConfigurationPage() {
     return (
         <div className="container mx-auto p-6 max-w-7xl space-y-6">
             {/* Header */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
+            <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <Settings className="h-7 w-7 text-primary" />
+                            <div className="p-2 rounded-lg">
+                                <Settings className="h-7 w-7" />
                             </div>
                             Manajemen Lokasi Absensi
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground text-sm md:text-base">
                             Kelola beberapa lokasi untuk sistem absensi dengan kontrol status aktif/nonaktif
                         </p>
                     </div>
+                    <Button
+                        onClick={() => handleOpenForm(null)}
+                        disabled={locations && locations.length >= 3}
+                        className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
+                        size="lg"
+                    >
+                        <Plus className="h-5 w-5" />
+                        Tambah Lokasi Baru
+                    </Button>
                 </div>
 
                 {/* Statistics Cards */}
                 {stats && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center space-x-2">
-                                    <Building2 className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <p className="text-sm font-medium">Total Lokasi</p>
-                                        <p className="text-2xl font-bold">{stats.total}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card className="shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-muted-foreground">Total Lokasi</p>
+                                        <p className="text-3xl font-bold">{stats.total}<span className="text-lg text-muted-foreground">/3</span></p>
+                                    </div>
+                                    <div className="p-3 rounded-full">
+                                        <Building2 className="h-8 w-8" />
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center space-x-2">
-                                    <Activity className="h-5 w-5 text-green-600" />
-                                    <div>
-                                        <p className="text-sm font-medium">Lokasi Aktif</p>
-                                        <p className="text-2xl font-bold">{stats.active}</p>
+                        <Card className="shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-muted-foreground">Lokasi Aktif</p>
+                                        <p className="text-3xl font-bold">{stats.active}</p>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center space-x-2">
-                                    <Target className="h-5 w-5 text-orange-600" />
-                                    <div>
-                                        <p className="text-sm font-medium">Rata-rata Radius</p>
-                                        <p className="text-2xl font-bold">
-                                            {Math.round(stats.avgDistance || 0)}m
-                                        </p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4">
-                                <div className="flex items-center space-x-2">
-                                    <BarChart3 className="h-5 w-5 text-purple-600" />
-                                    <div>
-                                        <p className="text-sm font-medium">Max Radius</p>
-                                        <p className="text-2xl font-bold">
-                                            {stats.maxDistance || 0}m
-                                        </p>
+                                    <div className="p-3 rounded-full">
+                                        <Activity className="h-8 w-8" />
                                     </div>
                                 </div>
                             </CardContent>
@@ -522,88 +582,97 @@ export default function ConfigurationPage() {
 
                 {/* Location List */}
                 {locations && locations.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Globe className="h-5 w-5" />
-                                Daftar Lokasi
-                            </CardTitle>
-                            <CardDescription>
-                                Kelola semua lokasi dan status aktif/nonaktif mereka
-                            </CardDescription>
+                    <Card className="shadow-lg">
+                        <CardHeader className="border-b">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-xl flex items-center gap-2">
+                                        <Globe className="h-5 w-5" />
+                                        Daftar Lokasi
+                                    </CardTitle>
+                                    <CardDescription className="mt-1">
+                                        {locations.length} dari 3 lokasi tersedia
+                                    </CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="rounded-md border">
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nama Lokasi</TableHead>
-                                            <TableHead>Koordinat</TableHead>
-                                            <TableHead>Radius</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Aksi</TableHead>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead className="font-semibold">Nama Lokasi</TableHead>
+                                            <TableHead className="font-semibold">Koordinat</TableHead>
+                                            <TableHead className="font-semibold">Radius</TableHead>
+                                            <TableHead className="font-semibold">Status</TableHead>
+                                            <TableHead className="font-semibold text-right">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {locations.map((location) => (
-                                            <TableRow key={location.id}>
+                                        {[...locations].sort((a, b) => a.id - b.id).map((location, index) => (
+                                            <TableRow
+                                                key={location.id}
+                                                className="hover:bg-muted/50 transition-colors"
+                                            >
                                                 <TableCell>
-                                                    <div className="flex items-center space-x-2">
-                                                        <Badge variant="outline">#{location.id}</Badge>
-                                                        <span className="font-medium">{location.name}</span>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300`}>
+                                                            #{location.id}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium flex items-center gap-2">
+                                                                {location.name}
+                                                                {location.id === 1 && (
+                                                                    <Badge variant="default" className="text-xs">
+                                                                        Default
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                    <div className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded inline-block">
                                                         {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="secondary">{location.distance}m</Badge>
+                                                    <Badge variant="secondary" className="font-mono">
+                                                        {location.distance}m
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center space-x-2">
+                                                    <div className="flex items-center space-x-3">
                                                         <Switch
                                                             checked={location.isActive}
                                                             onCheckedChange={() => handleToggleActive(location.id)}
-                                                            disabled={toggleActiveMutation.isPending}
+                                                            disabled={location.id === 1 || toggleActiveMutation.isPending}
                                                         />
-                                                        <Badge
-                                                            variant={location.isActive ? "default" : "secondary"}
-                                                            className="flex items-center gap-1"
-                                                        >
-                                                            {location.isActive ? (
-                                                                <>
-                                                                    <Power className="h-3 w-3" />
-                                                                    Aktif
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <PowerOff className="h-3 w-3" />
-                                                                    Nonaktif
-                                                                </>
-                                                            )}
+                                                        <Badge className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                                            {location.isActive ? 'Aktif' : 'Nonaktif'}
                                                         </Badge>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-2">
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => setSelectedLocationId(location.id)}
+                                                            onClick={() => handleOpenForm(location.id)}
+                                                            className="hover:bg-muted hover:text-muted-foreground"
                                                         >
-                                                            <Edit className="h-3 w-3 mr-1" />
-                                                            Edit
+                                                            <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                                            {location.id === 1 ? "Lihat" : "Edit"}
                                                         </Button>
                                                         {location.id !== 1 && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="destructive"
+                                                                variant="outline"
                                                                 onClick={() => handleDelete(location.id, location.name)}
                                                                 disabled={deleteMutation.isPending}
+                                                                className="hover:bg-muted hover:text-muted-foreground"
                                                             >
-                                                                <Trash2 className="h-3 w-3 mr-1" />
+                                                                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                                                                 Hapus
                                                             </Button>
                                                         )}
@@ -617,256 +686,323 @@ export default function ConfigurationPage() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Empty State */}
+                {locations && locations.length === 0 && (
+                    <Card className="shadow-lg">
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="p-4 bg-muted rounded-full mb-4">
+                                <MapPin className="h-12 w-12 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-lg font-semibold mb-2">Belum Ada Lokasi</h3>
+                            <p className="text-muted-foreground text-center mb-6 max-w-md">
+                                Mulai dengan menambahkan lokasi pertama untuk sistem absensi Anda
+                            </p>
+                            <Button onClick={() => handleOpenForm(null)} size="lg">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Tambah Lokasi Pertama
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
-            {/* Main Content - Form and Map in One Card */}
-            <Card className="w-full">
-                <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                        <Settings className="h-5 w-5" />
-                        <span>
-                            {selectedLocationId ? `Edit Lokasi #${selectedLocationId}` : "Buat/Edit Lokasi Utama"}
-                        </span>
-                    </CardTitle>
-                    <CardDescription>
-                        {selectedLocationId
-                            ? "Ubah pengaturan lokasi yang dipilih"
-                            : "Tentukan atau edit lokasi utama sistem absensi (ID #1)"
-                        }
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Location Search */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Search className="h-4 w-4" />
-                            <h4 className="font-medium">Cari Lokasi</h4>
-                        </div>
-                        <div className="relative search-container">
-                            <Input
-                                type="text"
-                                placeholder="Cari lokasi: kantor, sekolah, mall, jalan, atau ketik alamat..."
-                                value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                className="w-full pr-10"
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                {isSearching ? (
-                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            {/* Form Card for Create/Edit Location */}
+            {showForm && (
+                <Card id="location-form-card" className="shadow-lg border">
+                    <CardHeader className="border-b pb-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                {selectedLocationId === 1 ? (
+                                    <>
+                                        <div className="p-2 rounded-lg">
+                                            <Globe className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                                                Lokasi Default
+                                                <Badge variant="secondary" className="text-xs">Read-only</Badge>
+                                            </CardTitle>
+                                            <CardDescription className="text-sm mt-1">
+                                                Lokasi utama (ID #1) tidak dapat diubah
+                                            </CardDescription>
+                                        </div>
+                                    </>
+                                ) : selectedLocationId ? (
+                                    <>
+                                        <div className="p-2 rounded-lg">
+                                            <Edit className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-semibold">Edit Lokasi #{selectedLocationId}</CardTitle>
+                                            <CardDescription className="text-sm mt-1">
+                                                Ubah pengaturan lokasi yang dipilih
+                                            </CardDescription>
+                                        </div>
+                                    </>
                                 ) : (
-                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                    <>
+                                        <div className="p-2 rounded-lg">
+                                            <Plus className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-xl font-semibold">Tambah Lokasi Baru</CardTitle>
+                                            <CardDescription className="text-sm mt-1">
+                                                Maksimal 3 lokasi untuk sistem absensi
+                                            </CardDescription>
+                                        </div>
+                                    </>
                                 )}
                             </div>
-
-                            {/* Search Results */}
-                            {showSearchResults && searchResults.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-80 overflow-y-auto">
-                                    {searchResults.map((result) => {
-                                        const locationName = result.display_name?.split(',')[0]?.trim();
-                                        const locationDetails = result.display_name?.split(',').slice(1).join(',').trim();
-                                        const locationType = result.type ?? result.class;
-
-                                        return (
-                                            <button
-                                                key={result.place_id}
-                                                type="button"
-                                                className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-b-0 text-sm transition-colors"
-                                                onClick={() => handleSearchResultSelect(result)}
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <MapPin className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                                                            {locationName}
-                                                            {locationType && (
-                                                                <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                                                                    {locationType}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5 line-clamp-2 break-words">
-                                                            {locationDetails}
-                                                        </div>
-                                                        <div className="text-blue-600 dark:text-blue-400 text-xs mt-1 font-mono">
-                                                            {parseFloat(result.lat).toFixed(6)}, {parseFloat(result.lon).toFixed(6)}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* No Results */}
-                            {showSearchResults && searchResults.length === 0 && !isSearching && searchQuery.trim() && searchQuery.trim().length >= 2 && (
-                                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-4 text-sm">
-                                    <div className="text-center text-gray-500 dark:text-gray-400">
-                                        <div className="font-medium mb-2">Lokasi tidak ditemukan</div>
-                                        <div className="text-xs space-y-1">
-                                            <div>• Coba kata kunci yang lebih umum (misal: &ldquo;magelang&rdquo; bukan &ldquo;SMKN 2 Magelang&rdquo;)</div>
-                                            <div>• Gunakan nama kota, jalan, atau landmark terkenal</div>
-                                            <div>• Pastikan ejaan sudah benar</div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCloseForm}
+                                className="hover:bg-muted transition-colors rounded-full"
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="space-y-6">
+                            {/* Form Section */}
+                            <div className="space-y-5">
+                                {/* Location Search */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm font-semibold">
+                                        <Search className="h-4 w-4" />
+                                        <h4>Pencarian Lokasi</h4>
+                                    </div>
+                                    <div className="relative search-container">
+                                        <Input
+                                            type="text"
+                                            placeholder="Cari lokasi: nama jalan, sekolah, kantor, mall..."
+                                            value={searchQuery}
+                                            onChange={(e) => handleSearchChange(e.target.value)}
+                                            className="w-full pr-10 h-10"
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {isSearching ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Search className="h-4 w-4 text-muted-foreground" />
+                                            )}
                                         </div>
+
+                                        {/* Search Results */}
+                                        {showSearchResults && searchResults.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                                {searchResults.map((result, idx) => {
+                                                    const locationName = result.display_name?.split(',')[0]?.trim();
+                                                    const locationDetails = result.display_name?.split(',').slice(1).join(',').trim();
+                                                    const locationType = result.type ?? result.class;
+
+                                                    return (
+                                                        <button
+                                                            key={result.place_id}
+                                                            type="button"
+                                                            className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${idx === 0 ? 'rounded-t-lg' : ''
+                                                                } ${idx === searchResults.length - 1 ? 'rounded-b-lg' : ''}`}
+                                                            onClick={() => handleSearchResultSelect(result)}
+                                                        >
+                                                            <div className="flex items-start gap-3">
+                                                                <div className="p-2 bg-muted rounded-lg flex-shrink-0">
+                                                                    <MapPin className="h-4 w-4" />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="font-semibold truncate flex items-center gap-2">
+                                                                        {locationName}
+                                                                        {locationType && (
+                                                                            <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                                                                                {locationType}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-muted-foreground text-xs mt-1 line-clamp-1 break-words">
+                                                                        {locationDetails}
+                                                                    </div>
+                                                                    <div className="text-xs mt-1.5 font-mono">
+                                                                        {parseFloat(result.lat).toFixed(6)}, {parseFloat(result.lon).toFixed(6)}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* No Results */}
+                                        {showSearchResults && searchResults.length === 0 && !isSearching && searchQuery.trim() && searchQuery.trim().length >= 2 && (
+                                            <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg p-4 text-sm">
+                                                <div className="text-center text-muted-foreground">
+                                                    <div className="p-2 bg-muted rounded-full w-fit mx-auto mb-2">
+                                                        <Search className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="font-semibold mb-1 text-xs">Lokasi tidak ditemukan</div>
+                                                    <div className="text-xs">Coba kata kunci yang lebih umum</div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            💡 <strong>Tips pencarian:</strong> Coba kata kunci seperti &ldquo;magelang&rdquo;, &ldquo;smk&rdquo;, &ldquo;mall&rdquo;, &ldquo;jalan sudirman&rdquo;, atau nama tempat spesifik.
-                            Tidak perlu mengetik alamat lengkap.
-                        </p>
-                    </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Form Fields in Grid Layout */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                            {/* Location Name */}
-                            <div className="space-y-2">
-                                <Label htmlFor="name" className="flex items-center gap-2 text-sm font-medium">
-                                    <Building2 className="h-4 w-4" />
-                                    Nama Lokasi *
-                                </Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    placeholder="Contoh: Kantor Pusat"
-                                    value={formData.name}
-                                    onChange={(e) => handleInputChange("name", e.target.value)}
-                                    required
-                                    className="w-full"
-                                />
+                                <form onSubmit={handleSubmit} id="location-form" className="space-y-4">
+                                    {/* Form Fields */}
+                                    <div className="space-y-4">
+                                        {/* Location Name */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name" className="flex items-center gap-2 text-sm font-medium">
+                                                <Building2 className="h-4 w-4" />
+                                                Nama Lokasi <span className="text-muted-foreground">*</span>
+                                            </Label>
+                                            <Input
+                                                id="name"
+                                                type="text"
+                                                placeholder="Contoh: Kantor Pusat, SMK Negeri 1 Jakarta"
+                                                value={formData.name}
+                                                onChange={(e) => handleInputChange("name", e.target.value)}
+                                                required
+                                                disabled={selectedLocationId === 1}
+                                                className="h-10"
+                                            />
+                                        </div>
+
+                                        {/* Latitude & Longitude */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="latitude" className="flex items-center gap-2 text-sm font-medium">
+                                                    <MapPin className="h-4 w-4" />
+                                                    Latitude <span className="text-muted-foreground">*</span>
+                                                </Label>
+                                                <Input
+                                                    id="latitude"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="-6.2088"
+                                                    value={formData.latitude}
+                                                    onChange={(e) => handleInputChange("latitude", e.target.value)}
+                                                    required
+                                                    disabled={selectedLocationId === 1}
+                                                    className="h-10 font-mono text-sm"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="longitude" className="flex items-center gap-2 text-sm font-medium">
+                                                    <Globe className="h-4 w-4" />
+                                                    Longitude <span className="text-muted-foreground">*</span>
+                                                </Label>
+                                                <Input
+                                                    id="longitude"
+                                                    type="number"
+                                                    step="any"
+                                                    placeholder="106.8456"
+                                                    value={formData.longitude}
+                                                    onChange={(e) => handleInputChange("longitude", e.target.value)}
+                                                    required
+                                                    disabled={selectedLocationId === 1}
+                                                    className="h-10 font-mono text-sm"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Distance */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="distance" className="flex items-center gap-2 text-sm font-medium">
+                                                <Target className="h-4 w-4" />
+                                                Radius Absensi (meter) <span className="text-muted-foreground">*</span>
+                                            </Label>
+                                            <Input
+                                                id="distance"
+                                                type="number"
+                                                min="1"
+                                                max="10000"
+                                                placeholder="100"
+                                                value={formData.distance}
+                                                onChange={(e) => handleInputChange("distance", e.target.value)}
+                                                required
+                                                disabled={selectedLocationId === 1}
+                                                className="h-10"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Siswa harus berada dalam radius ini untuk bisa absen (1-10,000 meter)
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Helper Text */}
+                                    <Alert>
+                                        <Info className="h-4 w-4" />
+                                        <AlertDescription className="text-xs">
+                                            Klik pada peta di bawah untuk memilih koordinat secara visual, atau gunakan search box untuk mencari alamat.
+                                        </AlertDescription>
+                                    </Alert>
+                                </form>
                             </div>
 
-                            {/* Latitude */}
-                            <div className="space-y-2">
-                                <Label htmlFor="latitude" className="flex items-center gap-2 text-sm font-medium">
+                            {/* Map Section - Below Form */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-sm font-semibold">
                                     <MapPin className="h-4 w-4" />
-                                    Latitude *
-                                </Label>
-                                <Input
-                                    id="latitude"
-                                    type="number"
-                                    step="any"
-                                    placeholder="-7.4503"
-                                    value={formData.latitude}
-                                    onChange={(e) => handleInputChange("latitude", e.target.value)}
-                                    required
-                                    className="w-full"
-                                />
-                            </div>
-
-                            {/* Longitude */}
-                            <div className="space-y-2">
-                                <Label htmlFor="longitude" className="flex items-center gap-2 text-sm font-medium">
-                                    <Globe className="h-4 w-4" />
-                                    Longitude *
-                                </Label>
-                                <Input
-                                    id="longitude"
-                                    type="number"
-                                    step="any"
-                                    placeholder="110.2241"
-                                    value={formData.longitude}
-                                    onChange={(e) => handleInputChange("longitude", e.target.value)}
-                                    required
-                                    className="w-full"
-                                />
-                            </div>
-
-                            {/* Distance */}
-                            <div className="space-y-2">
-                                <Label htmlFor="distance" className="flex items-center gap-2 text-sm font-medium">
-                                    <Target className="h-4 w-4" />
-                                    Radius (m) *
-                                </Label>
-                                <Input
-                                    id="distance"
-                                    type="number"
-                                    min="1"
-                                    max="10000"
-                                    placeholder="500"
-                                    value={formData.distance}
-                                    onChange={(e) => handleInputChange("distance", e.target.value)}
-                                    required
-                                    className="w-full"
-                                />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium opacity-0">Actions</Label>
-                                <div className="flex gap-2">
-                                    <Button
-                                        type="submit"
-                                        disabled={upsertMutation.isPending || updateMutation.isPending}
-                                        size="sm"
-                                    >
-                                        <Save className="mr-1 h-3 w-3" />
-                                        {(upsertMutation.isPending || updateMutation.isPending)
-                                            ? "Saving..."
-                                            : selectedLocationId ? "Update" : "Simpan"
-                                        }
-                                    </Button>
-                                    {selectedLocationId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setSelectedLocationId(null)}
-                                        >
-                                            Batal
-                                        </Button>
-                                    )}
-                                    {!selectedLocationId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleReset}
-                                            disabled={resetMutation.isPending}
-                                        >
-                                            <RotateCcw className="mr-1 h-3 w-3" />
-                                            Reset
-                                        </Button>
-                                    )}
+                                    <h4>Pemilih Lokasi</h4>
                                 </div>
+                                <div className="border rounded-lg overflow-hidden shadow-md" style={{ height: '500px' }}>
+                                    <LocationPicker
+                                        latitude={formData.latitude ? parseFloat(formData.latitude) : -7.4771886}
+                                        longitude={formData.longitude ? parseFloat(formData.longitude) : 110.2182633}
+                                        distance={formData.distance ? parseInt(formData.distance) : 20}
+                                        onLocationChange={handleLocationChange}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Klik pada peta atau drag marker untuk mengatur koordinat
+                                </p>
                             </div>
                         </div>
 
-                        {/* Helper Text */}
-                        <p className="text-xs text-muted-foreground">
-                            Jarak maksimal yang diizinkan untuk melakukan absensi (1-10000 meter).
-                            Klik pada peta di bawah untuk memilih koordinat dengan mudah.
-                        </p>
-                    </form>
-
-                    {/* Map Section */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <h4 className="font-medium">Pemilih Lokasi</h4>
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCloseForm}
+                                className="min-w-24"
+                            >
+                                <X className="h-4 w-4 mr-2" />
+                                Batal
+                            </Button>
+                            {!selectedLocationId && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleReset}
+                                    disabled={resetMutation.isPending}
+                                    className="min-w-24"
+                                >
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                type="submit"
+                                form="location-form"
+                                disabled={selectedLocationId === 1 || upsertMutation.isPending || updateMutation.isPending}
+                                className="min-w-32"
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                {(upsertMutation.isPending || updateMutation.isPending)
+                                    ? "Menyimpan..."
+                                    : selectedLocationId === 1
+                                        ? "Read-only"
+                                        : selectedLocationId ? "Update Lokasi" : "Simpan Lokasi"
+                                }
+                            </Button>
                         </div>
-                        <div className="border rounded-lg overflow-hidden">
-                            <LocationPicker
-                                latitude={formData.latitude ? parseFloat(formData.latitude) : null}
-                                longitude={formData.longitude ? parseFloat(formData.longitude) : null}
-                                distance={formData.distance ? parseInt(formData.distance) : 500}
-                                onLocationChange={handleLocationChange}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Info Alert */}
-                    <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                            <strong>Tips:</strong> Pilih lokasi dari tabel di atas untuk mengedit, atau biarkan kosong untuk membuat/edit lokasi utama.
-                            Lokasi yang aktif akan digunakan untuk validasi absensi. Klik pada peta untuk memilih koordinat secara visual.
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

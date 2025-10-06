@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, BarChart2, GraduationCap } from "lucide-react";
+import { SquareTerminal, Users, CalendarDays, BarChart2, GraduationCap, Settings } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -55,12 +55,16 @@ const navItems = [
   {
     title: "Konfigurasi",
     url: "/konfigurasi/lokasi",
-    icon: SquareTerminal,
+    icon: Settings,
     items: [
       {
         title: "Lokasi",
         url: "/konfigurasi/lokasi",
-      }
+      },
+      {
+        title: "Jadwal",
+        url: "/konfigurasi/jadwal",
+      },
     ],
   }
 ];

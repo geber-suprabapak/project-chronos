@@ -18,9 +18,9 @@ interface LocationPickerProps {
 // Simple map component that loads Leaflet dynamically
 const LeafletMap = dynamic(
   async () => {
-    const { MapContainer, TileLayer, Marker, Circle, useMapEvents } = await import("react-leaflet");
+    const { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } = await import("react-leaflet");
     const L = await import("leaflet");
-    
+
     // Fix marker icons
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
@@ -51,6 +51,20 @@ const LeafletMap = dynamic(
       return null;
     };
 
+    // Component to auto-pan map when coordinates change
+    const MapCenterUpdater = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+      const map = useMap();
+
+      React.useEffect(() => {
+        // Smoothly pan to new coordinates
+        map.flyTo([latitude, longitude], map.getZoom(), {
+          duration: 0.5 // Animation duration in seconds
+        });
+      }, [latitude, longitude, map]);
+
+      return null;
+    };
+
     return function LeafletMapComponent({ latitude, longitude, distance, onLocationChange }: MapProps) {
       return (
         <div className="w-full h-80 rounded-lg overflow-hidden border border-border">
@@ -75,6 +89,7 @@ const LeafletMap = dynamic(
               }}
             />
             <MapClickHandler onLocationChange={onLocationChange} />
+            <MapCenterUpdater latitude={latitude} longitude={longitude} />
           </MapContainer>
         </div>
       );
@@ -93,11 +108,11 @@ const LeafletMap = dynamic(
   }
 );
 
-export default function LocationPicker({ 
-  latitude, 
-  longitude, 
-  onLocationChange, 
-  distance = 500 
+export default function LocationPicker({
+  latitude,
+  longitude,
+  onLocationChange,
+  distance = 500
 }: LocationPickerProps) {
   return (
     <Card>
