@@ -54,12 +54,12 @@ const navItems = [
   },
   {
     title: "Konfigurasi",
-    url: "/konfigurasi",
+    url: "/konfigurasi/lokasi",
     icon: SquareTerminal,
     items: [
       {
-        title: "Settings",
-        url: "/konfigurasi",
+        title: "Lokasi",
+        url: "/konfigurasi/lokasi",
       }
     ],
   }
