@@ -1,5 +1,6 @@
 -- Supabase schema tailored for skanida-apps-mobile
 -- Run in Supabase SQL Editor. Designed to be idempotent where possible.
+-- Updated: October 6, 2025
 
 -- =====================
 -- Extensions
@@ -20,16 +21,13 @@ create table if not exists public.user_profiles (
   class_name text,
   avatar_url text,
   role text,
+  nis text,
+  gender text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists user_profiles_user_id_idx on public.user_profiles(user_id);
-
--- Ensure app-specific fields exist
-alter table public.user_profiles
-  add column if not exists nis text,
-  add column if not exists gender text;
 
 -- updated_at trigger helper
 create or replace function public.set_updated_at()
@@ -49,7 +47,7 @@ begin
 end$$;
 
 -- absences
--- App expects columns: user_id, date (YYYY-MM-DD), status ('Hadir' or 'Pulang'), reason, photo_url, latitude, longitude, created_at
+-- App expects columns: user_id, date (YYYY-MM-DD), status ('Hadir', 'Datang', or 'Pulang'), reason, photo_url, latitude, longitude, created_at
 create table if not exists public.absences (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -83,7 +81,8 @@ create table if not exists public.perizinan (
   approved_at timestamptz,
   rejection_reason text,
   rejected_at timestamptz,
-  rejected_by text
+  rejected_by text,
+  tanggal_utc_date date
 );
 
 do $$
@@ -99,8 +98,6 @@ end$$;
 create index if not exists perizinan_user_tanggal_idx on public.perizinan(user_id, tanggal desc);
 
 -- Store UTC date to enforce one izin per day per user
-alter table public.perizinan add column if not exists tanggal_utc_date date;
-
 create or replace function public.perizinan_set_utc_date()
 returns trigger language plpgsql as $$
 begin
@@ -219,7 +216,7 @@ end $$;
 -- Storage buckets & policies
 -- =====================
 
--- Postgres-only friendly storage setup (merged from storage_setup_postgres_role.sql)
+-- Postgres-only friendly storage setup
 -- This block avoids SET ROLE and catches insufficient privileges, guiding to use Studio if needed.
 DO $$
 DECLARE
@@ -507,4 +504,3 @@ $$;
 grant execute on function public.get_biodata_siswa(text) to anon;
 
 -- End of schema
-

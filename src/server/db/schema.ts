@@ -7,6 +7,7 @@ import {
   pgTable,
   uuid,
   text,
+  varchar,
   timestamp,
   boolean,
   date,
@@ -147,4 +148,30 @@ export const biodataSiswa = pgTable("biodata_siswa", {
   absen: integer("absen"),
   kelamin: text("kelamin"),
   activated: boolean("activated").default(false).notNull(),
+});
+
+// location - System configuration for location settings
+export const location = pgTable("location", {
+  id: integer("id").primaryKey().notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  latitude: doublePrecision("latitude").notNull(),
+  distance: integer("distance").notNull(), // distance in meters
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// jadwal_absensi - Schedule configuration for attendance system
+export const jadwalAbsensi = pgTable("jadwal_absensi", {
+  id: integer("id").primaryKey().notNull(),
+  hari: varchar("hari", { length: 20 }).notNull(), // senin, selasa, rabu, kamis, jumat, sabtu, minggu
+  mulaiMasuk: varchar("mulai_masuk", { length: 8 }).notNull(), // HH:MM:SS format
+  selesaiMasuk: varchar("selesai_masuk", { length: 8 }).notNull(), // HH:MM:SS format
+  mulaiPulang: varchar("mulai_pulang", { length: 8 }).notNull(), // HH:MM:SS format
+  selesaiPulang: varchar("selesai_pulang", { length: 8 }).notNull(), // HH:MM:SS format
+  kompensasiWaktu: integer("kompensasi_waktu").notNull().default(0), // in minutes
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
