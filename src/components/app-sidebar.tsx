@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, BarChart2, GraduationCap, Settings, Monitor, Mail } from "lucide-react";
+import { Users, CalendarDays, GraduationCap, Settings, Monitor, Mail } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";

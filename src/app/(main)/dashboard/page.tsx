@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
-import { Users, UserCheck, UserX, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
+import { Users, UserCheck, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
 import { StatistikPieChart } from "~/components/pie-chart";
 import { AttendanceBarChart } from "~/components/attendance-bar-chart";
 

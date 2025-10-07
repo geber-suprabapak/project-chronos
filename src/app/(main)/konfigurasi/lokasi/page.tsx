@@ -14,7 +14,7 @@ import { api } from "~/trpc/react";
 import {
     MapPin, Save, RotateCcw, Settings, Globe, Target,
     Edit, Trash2, Building2,
-    Activity, Power, PowerOff, Info, Search, Loader2, Plus, X
+    Activity, Info, Search, Loader2, Plus, X
 } from "lucide-react";
 import LocationPicker from "~/components/location-picker";
 
@@ -609,7 +609,7 @@ export default function ConfigurationPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {[...locations].sort((a, b) => a.id - b.id).map((location, index) => (
+                                        {[...locations].sort((a, b) => a.id - b.id).map((location, _index) => (
                                             <TableRow
                                                 key={location.id}
                                                 className="hover:bg-muted/50 transition-colors"

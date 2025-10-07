@@ -9,6 +9,18 @@ import { Calendar } from "lucide-react";
 
 type TimeRange = "3" | "7" | "30" | "365";
 
+interface TooltipPayload {
+  value: number;
+  name: string;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string | number;
+}
+
 const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
     { value: "3", label: "3 Hari Terakhir" },
     { value: "7", label: "7 Hari Terakhir" },
@@ -41,9 +53,9 @@ export function AttendanceBarChart() {
     };
 
     // Custom tooltip
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const date = new Date(label);
+    const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+        if (active && payload?.length) {
+            const date = new Date(label as string);
             const formattedDate = new Intl.DateTimeFormat("id-ID", {
                 weekday: "long",
                 day: "numeric",
@@ -54,7 +66,7 @@ export function AttendanceBarChart() {
             return (
                 <div className="bg-background border border-border rounded-lg shadow-lg p-3">
                     <p className="font-medium text-sm mb-2">{formattedDate}</p>
-                    {payload.map((entry: any, index: number) => (
+                    {payload.map((entry, index) => (
                         <div key={index} className="flex items-center gap-2 text-sm">
                             <div
                                 className="w-3 h-3 rounded-sm"
