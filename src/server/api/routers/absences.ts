@@ -86,6 +86,95 @@ export const absencesRouter = createTRPCRouter({
       });
       return row ?? null;
     }),
+
+  // Statistik kehadiran untuk dashboard dengan range waktu
+  getAttendanceStats: protectedProcedure
+    .input(
+      z.object({
+        days: z.number().int().min(1).max(365).default(7),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const days = input?.days ?? 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const startDateStr = startDate.toISOString().split('T')[0];
+
+      // Get all user profiles (verified users)
+      const allUsers = await ctx.db.query.userProfiles.findMany({
+        columns: {
+          userId: true,
+        },
+      });
+      const totalUsers = allUsers.length;
+
+      // Get absences within date range
+      const absencesData = await ctx.db.query.absences.findMany({
+        where: (table, { gte }) => gte(table.date, startDateStr!),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      // Get perizinan within date range
+      const perizinanData = await ctx.db.query.perizinan.findMany({
+        where: (table, { gte }) => gte(table.tanggalUtcDate, startDateStr!),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      // Group by date
+      const dateMap: Record<string, {
+        hadir: Set<string>;
+        izin: Set<string>;
+      }> = {};
+
+      // Initialize all dates in range
+      for (let i = 0; i < days; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - 1 - i));
+        const dateStr = date.toISOString().split('T')[0];
+        if (dateStr) {
+          dateMap[dateStr] = {
+            hadir: new Set(),
+            izin: new Set(),
+          };
+        }
+      }
+
+      // Fill in attendance data
+      absencesData.forEach((a) => {
+        const dateStr = a.date; // Already a string in YYYY-MM-DD format
+        if (dateStr && dateMap[dateStr]) {
+          dateMap[dateStr].hadir.add(a.userId);
+        }
+      });
+
+      // Fill in permission data
+      perizinanData.forEach((p) => {
+        const dateStr = p.tanggalUtcDate;
+        if (dateStr && dateMap[dateStr] && p.approvalStatus === 'approved') {
+          dateMap[dateStr].izin.add(p.userId);
+        }
+      });
+
+      // Build result array
+      const result = Object.entries(dateMap).map(([date, data]) => {
+        const hadirCount = data.hadir.size;
+        const izinCount = data.izin.size;
+        const tidakHadirCount = totalUsers - hadirCount - izinCount;
+
+        return {
+          date,
+          hadir: hadirCount,
+          izin: izinCount,
+          tidakHadir: tidakHadirCount > 0 ? tidakHadirCount : 0,
+        };
+      });
+
+      return result;
+    }),
 });
 
 export type AbsencesRouter = typeof absencesRouter;
