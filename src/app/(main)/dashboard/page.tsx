@@ -200,15 +200,7 @@ async function DashboardContent() {
 
       {/* Statistics Visualization Section */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Visualisasi Kehadiran Hari Ini</CardTitle>
-            <CardDescription>Ringkasan status kehadiran siswa</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StatistikPieChart />
-          </CardContent>
-        </Card>
+        <StatistikPieChart />
 
         {/* Current Schedule Status Panel */}
         <Card>

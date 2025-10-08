@@ -1,6 +1,6 @@
 "use client";
 
-import { Pie, PieChart, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Pie, PieChart } from "recharts";
 import {
   Card,
   CardContent,
@@ -8,8 +8,52 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "~/components/ui/chart";
 import { api } from "~/trpc/react";
 import { useMemo } from "react";
+
+// Config untuk absen masuk
+const chartConfigMasuk = {
+  value: {
+    label: "Jumlah Siswa",
+  },
+  sudahAbsenMasuk: {
+    label: "Sudah Absen",
+    color: "hsl(142 76% 36%)", // Hijau
+  },
+  belumAbsenMasuk: {
+    label: "Belum Absen",
+    color: "hsl(0 0% 60%)", // Abu-abu
+  },
+  izin: {
+    label: "Izin",
+    color: "hsl(262 83% 58%)", // Ungu
+  },
+  sakit: {
+    label: "Sakit",
+    color: "hsl(0 84% 60%)", // Merah
+  },
+} satisfies ChartConfig;
+
+// Config untuk absen pulang
+const chartConfigPulang = {
+  value: {
+    label: "Jumlah Siswa",
+  },
+  sudahAbsenPulang: {
+    label: "Sudah Pulang",
+    color: "hsl(221 83% 53%)", // Biru
+  },
+  belumAbsenPulang: {
+    label: "Belum Pulang",
+    color: "hsl(47 96% 53%)", // Kuning
+  },
+} satisfies ChartConfig;
 
 export function StatistikPieChart() {
   // Ambil semua user, absensi, dan perizinan
@@ -17,63 +61,269 @@ export function StatistikPieChart() {
   const { data: absensi, isLoading: loadingAbsensi } = api.absences.listRaw.useQuery();
   const { data: izin, isLoading: loadingIzin } = api.perizinan.listRaw.useQuery();
 
-  // Always call hooks at the top level
-  const chartData = useMemo(() => {
+  // Data untuk chart absen masuk
+  const chartDataMasuk = useMemo(() => {
     if (!users || !absensi || !izin) return [];
-    const userIds = new Set(users.map((u) => u.id));
-    type IzinItem = {
-      kategoriIzin: string;
-    };
+    const userIds = new Set(users.map((u) => u.userId));
 
-    const sudahAbsen = new Set(absensi.map((a) => a.userId));
-    const belumAbsen = new Set([...userIds]);
-    sudahAbsen.forEach((id) => belumAbsen.delete(id));
-    let pergi = 0;
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0]!;
+
+    // Filter absensi untuk hari ini saja
+    const absensiToday = absensi.filter((a) => {
+      const absenDate = typeof a.date === 'string' ? a.date : String(a.date);
+      return absenDate === todayString;
+    });
+
+    // Filter perizinan untuk hari ini saja
+    const izinToday = izin.filter((p) => {
+      const izinDate = typeof p.tanggal === 'string' ? p.tanggal : p.tanggal.toISOString().split('T')[0];
+      return izinDate === todayString;
+    });
+
+    // Hitung absensi masuk (status: "Hadir" atau "Datang")
+    const sudahAbsenMasuk = new Set(
+      absensiToday
+        .filter((a) => a.status === "Hadir" || a.status === "Datang")
+        .map((a) => a.userId)
+    );
+
+    // Belum absen masuk = semua user yang belum absen masuk hari ini
+    const belumAbsenMasuk = new Set([...userIds]);
+    sudahAbsenMasuk.forEach((id) => belumAbsenMasuk.delete(id));
+
+    // Hitung izin dan sakit hari ini
+    let izinPergi = 0;
     let sakit = 0;
-    izin.forEach((p: IzinItem) => {
-      if (p.kategoriIzin === "pergi") pergi++;
+    izinToday.forEach((p) => {
+      if (p.kategoriIzin === "pergi") izinPergi++;
       if (p.kategoriIzin === "sakit") sakit++;
     });
+
     return [
-      { name: "Belum Absen", value: belumAbsen.size, fill: "#a3a3a3" }, // abu-abu
-      { name: "Sudah Absen", value: sudahAbsen.size, fill: "#3b82f6" }, // biru
-      { name: "Sakit", value: sakit, fill: "#ef4444" }, // merah
-      { name: "Pergi", value: pergi, fill: "#22c55e" }, // hijau
+      {
+        category: "sudahAbsenMasuk",
+        value: sudahAbsenMasuk.size,
+        fill: "var(--color-sudahAbsenMasuk)"
+      },
+      {
+        category: "belumAbsenMasuk",
+        value: belumAbsenMasuk.size,
+        fill: "var(--color-belumAbsenMasuk)"
+      },
+      {
+        category: "izin",
+        value: izinPergi,
+        fill: "var(--color-izin)"
+      },
+      {
+        category: "sakit",
+        value: sakit,
+        fill: "var(--color-sakit)"
+      },
     ];
   }, [users, absensi, izin]);
 
+  // Data untuk chart absen pulang
+  const chartDataPulang = useMemo(() => {
+    if (!users || !absensi) return [];
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0]!;
+
+    // Filter absensi untuk hari ini saja
+    const absensiToday = absensi.filter((a) => {
+      const absenDate = typeof a.date === 'string' ? a.date : String(a.date);
+      return absenDate === todayString;
+    });
+
+    // Hitung absensi masuk (status: "Hadir" atau "Datang")
+    const sudahAbsenMasuk = new Set(
+      absensiToday
+        .filter((a) => a.status === "Hadir" || a.status === "Datang")
+        .map((a) => a.userId)
+    );
+
+    // Hitung absensi pulang (status: "Pulang")
+    const sudahAbsenPulang = new Set(
+      absensiToday
+        .filter((a) => a.status === "Pulang")
+        .map((a) => a.userId)
+    );
+
+    // Belum absen pulang = user yang sudah absen masuk tapi belum pulang
+    const belumAbsenPulang = new Set([...sudahAbsenMasuk]);
+    sudahAbsenPulang.forEach((id) => belumAbsenPulang.delete(id));
+
+    return [
+      {
+        category: "sudahAbsenPulang",
+        value: sudahAbsenPulang.size,
+        fill: "var(--color-sudahAbsenPulang)"
+      },
+      {
+        category: "belumAbsenPulang",
+        value: belumAbsenPulang.size,
+        fill: "var(--color-belumAbsenPulang)"
+      },
+    ];
+  }, [users, absensi]);
+
+  // Calculate totals
+  const totalMasuk = useMemo(() => {
+    return chartDataMasuk.reduce((acc, curr) => acc + curr.value, 0);
+  }, [chartDataMasuk]);
+
+  const totalPulang = useMemo(() => {
+    return chartDataPulang.reduce((acc, curr) => acc + curr.value, 0);
+  }, [chartDataPulang]);
+
   // Only render chart if all data is loaded and chartData is available
   if (loadingUsers || loadingAbsensi || loadingIzin || !users || !absensi || !izin) {
-    return null;
+    return (
+      <Card className="flex flex-col">
+        <CardHeader className="items-center pb-0">
+          <CardTitle>Statistik Kehadiran</CardTitle>
+          <CardDescription>Rekap Hari Ini</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <div className="text-sm text-muted-foreground">Memuat data...</div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <Card className="flex flex-col w-full">
+    <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Pie Chart Kehadiran</CardTitle>
-        <CardDescription>Rekap harian</CardDescription>
+        <CardTitle>Statistik Kehadiran</CardTitle>
+        <CardDescription>Rekap Hari Ini</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12 pb-0">
-        <div className="w-full max-w-[220px] h-[200px]">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Tooltip />
-              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} stroke="none">
-                {chartData.map((entry, idx) => (
-                  <Cell key={`cell-${idx}`} fill={entry.fill} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex flex-col gap-2 justify-center items-start" style={{ height: 200, marginLeft: '8px' }}>
-          {chartData.map((entry) => (
-            <div key={entry.name} className="flex items-center gap-2">
-              <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: entry.fill, border: 'none' }} />
-              <span className="text-muted-foreground text-base font-medium">{entry.name}:</span>
-              <span className="text-foreground font-semibold">{entry.value}</span>
+      <CardContent className="flex-1 pb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Chart Absen Masuk */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-sm font-semibold">Absen Masuk</h3>
+              <p className="text-xs text-muted-foreground">Status kehadiran siswa</p>
             </div>
-          ))}
+            <ChartContainer
+              config={chartConfigMasuk}
+              className="mx-auto aspect-square max-h-[200px]"
+            >
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Pie
+                  data={chartDataMasuk}
+                  dataKey="value"
+                  nameKey="category"
+                  innerRadius={45}
+                  outerRadius={75}
+                  strokeWidth={3}
+                  paddingAngle={2}
+                />
+              </PieChart>
+            </ChartContainer>
+            <div className="text-center -mt-2">
+              <div className="text-2xl font-bold">{totalMasuk}</div>
+              <div className="text-xs text-muted-foreground">Total Siswa</div>
+            </div>
+            {/* Legend untuk absen masuk */}
+            <div className="grid grid-cols-2 gap-2">
+              {chartDataMasuk.map((entry) => {
+                const config = chartConfigMasuk[entry.category as keyof typeof chartConfigMasuk];
+                const percentage = totalMasuk > 0 ? ((entry.value / totalMasuk) * 100).toFixed(1) : '0.0';
+                const color = 'color' in config ? config.color : 'hsl(var(--muted))';
+
+                return (
+                  <div
+                    key={entry.category}
+                    className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">
+                        {config.label}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{entry.value}</span>
+                        <span className="text-[10px]">({percentage}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chart Absen Pulang */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-sm font-semibold">Absen Pulang</h3>
+              <p className="text-xs text-muted-foreground">Status kepulangan siswa</p>
+            </div>
+            <ChartContainer
+              config={chartConfigPulang}
+              className="mx-auto aspect-square max-h-[200px]"
+            >
+              <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Pie
+                  data={chartDataPulang}
+                  dataKey="value"
+                  nameKey="category"
+                  innerRadius={45}
+                  outerRadius={75}
+                  strokeWidth={3}
+                  paddingAngle={2}
+                />
+              </PieChart>
+            </ChartContainer>
+            <div className="text-center -mt-2">
+              <div className="text-2xl font-bold">{totalPulang}</div>
+              <div className="text-xs text-muted-foreground">Total Siswa</div>
+            </div>
+            {/* Legend untuk absen pulang */}
+            <div className="grid grid-cols-2 gap-2">
+              {chartDataPulang.map((entry) => {
+                const config = chartConfigPulang[entry.category as keyof typeof chartConfigPulang];
+                const percentage = totalPulang > 0 ? ((entry.value / totalPulang) * 100).toFixed(1) : '0.0';
+                const color = 'color' in config ? config.color : 'hsl(var(--muted))';
+
+                return (
+                  <div
+                    key={entry.category}
+                    className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">
+                        {config.label}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="font-semibold text-foreground">{entry.value}</span>
+                        <span className="text-[10px]">({percentage}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
