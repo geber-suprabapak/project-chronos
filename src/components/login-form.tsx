@@ -25,15 +25,29 @@ export function LoginForm({
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    setLoading(false);
+    
     if (authError) {
+      setLoading(false);
       setError(authError.message);
       return;
     }
+
+    const userMetadata = data.user?.user_metadata;
+    const role = userMetadata?.role as string;
+
+    if (role !== "admin") {
+      setLoading(false);
+      await supabase.auth.signOut();
+      setError("Access denied. Admin role required.");
+      return;
+    }
+
+    setLoading(false);
     startTransition(() => {
       router.replace("/dashboard");
     });
