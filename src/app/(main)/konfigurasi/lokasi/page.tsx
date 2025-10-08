@@ -316,7 +316,7 @@ export default function ConfigurationPage() {
         // Prefer name from result; fallback to existing form name; else generate
         const pickedName = result.display_name?.split(',')[0]?.trim() ?? formData.name.trim() ?? `Lokasi Baru ${new Date().toLocaleString()}`;
         const pickedDistance = Number.parseInt(formData.distance || "", 10);
-        const safeDistance = Number.isFinite(pickedDistance) ? pickedDistance : 500;
+        const safeDistance = Number.isFinite(pickedDistance) ? pickedDistance : 0;
 
         // Only fill form fields, do NOT auto-create
         setFormData((prev) => ({
@@ -360,7 +360,7 @@ export default function ConfigurationPage() {
                 name: "",
                 latitude: "",
                 longitude: "",
-                distance: "500",
+                distance: "0",
             });
         }
         setShowForm(true);

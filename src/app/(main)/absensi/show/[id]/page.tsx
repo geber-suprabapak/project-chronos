@@ -88,10 +88,6 @@ export default function ShowAbsensiPage() {
                 </Badge>
               </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-muted-foreground">Alasan</p>
-              <p className="mt-1">{absence.reason ?? "-"}</p>
-            </div>
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Lokasi</p>
