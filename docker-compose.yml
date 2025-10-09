@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/geber-suprabapak/project-chronos:${TAG:-latest}
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: curl -f http://localhost:3000/api/health || exit 1
+      interval: 30s
+      timeout: 3s
+      retries: 3
