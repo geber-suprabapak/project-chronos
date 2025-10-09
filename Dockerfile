@@ -46,6 +46,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Buat user non-root untuk security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
+    
+# Install curl for healthcheck in docker-compose
+RUN apk add --no-cache curl
 
 # Copy file public dan static
 COPY --from=builder /app/public ./public
