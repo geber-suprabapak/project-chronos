@@ -12,14 +12,28 @@
     fi
 
     # Build and push Docker image to GitHub Container Registry (GHCR)
-    # Usage: ./scripts/build-prod.sh [tag]
+    # Usage: ./scripts/build-prod.sh [-t|--tag <tag>]
 
     # Configuration
     REGISTRY=ghcr.io
     OWNER=geber-suprabapak
     REPO=project-chronos
     IMAGE=${REGISTRY}/${OWNER}/${REPO}
-    TAG=${1:-latest}
+    TAG="latest"
+
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -t|--tag)
+      TAG="$2"
+      shift 2
+      ;;
+    *)
+      echo "Usage: $0 [-t|--tag <tag>]"
+      exit 1
+      ;;
+    esac
+    done
 
     # Check required env vars
     if [ -z "$GHCR_USERNAME" ] || [ -z "$GHCR_TOKEN" ]; then
