@@ -89,9 +89,13 @@ export function StatistikPieChart() {
         .map((a) => a.userId)
     );
 
-    // Belum absen masuk = semua user yang belum absen masuk hari ini
+    // Hitung user yang izin atau sakit (mereka juga punya alasan valid untuk tidak hadir)
+    const userIzinSakit = new Set(izinToday.map((p) => p.userId));
+
+    // Belum absen masuk = semua user KECUALI yang sudah absen masuk ATAU yang izin/sakit
     const belumAbsenMasuk = new Set([...userIds]);
     sudahAbsenMasuk.forEach((id) => belumAbsenMasuk.delete(id));
+    userIzinSakit.forEach((id) => belumAbsenMasuk.delete(id));
 
     // Hitung izin dan sakit hari ini
     let izinPergi = 0;
