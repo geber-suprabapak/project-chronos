@@ -63,8 +63,8 @@ export async function GET() {
 
   // Create a lookup map of user profiles by ID
   for (const profile of profiles) {
-    if (profile.id) {
-      profileMap.set(profile.id, profile);
+    if (profile.userId) {
+      profileMap.set(profile.userId, profile);
     }
   }
 

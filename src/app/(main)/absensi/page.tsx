@@ -173,7 +173,7 @@ export default function AbsensiPage() {
             {/* Reusable filter bar */}
             <FilterBar
               value={filter}
-              statuses={["Hadir", "Pulang"]}
+              statuses={["Hadir", "Terlambat", "Pulang", "Alpha"]}
               onChange={(next) => {
                 setDate(next.date ?? "");
                 setQuery(next.query ?? "");
@@ -288,6 +288,7 @@ export default function AbsensiPage() {
                           <TableHead>Status</TableHead>
                           <TableHead>Keterlambatan</TableHead>
                           <TableHead>Alasan</TableHead>
+                          <TableHead>Lokasi</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -299,6 +300,7 @@ export default function AbsensiPage() {
                           const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
                             ? "Terlambat"
                             : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
+                          const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
@@ -306,6 +308,8 @@ export default function AbsensiPage() {
                               <TableCell>{displayStatus}</TableCell>
                               <TableCell>{lateStatus}</TableCell>
                               <TableCell>{a.reason ?? "-"}</TableCell>
+                              <TableCell>{a.status ?? "-"}</TableCell>
+                              <TableCell>{lokasi || "-"}</TableCell>
                             </TableRow>
                           );
                         })}

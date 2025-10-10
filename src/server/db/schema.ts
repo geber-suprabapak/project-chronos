@@ -35,7 +35,6 @@ export const absences = pgTable(
     id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
     userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
     date: date("date").notNull(),
-    reason: text("reason"),
     photoUrl: text("photo_url"),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
@@ -45,8 +44,8 @@ export const absences = pgTable(
     status: text("status").notNull(),
   },
   (t) => [
-    // Match the DB check constraint: status IN ('Hadir', 'Datang', 'Pulang')
-    sql`CONSTRAINT absences_status_check CHECK (${t.status} = ANY (ARRAY['Hadir','Datang','Pulang']))`,
+    // Match the DB check constraint: status IN ('Hadir', 'Terlambat', 'Pulang', 'Alpha')
+    sql`CONSTRAINT absences_status_check CHECK (${t.status} = ANY (ARRAY['Hadir','Terlambat','Pulang','Alpha']))`,
   ],
 );
 

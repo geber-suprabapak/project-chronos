@@ -83,6 +83,17 @@ export const userProfilesRouter = createTRPCRouter({
 		return rows;
 	}),
 
+	// GET UNIQUE CLASS NAMES: untuk filter dropdown jurusan
+	getUniqueClassNames: protectedProcedure.query(async ({ ctx }) => {
+		const classNames = await ctx.db
+			.selectDistinct({ className: userProfiles.className })
+			.from(userProfiles)
+			.where(sql`${userProfiles.className} IS NOT NULL`)
+			.orderBy(userProfiles.className);
+
+		return classNames.map(c => c.className).filter(Boolean);
+	}),
+
 
 	// (removed) upsertByUserId: not applicable; table has no user_id column
 });

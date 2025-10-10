@@ -14,7 +14,7 @@ import { api } from "~/trpc/react";
 import {
     MapPin, Save, RotateCcw, Settings, Globe, Target,
     Edit, Trash2, Building2,
-    Activity, Power, PowerOff, Info, Search, Loader2, Plus, X
+    Activity, Info, Search, Loader2, Plus, X
 } from "lucide-react";
 import LocationPicker from "~/components/location-picker";
 
@@ -316,7 +316,7 @@ export default function ConfigurationPage() {
         // Prefer name from result; fallback to existing form name; else generate
         const pickedName = result.display_name?.split(',')[0]?.trim() ?? formData.name.trim() ?? `Lokasi Baru ${new Date().toLocaleString()}`;
         const pickedDistance = Number.parseInt(formData.distance || "", 10);
-        const safeDistance = Number.isFinite(pickedDistance) ? pickedDistance : 500;
+        const safeDistance = Number.isFinite(pickedDistance) ? pickedDistance : 0;
 
         // Only fill form fields, do NOT auto-create
         setFormData((prev) => ({
@@ -360,7 +360,7 @@ export default function ConfigurationPage() {
                 name: "",
                 latitude: "",
                 longitude: "",
-                distance: "500",
+                distance: "0",
             });
         }
         setShowForm(true);
@@ -609,7 +609,7 @@ export default function ConfigurationPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {[...locations].sort((a, b) => a.id - b.id).map((location, index) => (
+                                        {[...locations].sort((a, b) => a.id - b.id).map((location, _index) => (
                                             <TableRow
                                                 key={location.id}
                                                 className="hover:bg-muted/50 transition-colors"

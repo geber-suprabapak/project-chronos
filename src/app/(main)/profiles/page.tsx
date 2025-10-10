@@ -10,29 +10,23 @@ import {
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
-import {
-	Select,
-	SelectTrigger,
-	SelectValue,
-	SelectContent,
-	SelectItem
-} from "~/components/ui/select";
+import { AutoSearchForm } from "~/components/auto-search-form";
 // Next.js App Router page component with search params
 
 export default async function ProfilesPage({
 	searchParams
 }: {
-	searchParams?: Record<string, string | string[] | undefined>
+	searchParams?: Promise<Record<string, string | string[] | undefined>>
 }) {
-	// Process searchParams safely
+	// Process searchParams safely - await the promise in Next.js 15
+	const resolvedSearchParams = await searchParams;
 	const params = {
-		name: typeof searchParams?.name === 'string' ? searchParams.name : '',
-		className: typeof searchParams?.className === 'string' ? searchParams.className : '',
-		page: typeof searchParams?.page === 'string' ? searchParams.page : '',
+		name: typeof resolvedSearchParams?.name === 'string' ? resolvedSearchParams.name : '',
+		className: typeof resolvedSearchParams?.className === 'string' ? resolvedSearchParams.className : '',
+		page: typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : '',
 	};
 
 	// Akses searchParams dengan aman menggunakan params
@@ -64,6 +58,7 @@ export default async function ProfilesPage({
 	}> = [];
 	let total = 0;
 	let hasMore = false;
+	let uniqueClassNames: string[] = [];
 
 	try {
 		// Pastikan parameter dikirim dengan benar dan sesuai dengan definisi input router
@@ -72,8 +67,15 @@ export default async function ProfilesPage({
 			offset,
 			name: name || undefined, // Hanya kirim jika ada nilai
 			className: className && className !== "ALL" ? className : undefined // Hanya kirim jika bukan ALL dan ada nilai
-		}; console.log("Loading profiles with params:", params);
-		const res = await api.userProfiles.list(params);
+		};
+
+		console.log("Loading profiles with params:", params);
+
+		// Fetch data and unique class names in parallel
+		const [res, classNamesRes] = await Promise.all([
+			api.userProfiles.list(params),
+			api.userProfiles.getUniqueClassNames(),
+		]);
 
 		if (res) {
 			// Pastikan data diproses dengan benar
@@ -85,6 +87,8 @@ export default async function ProfilesPage({
 		} else {
 			console.warn("API returned no result");
 		}
+
+		uniqueClassNames = classNamesRes.filter((className): className is string => className !== null);
 	} catch (error) {
 		console.error("Failed to load profiles:", error);
 		return (
@@ -106,36 +110,14 @@ export default async function ProfilesPage({
 				</div>
 				<Card className="rounded-lg border-0 shadow-sm bg-background">
 					<CardContent className="pt-6">
-						<form method="get" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-							<div className="flex flex-col gap-2 w-full">
-								<label htmlFor="name" className="text-sm font-medium">Cari Nama</label>
-								<Input id="name" name="name" placeholder="Masukkan nama" defaultValue={name} />
-							</div>
-							<input type="hidden" name="page" value="1" />
-							<div className="flex flex-col gap-2 w-full sm:col-span-1">
-								<label htmlFor="className" className="text-sm font-medium">Jurusan</label>
-								<Select name="className" defaultValue={className ?? "ALL"}>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Semua Jurusan" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="ALL">Semua Jurusan</SelectItem>
-										<SelectItem value="PPLG">PPLG</SelectItem>
-										<SelectItem value="AKL">AKL</SelectItem>
-										<SelectItem value="MPLB">MPLB</SelectItem>
-										<SelectItem value="PM">PM</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="flex gap-2 items-end w-full sm:col-span-2 md:col-span-1">
-								<Button type="submit" variant="default" className="flex-1 sm:flex-none">Search</Button>
-								{(name || className) && (
-									<Button asChild type="button" variant="outline" className="flex-1 sm:flex-none">
-										<Link href="/profiles">Reset</Link>
-									</Button>
-								)}
-							</div>
-						</form>
+						<AutoSearchForm
+							type="profiles"
+							initialValues={{
+								name,
+								className,
+							}}
+							uniqueClasses={uniqueClassNames}
+						/>
 					</CardContent>
 				</Card>
 				<Separator />
