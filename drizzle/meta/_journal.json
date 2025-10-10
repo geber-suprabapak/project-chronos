@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1760060202036,
+      "tag": "0000_married_jane_foster",
+      "breakpoints": true
+    }
+  ]
+}

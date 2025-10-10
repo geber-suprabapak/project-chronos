@@ -9,7 +9,8 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
-import { User, Image as ImageIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import { User, Image as ImageIcon, CheckCircle2, Clock } from "lucide-react";
 import Image from "next/image";
 
 // Helper: format date or datetime
@@ -86,6 +87,51 @@ export default function ShowAbsensiPage() {
                 <Badge variant={getBadgeVariant(absence.status)} className="capitalize">
                   {absence.status ?? "-"}
                 </Badge>
+              </div>
+              <div className="grid grid-cols-2 items-center">
+                <p className="text-sm font-semibold text-muted-foreground">Keterlambatan</p>
+                <div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {absence.isLate ? (
+                          <Badge className="whitespace-nowrap bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg transition-all duration-200 flex items-center gap-2 w-fit px-3 py-1.5 cursor-help">
+                            <Clock className="h-4 w-4 animate-pulse" />
+                            <span className="font-semibold">Dipulangkan</span>
+                          </Badge>
+                        ) : (
+                          <Badge className="whitespace-nowrap bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg transition-all duration-200 flex items-center gap-2 w-fit px-3 py-1.5 cursor-help">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span className="font-semibold">Absen</span>
+                          </Badge>
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs" side="right">
+                        {absence.isLate ? (
+                          <div className="space-y-1.5">
+                            <p className="font-semibold text-orange-600 flex items-center gap-1.5">
+                              <Clock className="h-4 w-4" />
+                              Dipulangkan
+                            </p>
+                            <p className="text-xs leading-relaxed">
+                              Siswa terlambat <strong>{absence.lateMinutes} menit</strong> dari waktu mulai masuk dan dipulangkan. Absensi dilakukan dalam periode toleransi keterlambatan.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <p className="font-semibold text-green-600 flex items-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Tepat Waktu
+                            </p>
+                            <p className="text-xs leading-relaxed">
+                              Siswa sudah melakukan absensi sesuai dengan jadwal yang ditentukan. Tidak ada keterlambatan.
+                            </p>
+                          </div>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </div>
             <div>

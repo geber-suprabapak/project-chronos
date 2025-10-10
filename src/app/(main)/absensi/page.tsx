@@ -2,6 +2,7 @@
 "use client";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
+import { AbsenManualDialog } from "~/components/absen-manual-dialog";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -44,6 +45,7 @@ export default function AbsensiPage() {
           <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          <AbsenManualDialog />
           <DownloadExcelButton href="/api/export/absences" filename="absensi.xlsx" disabled={loading || (absences && absences.length === 0)} />
           <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
         </div>
@@ -106,11 +108,18 @@ export default function AbsensiPage() {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
+                          // Derive display status:
+                          // If DB status is 'Datang' or 'Hadir' and row is computed late (isLate) OR reason mentions 'Terlambat', show 'Terlambat'
+                          const isLateDisplay = a.isLate === true || /terlambat/i.test(a.reason ?? "");
+                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplay
+                            ? "Terlambat"
+                            : (a.status ?? "-");
+
                           return (
                             <TableRow key={`${a.id}`}>
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
-                              <TableCell>{a.status ?? "-"}</TableCell>
+                              <TableCell>{displayStatus}</TableCell>
                               <TableCell>{lokasi || "-"}</TableCell>
                               <TableCell>
                                 <TooltipProvider>
@@ -141,6 +150,7 @@ export default function AbsensiPage() {
                           <TableHead>Tanggal</TableHead>
                           <TableHead>Nama</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Keterlambatan</TableHead>
                           <TableHead>Alasan</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -148,11 +158,17 @@ export default function AbsensiPage() {
                         {rows2.map((a) => {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
+                          const isLateDisplayPdf = a.isLate === true || /terlambat/i.test(a.reason ?? "");
+                          const lateStatus = isLateDisplayPdf ? `Dipulangkan (${a.lateMinutes ?? "-"} menit)` : "Absen";
+                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
+                            ? "Terlambat"
+                            : (a.status ?? "-");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
-                              <TableCell>{a.status ?? "-"}</TableCell>
+                              <TableCell>{displayStatus}</TableCell>
+                              <TableCell>{lateStatus}</TableCell>
                               <TableCell>{a.reason ?? "-"}</TableCell>
                             </TableRow>
                           );

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { absences } from "~/server/db/schema";
+import { absences, perizinan } from "~/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
@@ -19,8 +19,140 @@ import type { SQL } from "drizzle-orm";
  *  - Tidak ada otorisasi (auth) di sini; middleware bisa ditambahkan kemudian bila diperlukan.
  */
 
+/**
+ * Helper function to calculate late status based on schedule
+ * Logic: Siswa terlambat jika absen SETELAH mulaiMasuk tapi DALAM periode kompensasi
+ * 
+ * Contoh: mulaiMasuk=07:00, kompensasi=15 menit
+ * - Absen 06:30-07:00 → Tepat waktu ✅
+ * - Absen 07:01-07:15 → Terlambat ⚠️ (dalam periode kompensasi)
+ * - Absen 07:16+ → Sangat terlambat ❌
+ */
+function calculateLateStatus(
+  createdAt: Date,
+  mulaiMasuk: string,
+  kompensasiWaktu: number
+): { isLate: boolean; lateMinutes: number } {
+  // Parse waktu check-in
+  const checkInHour = createdAt.getHours();
+  const checkInMinute = createdAt.getMinutes();
+  const checkInTotalMinutes = checkInHour * 60 + checkInMinute;
+
+  // Parse mulai masuk (HH:MM:SS format)
+  const [startHour, startMinute] = mulaiMasuk.split(':').map(Number);
+  const startTotalMinutes = (startHour ?? 0) * 60 + (startMinute ?? 0);
+
+  // Batas akhir toleransi = mulaiMasuk + kompensasi
+  const maxAllowedMinutes = startTotalMinutes + kompensasiWaktu;
+
+  // Jika check-in SETELAH mulaiMasuk tapi DALAM periode kompensasi
+  if (checkInTotalMinutes > startTotalMinutes && checkInTotalMinutes <= maxAllowedMinutes) {
+    return {
+      isLate: true,
+      lateMinutes: checkInTotalMinutes - startTotalMinutes,
+    };
+  }
+
+  return {
+    isLate: false,
+    lateMinutes: 0,
+  };
+}
+
 // Basic CRUD router for the absences table
 export const absencesRouter = createTRPCRouter({
+  // CREATE MANUAL: Admin input absensi manual
+  createManual: protectedProcedure
+    .input(
+      z.object({
+        nis: z.string(),
+        status: z.enum(["Hadir", "Terlambat", "Sakit", "Izin", "Alfa", "Pulang"]),
+        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+        reason: z.string().optional(),
+        lateMinutes: z.number().int().min(1).max(120).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get siswa from biodata_siswa by NIS
+      const siswa = await ctx.db.query.biodataSiswa.findFirst({
+        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
+      });
+
+      if (!siswa) {
+        throw new Error("Siswa dengan NIS tersebut tidak ditemukan di database");
+      }
+
+      // Get user_profile to find user_id (required for absences table foreign key)
+      const userProfile = await ctx.db.query.userProfiles.findFirst({
+        where: (table, { eq }) => eq(table.nis, siswa.nis.toString()),
+      });
+
+      if (!userProfile) {
+        throw new Error(
+          `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
+          `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`
+        );
+      }
+
+      // Map incoming status to allowed values for absences.status constraint
+      // DB constraint allows only: 'Hadir', 'Datang', 'Pulang'
+      const mappedAbsenceStatus: "Hadir" | "Datang" | "Pulang" = (() => {
+        switch (input.status) {
+          case "Hadir":
+            return "Hadir";
+          case "Terlambat":
+            // Late arrival is still an arrival record
+            return "Datang";
+          case "Pulang":
+            return "Pulang";
+          // For Sakit / Izin / Alfa, store as a 'Pulang' type entry with reason
+          case "Sakit":
+          case "Izin":
+          case "Alfa":
+          default:
+            return "Pulang";
+        }
+      })();
+
+      // Create absence record in PostgreSQL (no Supabase auth changes)
+      const [newAbsence] = await ctx.db
+        .insert(absences)
+        .values({
+          userId: userProfile.userId,
+          date: input.date,
+          status: mappedAbsenceStatus,
+          reason:
+            input.reason ??
+            `Absen manual oleh admin - ${input.status}${input.lateMinutes && input.status === "Terlambat"
+              ? ` (${input.lateMinutes} menit)`
+              : ""
+            }`,
+          createdAt: new Date(),
+          // Note: latitude, longitude will be null for manual entries
+        })
+        .returning();
+
+      // Also create a perizinan record to mirror the manual entry without changing schema
+      // perizinan.kategori_izin is constrained to ('sakit','pergi')
+      const kategoriIzin: "sakit" | "pergi" = input.status === "Sakit" ? "sakit" : "pergi";
+      await ctx.db.insert(perizinan).values({
+        userId: userProfile.userId,
+        // tanggal expects timestamptz; use midnight of provided date in local time
+        // If you prefer UTC midnight, consider `${input.date}T00:00:00Z`
+        tanggal: new Date(input.date),
+        kategoriIzin,
+        deskripsi:
+          input.reason ??
+          `Perizinan otomatis (manual): ${input.status}${input.lateMinutes && input.status === "Terlambat"
+            ? ` (${input.lateMinutes} menit)`
+            : ""
+          }`,
+        // approvalStatus defaults to 'pending', status boolean defaults to false
+      });
+
+      return newAbsence;
+    }),
+
   // Mengambil daftar absensi dengan opsi filter & pagination.
   // Return: Array record absensi sesuai filter.
   list: protectedProcedure
@@ -60,7 +192,46 @@ export const absencesRouter = createTRPCRouter({
         },
       });
 
-      return rows;
+      // Get all schedules to calculate late status
+      const schedules = await ctx.db.query.jadwalAbsensi.findMany();
+      const scheduleMap = new Map(schedules.map(s => [s.hari.toLowerCase(), s]));
+
+      // Day mapping: 0=minggu, 1=senin, etc.
+      const dayNames = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
+
+      // Enrich rows with late status calculation
+      const enrichedRows = rows.map(row => {
+        // Only calculate for "Datang" or "Hadir" status (arrival time)
+        if (row.status !== "Datang" && row.status !== "Hadir") {
+          return { ...row, isLate: false, lateMinutes: 0 };
+        }
+
+        // Get day of week from the date
+        const absenceDate = new Date(row.date);
+        const dayOfWeek = absenceDate.getDay();
+        const dayName = dayNames[dayOfWeek];
+
+        // Get schedule for this day
+        const schedule = scheduleMap.get(dayName ?? "");
+        if (!schedule?.isActive) {
+          return { ...row, isLate: false, lateMinutes: 0 };
+        }
+
+        // Calculate late status
+        const lateStatus = calculateLateStatus(
+          row.createdAt,
+          schedule.mulaiMasuk,
+          schedule.kompensasiWaktu
+        );
+
+        return {
+          ...row,
+          isLate: lateStatus.isLate,
+          lateMinutes: lateStatus.lateMinutes,
+        };
+      });
+
+      return enrichedRows;
     }),
 
   // Mengambil seluruh data absensi (tanpa pagination) - gunakan hati-hati untuk dataset besar.
@@ -71,7 +242,47 @@ export const absencesRouter = createTRPCRouter({
         userProfile: true,
       },
     });
-    return rows;
+
+    // Get all schedules to calculate late status
+    const schedules = await ctx.db.query.jadwalAbsensi.findMany();
+    const scheduleMap = new Map(schedules.map(s => [s.hari.toLowerCase(), s]));
+
+    // Day mapping: 0=minggu, 1=senin, etc.
+    const dayNames = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
+
+    // Enrich rows with late status calculation
+    const enrichedRows = rows.map(row => {
+      // Only calculate for "Datang" or "Hadir" status (arrival time)
+      if (row.status !== "Datang" && row.status !== "Hadir") {
+        return { ...row, isLate: false, lateMinutes: 0 };
+      }
+
+      // Get day of week from the date
+      const absenceDate = new Date(row.date);
+      const dayOfWeek = absenceDate.getDay();
+      const dayName = dayNames[dayOfWeek];
+
+      // Get schedule for this day
+      const schedule = scheduleMap.get(dayName ?? "");
+      if (!schedule?.isActive) {
+        return { ...row, isLate: false, lateMinutes: 0 };
+      }
+
+      // Calculate late status
+      const lateStatus = calculateLateStatus(
+        row.createdAt,
+        schedule.mulaiMasuk,
+        schedule.kompensasiWaktu
+      );
+
+      return {
+        ...row,
+        isLate: lateStatus.isLate,
+        lateMinutes: lateStatus.lateMinutes,
+      };
+    });
+
+    return enrichedRows;
   }),
 
   // Mengambil satu record berdasarkan ID (primary key). Return null jika tidak ditemukan.
@@ -84,7 +295,41 @@ export const absencesRouter = createTRPCRouter({
           userProfile: true,
         },
       });
-      return row ?? null;
+
+      if (!row) return null;
+
+      // Calculate late status for this record
+      if (row.status !== "Datang" && row.status !== "Hadir") {
+        return { ...row, isLate: false, lateMinutes: 0 };
+      }
+
+      // Get day of week from the date
+      const absenceDate = new Date(row.date);
+      const dayOfWeek = absenceDate.getDay();
+      const dayNames = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
+      const dayName = dayNames[dayOfWeek];
+
+      // Get schedule for this day
+      const schedule = await ctx.db.query.jadwalAbsensi.findFirst({
+        where: (table, { eq }) => eq(table.hari, dayName ?? ""),
+      });
+
+      if (!schedule?.isActive) {
+        return { ...row, isLate: false, lateMinutes: 0 };
+      }
+
+      // Calculate late status
+      const lateStatus = calculateLateStatus(
+        row.createdAt,
+        schedule.mulaiMasuk,
+        schedule.kompensasiWaktu
+      );
+
+      return {
+        ...row,
+        isLate: lateStatus.isLate,
+        lateMinutes: lateStatus.lateMinutes,
+      };
     }),
 });
 
