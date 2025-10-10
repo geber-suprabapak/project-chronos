@@ -128,6 +128,7 @@ export const absencesRouter = createTRPCRouter({
       const dateMap: Record<string, {
         hadir: Set<string>;
         izin: Set<string>;
+        terlambat: Set<string>;
       }> = {};
 
       // Initialize all dates in range
@@ -139,6 +140,7 @@ export const absencesRouter = createTRPCRouter({
           dateMap[dateStr] = {
             hadir: new Set(),
             izin: new Set(),
+            terlambat: new Set(),
           };
         }
       }
@@ -147,7 +149,12 @@ export const absencesRouter = createTRPCRouter({
       absencesData.forEach((a) => {
         const dateStr = a.date; // Already a string in YYYY-MM-DD format
         if (dateStr && dateMap[dateStr]) {
-          dateMap[dateStr].hadir.add(a.userId);
+          if (a.status === 'Terlambat') {
+            dateMap[dateStr].terlambat.add(a.userId);
+            dateMap[dateStr].hadir.add(a.userId); // Terlambat tetap termasuk dalam kehadiran
+          } else {
+            dateMap[dateStr].hadir.add(a.userId);
+          }
         }
       });
 
@@ -163,12 +170,14 @@ export const absencesRouter = createTRPCRouter({
       const result = Object.entries(dateMap).map(([date, data]) => {
         const hadirCount = data.hadir.size;
         const izinCount = data.izin.size;
-        const tidakHadirCount = totalUsers - hadirCount - izinCount;
+        const terlambatCount = data.terlambat.size;
+        const tidakHadirCount = totalUsers - hadirCount - izinCount - terlambatCount;
 
         return {
           date,
           hadir: hadirCount,
           izin: izinCount,
+          terlambat: terlambatCount,
           tidakHadir: tidakHadirCount > 0 ? tidakHadirCount : 0,
         };
       });

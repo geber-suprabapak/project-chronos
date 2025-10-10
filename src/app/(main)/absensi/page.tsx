@@ -66,7 +66,7 @@ export default function AbsensiPage() {
             {/* Reusable filter bar */}
             <FilterBar
               value={filter}
-              statuses={["Hadir", "Pulang"]}
+              statuses={["Hadir", "Terlambat", "Pulang", "Alpha"]}
               onChange={(next) => {
                 setDate(next.date ?? "");
                 setQuery(next.query ?? "");

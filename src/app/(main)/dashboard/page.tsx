@@ -159,6 +159,7 @@ async function DashboardContent() {
   const dayOfWeek = new Date().getDay();
   const hariMap = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const currentDayName = hariMap[dayOfWeek];
+  
 
   return (
     <div className="space-y-6">
@@ -197,6 +198,8 @@ async function DashboardContent() {
           variant="primary"
         />
       </div>
+
+       <PendingPermissionsTable permissions={pendingPermissions} />
 
       {/* Statistics Visualization Section */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -261,8 +264,6 @@ async function DashboardContent() {
               </div>
             )}
 
-            {/* Quick Actions Section - Pending Permissions Table */}
-            <PendingPermissionsTable permissions={pendingPermissions} />
 
           </CardContent>
         </Card>

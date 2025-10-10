@@ -58,7 +58,7 @@ const keterlambatanChartConfig = {
 export function KehadiranBarChart() {
     const [timeRange, setTimeRange] = useState<"7" | "30" | "365">("7");
     const days = parseInt(timeRange);
-    
+
     const { data: statsData, isLoading } = api.absences.getAttendanceStats.useQuery({
         days,
     });
@@ -164,7 +164,7 @@ export function KehadiranBarChart() {
 export function IzinBarChart() {
     const [timeRange, setTimeRange] = useState<"7" | "30" | "365">("7");
     const days = parseInt(timeRange);
-    
+
     const { data: statsData, isLoading } = api.absences.getAttendanceStats.useQuery({
         days,
     });
@@ -270,51 +270,33 @@ export function IzinBarChart() {
 export function KeterlambatanBarChart() {
     const [timeRange, setTimeRange] = useState<"7" | "30" | "365">("7");
     const days = parseInt(timeRange);
-    
-    const { data: absencesData, isLoading: loadingAbsences } = api.absences.listRaw.useQuery();
+
+    const { data: statsData, isLoading } = api.absences.getAttendanceStats.useQuery({
+        days,
+    });
     const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
     const totalActivated = statsSummary?.activated ?? 0;
     const cornerRadius = Math.min(24, Math.max(4, Math.round(totalActivated / 10)));
     const dynamicMaxBar = Math.min(40, Math.max(16, Math.round(totalActivated / 5)));
 
     const chartData = useMemo(() => {
-        if (!absencesData) return [];
+        if (!statsData) return [];
 
-        // Get last N days based on timeRange
-        const dates: string[] = [];
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            dates.push(date.toISOString().split('T')[0]!);
-        }
-
-        // Count late arrivals per day
-        // Asumsi: terlambat jika status "Hadir" atau "Datang" dengan createdAt > jam masuk
-        const lateByDate: Record<string, number> = {};
-
-        absencesData.forEach((absence) => {
-            const dateStr = absence.date;
-            if (dates.includes(dateStr)) {
-                // Placeholder logic: count all as potential late
-                // TODO: Implement proper late detection based on schedule
-                lateByDate[dateStr] = (lateByDate[dateStr] || 0);
-            }
-        });
-
-        return dates.map((dateStr) => {
-            const date = new Date(dateStr);
+        return statsData.map((item) => {
+            // Format date to show day name
+            const date = new Date(item.date);
             const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
             const dayName = dayNames[date.getDay()];
-            const formattedDate = `${dayName}, ${date.getDate()}`;
+            const dateStr = `${dayName}, ${date.getDate()}`;
 
             return {
-                date: formattedDate,
-                terlambat: lateByDate[dateStr] || 0,
+                date: dateStr,
+                terlambat: item.terlambat,
             };
         });
-    }, [absencesData, days]);
+    }, [statsData]);
 
-    if (loadingAbsences) {
+    if (isLoading) {
         return (
             <Card>
                 <CardHeader>

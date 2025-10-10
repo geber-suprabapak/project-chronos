@@ -87,10 +87,10 @@ export function StatistikPieChart() {
       return izinDate === todayString;
     });
 
-    // Hitung absensi masuk (status: "Hadir" atau "Datang")
+    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
     const sudahAbsenMasuk = new Set(
       absensiToday
-        .filter((a) => a.status === "Hadir" || a.status === "Datang")
+        .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
         .map((a) => a.userId)
     );
 
@@ -148,10 +148,10 @@ export function StatistikPieChart() {
       return absenDate === todayString;
     });
 
-    // Hitung absensi masuk (status: "Hadir" atau "Datang")
+    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
     const sudahAbsenMasuk = new Set(
       absensiToday
-        .filter((a) => a.status === "Hadir" || a.status === "Datang")
+        .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
         .map((a) => a.userId)
     );
 
