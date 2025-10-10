@@ -56,9 +56,6 @@ function KPICard({ title, value, description, icon, variant = "default" }: KPICa
   );
 }
 
-/**
- * Helper Component: Pending Permissions Table
- */
 interface PendingPermissionsTableProps {
   permissions: Array<{
     id: string;
