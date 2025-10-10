@@ -60,6 +60,11 @@ export function StatistikPieChart() {
   const { data: users, isLoading: loadingUsers } = api.userProfiles.listRaw.useQuery();
   const { data: absensi, isLoading: loadingAbsensi } = api.absences.listRaw.useQuery();
   const { data: izin, isLoading: loadingIzin } = api.perizinan.listRaw.useQuery();
+  const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
+  const totalActivated = statsSummary?.activated ?? (users ? users.length : 0);
+  // compute pie sizes: outerRadius and innerRadius scaled by totalActivated
+  const outerRadius = Math.min(110, Math.max(50, Math.round(40 + totalActivated / 5)));
+  const innerRadius = Math.min(80, Math.max(30, Math.round(outerRadius * 0.54)));
 
   // Data untuk chart absen masuk
   const chartDataMasuk = useMemo(() => {
@@ -226,8 +231,8 @@ export function StatistikPieChart() {
                   data={chartDataMasuk}
                   dataKey="value"
                   nameKey="category"
-                  innerRadius={45}
-                  outerRadius={75}
+                  innerRadius={innerRadius}
+                  outerRadius={outerRadius}
                   strokeWidth={3}
                   paddingAngle={2}
                 />
@@ -287,8 +292,8 @@ export function StatistikPieChart() {
                   data={chartDataPulang}
                   dataKey="value"
                   nameKey="category"
-                  innerRadius={45}
-                  outerRadius={75}
+                  innerRadius={innerRadius}
+                  outerRadius={outerRadius}
                   strokeWidth={3}
                   paddingAngle={2}
                 />

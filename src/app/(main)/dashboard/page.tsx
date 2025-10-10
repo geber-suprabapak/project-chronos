@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import Link from "next/link";
 import { Users, UserCheck, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
 import { StatistikPieChart } from "~/components/pie-chart";
-import { AttendanceBarChart } from "~/components/attendance-bar-chart";
+import { KehadiranBarChart, IzinBarChart, KeterlambatanBarChart } from "~/components/attendance-bar-charts";
 
 /**
  * Helper: Format date to readable Indonesian format
@@ -246,7 +246,7 @@ async function DashboardContent() {
                   </div>
                 </div>
 
-                <Button asChild variant="outline" className="w-full">
+                <Button asChild variant="outline" className="w-full mb-5">
                   <Link href="/konfigurasi/jadwal">Kelola Jadwal</Link>
                 </Button>
               </div>
@@ -260,53 +260,19 @@ async function DashboardContent() {
                 </Button>
               </div>
             )}
+
+            {/* Quick Actions Section - Pending Permissions Table */}
+            <PendingPermissionsTable permissions={pendingPermissions} />
+
           </CardContent>
         </Card>
       </div>
 
-      {/* Attendance Statistics Bar Chart - Full Width */}
-      <AttendanceBarChart />
-
-      {/* Quick Actions Section - Pending Permissions Table */}
-      <PendingPermissionsTable permissions={pendingPermissions} />
-
-      {/* Additional Statistics Section */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Siswa Laki-laki</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.laki}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.laki / stats.total) * 100).toFixed(1)}% dari total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Siswa Perempuan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.perempuan}</div>
-            <p className="text-xs text-muted-foreground">
-              {((stats.perempuan / stats.total) * 100).toFixed(1)}% dari total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Belum Aktif</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total - stats.activated}</div>
-            <p className="text-xs text-muted-foreground">
-              {(((stats.total - stats.activated) / stats.total) * 100).toFixed(1)}% dari total
-            </p>
-          </CardContent>
-        </Card>
+      {/* Bar Charts Section - Kehadiran, Izin, Keterlambatan */}
+      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+        <KehadiranBarChart />
+        <IzinBarChart />
+        <KeterlambatanBarChart />
       </div>
     </div>
   );
