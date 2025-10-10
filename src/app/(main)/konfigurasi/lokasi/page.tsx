@@ -647,8 +647,12 @@ export default function ConfigurationPage() {
                                                             checked={location.isActive}
                                                             onCheckedChange={() => handleToggleActive(location.id)}
                                                             disabled={location.id === 1 || toggleActiveMutation.isPending}
+                                                            className={location.isActive ? "data-[state=checked]:bg-emerald-600" : "data-[state=unchecked]:bg-red-600"}
                                                         />
-                                                        <Badge className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                                        <Badge
+                                                          variant={location.isActive ? "success" : "destructive"}
+                                                          className="flex items-center gap-1.5"
+                                                        >
                                                             {location.isActive ? 'Aktif' : 'Nonaktif'}
                                                         </Badge>
                                                     </div>

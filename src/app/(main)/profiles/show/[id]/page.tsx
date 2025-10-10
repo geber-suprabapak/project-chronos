@@ -95,7 +95,6 @@ export default function ShowProfilePage() {
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Alasan</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,12 +107,11 @@ export default function ShowProfilePage() {
                           {a.status ?? "-"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-[360px] truncate">{a.reason ?? "-"}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -142,7 +140,7 @@ export default function ShowProfilePage() {
                       <TableCell>{formatDate(p.tanggal)}</TableCell>
                       <TableCell>{p.kategoriIzin}</TableCell>
                       <TableCell>
-                        <Badge variant={p.approvalStatus === "approved" ? "default" : p.approvalStatus === "rejected" ? "destructive" : "outline"} className="capitalize">
+                        <Badge variant={p.approvalStatus === "approved" ? "success" : p.approvalStatus === "rejected" ? "destructive" : "outline"} className="capitalize">
                           {p.approvalStatus ?? "pending"}
                         </Badge>
                       </TableCell>

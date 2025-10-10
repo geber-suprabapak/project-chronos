@@ -40,12 +40,12 @@ const formatDate = (dateString: string | Date) => {
 const getBadgeVariant = (status: string | null) => {
   switch (status) {
     case "approved":
-      return "success" as const;
+      return "success" as const; // green
     case "rejected":
-      return "destructive" as const;
+      return "destructive" as const; // red
     case "pending":
     default:
-      return "secondary" as const;
+      return "outline" as const;
   }
 };
 

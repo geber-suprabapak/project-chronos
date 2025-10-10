@@ -41,7 +41,6 @@ export async function GET() {
     { header: 'Class', key: 'className', width: 12 },
     { header: 'Date', key: 'date', width: 15 },
     { header: 'Status', key: 'status', width: 10 },
-    { header: 'Reason', key: 'reason', width: 40 },
     { header: 'Created At', key: 'createdAt', width: 20 },
   ];
   
@@ -74,7 +73,6 @@ export async function GET() {
       className: profile?.className ?? null,
       date: typeof r.date === 'string' ? r.date : String(r.date),
       status: r.status ?? null,
-      reason: r.reason ?? null,
       createdAt: formatDate(r.createdAt),
     });
   }

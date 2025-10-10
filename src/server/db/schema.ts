@@ -35,7 +35,6 @@ export const absences = pgTable(
     id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
     userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
     date: date("date").notNull(),
-    reason: text("reason"),
     photoUrl: text("photo_url"),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),

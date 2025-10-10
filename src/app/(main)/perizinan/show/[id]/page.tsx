@@ -55,12 +55,12 @@ const formatDate = (input: string | Date | null | undefined) => {
 const getBadgeVariant = (status: string | null) => {
   switch (status) {
     case "approved":
-      return "default";
+      return "success" as const; // green
     case "rejected":
-      return "destructive";
+      return "destructive" as const; // red
     case "pending":
     default:
-      return "outline";
+      return "outline" as const;
   }
 };
 
@@ -203,7 +203,7 @@ export default function ShowPerizinanPage() {
                 {isActionable ? (
                     <div className="flex flex-col gap-2">
                         <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
-                        <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg">
+                        <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
                           {updateStatusMutation.isPending ? "Approving..." : "Approve"}
                         </Button>
                         <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>

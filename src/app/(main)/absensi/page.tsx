@@ -141,7 +141,6 @@ export default function AbsensiPage() {
                           <TableHead>Tanggal</TableHead>
                           <TableHead>Nama</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Alasan</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -153,7 +152,6 @@ export default function AbsensiPage() {
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
                               <TableCell>{a.status ?? "-"}</TableCell>
-                              <TableCell>{a.reason ?? "-"}</TableCell>
                             </TableRow>
                           );
                         })}
