@@ -41,6 +41,7 @@ export async function GET() {
     { header: 'Class', key: 'className', width: 12 },
     { header: 'Tanggal', key: 'tanggal', width: 15 },
     { header: 'Kategori', key: 'kategoriIzin', width: 10 },
+    { header: 'Kategori (Tampilan)', key: 'kategoriIzinDisplay', width: 18 },
     { header: 'Deskripsi', key: 'deskripsi', width: 40 },
     { header: 'Status', key: 'approvalStatus', width: 10 },
     { header: 'Approved At', key: 'approvedAt', width: 20 },
@@ -60,7 +61,7 @@ export async function GET() {
   const profiles = await db.select().from(userProfiles);
   const profileMap = new Map<string, typeof profiles[number]>();
 
-  // Create a lookup map of user profiles by userId (not id)
+  // Create a lookup map of user profiles by ID
   for (const profile of profiles) {
     if (profile.userId) {
       profileMap.set(profile.userId, profile);
@@ -70,6 +71,12 @@ export async function GET() {
   // Add rows to worksheet
   for (const r of rows) {
     const profile = profileMap.get(r.userId);
+    const desc = r.deskripsi ?? '';
+    const kategoriDisplay = /dipulangkan/i.test(desc)
+      ? 'dipulangkan'
+      : /terlambat/i.test(desc)
+        ? 'terlambat'
+        : r.kategoriIzin;
 
     ws.addRow({
       id: r.id,
@@ -79,6 +86,7 @@ export async function GET() {
       className: profile?.className ?? null,
       tanggal: formatDate(r.tanggal),
       kategoriIzin: r.kategoriIzin,
+      kategoriIzinDisplay: kategoriDisplay,
       deskripsi: r.deskripsi,
       approvalStatus: r.approvalStatus ?? null,
       approvedAt: formatDate(r.approvedAt),
