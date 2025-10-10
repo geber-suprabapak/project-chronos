@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { absences, perizinan } from "~/server/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -64,13 +64,23 @@ export const absencesRouter = createTRPCRouter({
   // CREATE MANUAL: Admin input absensi manual
   createManual: protectedProcedure
     .input(
-      z.object({
-        nis: z.string(),
-        status: z.enum(["Hadir", "Terlambat", "Sakit", "Izin", "Alfa", "Pulang"]),
-        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
-        reason: z.string().optional(),
-        lateMinutes: z.number().int().min(1).max(120).optional(),
-      })
+      z
+        .object({
+          nis: z.string(),
+          status: z.enum(["Hadir", "Terlambat", "Pulang", "Dipulangkan"]),
+          date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+          reason: z.string().optional(),
+          lateMinutes: z.number().int().min(1).max(120).optional(),
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+        })
+        .refine(
+          (val) => (val.status === "Terlambat" ? typeof val.lateMinutes === "number" : true),
+          {
+            message: "lateMinutes wajib diisi saat status Terlambat",
+            path: ["lateMinutes"],
+          },
+        )
     )
     .mutation(async ({ ctx, input }) => {
       // Get siswa from biodata_siswa by NIS
@@ -101,32 +111,44 @@ export const absencesRouter = createTRPCRouter({
           case "Hadir":
             return "Hadir";
           case "Terlambat":
-            // Late arrival is still an arrival record
-            return "Datang";
+            return "Hadir"; // treat late arrival as Hadir in DB
           case "Pulang":
-            return "Pulang";
-          // For Sakit / Izin / Alfa, store as a 'Pulang' type entry with reason
-          case "Sakit":
-          case "Izin":
-          case "Alfa":
+          case "Dipulangkan":
+            return "Pulang"; // both map to Pulang in DB
           default:
             return "Pulang";
         }
       })();
 
       // Create absence record in PostgreSQL (no Supabase auth changes)
+      // Build reason with stable keywords for UI
+      const baseReason = (input.reason ?? "").trim();
+
+      // Try to fetch active location to avoid empty location; used for both absence and description
+      const activeLocation = await ctx.db.query.location.findFirst({
+        where: (t, { eq }) => eq(t.isActive, true),
+      });
+      const latFromLocation = activeLocation?.latitude;
+      const lonFromLocation = activeLocation?.longitude;
+      // Prefer provided coords from client; fallback to active location
+      const latToSave = typeof input.latitude === "number" ? input.latitude : latFromLocation;
+      const lonToSave = typeof input.longitude === "number" ? input.longitude : lonFromLocation;
+
+      const reasonWithKeyword = input.status === "Terlambat"
+        ? `Terlambat${input.lateMinutes ? ` ${input.lateMinutes} menit` : ""}${baseReason ? ` — ${baseReason}` : ""}`
+        : input.status === "Dipulangkan"
+          ? `Dipulangkan${baseReason ? ` — ${baseReason}` : ""}`
+          : baseReason || `Absen manual oleh admin - ${input.status}`;
+
       const [newAbsence] = await ctx.db
         .insert(absences)
         .values({
           userId: userProfile.userId,
           date: input.date,
           status: mappedAbsenceStatus,
-          reason:
-            input.reason ??
-            `Absen manual oleh admin - ${input.status}${input.lateMinutes && input.status === "Terlambat"
-              ? ` (${input.lateMinutes} menit)`
-              : ""
-            }`,
+          reason: reasonWithKeyword,
+          latitude: latToSave,
+          longitude: lonToSave,
           createdAt: new Date(),
           // Note: latitude, longitude will be null for manual entries
         })
@@ -134,19 +156,14 @@ export const absencesRouter = createTRPCRouter({
 
       // Also create a perizinan record to mirror the manual entry without changing schema
       // perizinan.kategori_izin is constrained to ('sakit','pergi')
-      const kategoriIzin: "sakit" | "pergi" = input.status === "Sakit" ? "sakit" : "pergi";
+      const kategoriIzin: "sakit" | "pergi" = "pergi";
       await ctx.db.insert(perizinan).values({
         userId: userProfile.userId,
         // tanggal expects timestamptz; use midnight of provided date in local time
         // If you prefer UTC midnight, consider `${input.date}T00:00:00Z`
         tanggal: new Date(input.date),
         kategoriIzin,
-        deskripsi:
-          input.reason ??
-          `Perizinan otomatis (manual): ${input.status}${input.lateMinutes && input.status === "Terlambat"
-            ? ` (${input.lateMinutes} menit)`
-            : ""
-          }`,
+        deskripsi: reasonWithKeyword,
         // approvalStatus defaults to 'pending', status boolean defaults to false
       });
 
@@ -173,12 +190,20 @@ export const absencesRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const conditions: SQL[] = [];
+      const conditions: (SQL | undefined)[] = [];
       if (input?.userId) conditions.push(eq(absences.userId, input.userId));
-      if (input?.status) conditions.push(eq(absences.status, input.status));
+      if (input?.status) {
+        if (input.status === "Hadir") {
+          // Treat 'Hadir' filter as both Hadir and legacy 'Datang'
+          conditions.push(or(eq(absences.status, "Hadir"), eq(absences.status, "Datang")));
+        } else {
+          conditions.push(eq(absences.status, input.status));
+        }
+      }
       if (input?.date) conditions.push(eq(absences.date, input.date));
 
-      const where = conditions.length ? and(...conditions) : undefined;
+      const validConds = conditions.filter(Boolean) as SQL[];
+      const where = validConds.length ? and(...validConds) : undefined;
 
       const rows = await ctx.db.query.absences.findMany({
         where: where,

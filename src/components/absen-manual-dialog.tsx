@@ -35,10 +35,11 @@ export function AbsenManualDialog() {
         kelas: string | null;
         absen: number | null;
     } | null>(null);
-    const [status, setStatus] = useState<string>("");
+    const [status, setStatus] = useState<"Hadir" | "Terlambat" | "Pulang" | "Dipulangkan" | undefined>(undefined);
     const [reason, setReason] = useState("");
     const [lateMinutes, setLateMinutes] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0] ?? "");
+    const [geo, setGeo] = useState<{ lat: number | null; lon: number | null; loading: boolean; error?: string }>({ lat: null, lon: null, loading: false });
 
     // Query untuk cek siswa by NIS
     const { isLoading: siswaLoading, refetch: refetchSiswa } =
@@ -51,7 +52,7 @@ export function AbsenManualDialog() {
             // Reset form
             setNis("");
             setSiswaData(null);
-            setStatus("");
+            setStatus(undefined);
             setReason("");
             setLateMinutes("");
             setDate(new Date().toISOString().split("T")[0] ?? "");
@@ -104,10 +105,12 @@ export function AbsenManualDialog() {
 
         createAbsence.mutate({
             nis: nis,
-            status: status as "Hadir" | "Terlambat" | "Sakit" | "Izin" | "Alfa" | "Pulang",
+            status: status,
             date: date,
             reason: reason || undefined,
             lateMinutes: status === "Terlambat" ? parseInt(lateMinutes) : undefined,
+            latitude: typeof geo.lat === "number" ? geo.lat : undefined,
+            longitude: typeof geo.lon === "number" ? geo.lon : undefined,
         });
     };
 
@@ -117,10 +120,26 @@ export function AbsenManualDialog() {
             // Reset form when closing
             setNis("");
             setSiswaData(null);
-            setStatus("");
+            setStatus(undefined);
             setReason("");
             setLateMinutes("");
             setDate(new Date().toISOString().split("T")[0] ?? "");
+            setGeo({ lat: null, lon: null, loading: false });
+        } else {
+            // Auto-capture device location when dialog opens
+            if (typeof window !== "undefined" && "geolocation" in navigator) {
+                setGeo((g) => ({ ...g, loading: true, error: undefined }));
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude, loading: false });
+                    },
+                    (err) => {
+                        setGeo({ lat: null, lon: null, loading: false, error: err.message || "Gagal mengambil lokasi" });
+                        // optional toast; keep quiet to avoid noise
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+                );
+            }
         }
     };
 
@@ -197,7 +216,10 @@ export function AbsenManualDialog() {
                         <>
                             <div className="space-y-2">
                                 <Label htmlFor="status">Status Absensi</Label>
-                                <Select value={status} onValueChange={setStatus}>
+                                <Select
+                                    value={status}
+                                    onValueChange={(v: "Hadir" | "Terlambat" | "Pulang" | "Dipulangkan") => setStatus(v)}
+                                >
                                     <SelectTrigger id="status">
                                         <SelectValue placeholder="Pilih status" />
                                     </SelectTrigger>
@@ -205,9 +227,7 @@ export function AbsenManualDialog() {
                                         <SelectItem value="Hadir">✅ Hadir</SelectItem>
                                         <SelectItem value="Terlambat">⏰ Terlambat</SelectItem>
                                         <SelectItem value="Pulang">👋 Pulang</SelectItem>
-                                        <SelectItem value="Sakit">💊 Sakit</SelectItem>
-                                        <SelectItem value="Izin">📝 Izin</SelectItem>
-                                        <SelectItem value="Alfa">⭕ Alfa</SelectItem>
+                                        <SelectItem value="Dipulangkan">⚠️ Dipulangkan</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -237,6 +257,47 @@ export function AbsenManualDialog() {
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
                                 />
+                            </div>
+
+                            {/* Auto Location */}
+                            <div className="space-y-1">
+                                <Label>Lokasi (otomatis)</Label>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    {geo.loading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Mengambil lokasi…
+                                        </>
+                                    ) : geo.lat != null && geo.lon != null ? (
+                                        <>
+                                            <span>Lat: {geo.lat.toFixed(6)}</span>
+                                            <span>Lon: {geo.lon.toFixed(6)}</span>
+                                        </>
+                                    ) : (
+                                        <span>{geo.error ? `Lokasi tidak tersedia (${geo.error})` : "Lokasi belum tersedia"}</span>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (typeof window !== "undefined" && "geolocation" in navigator) {
+                                                setGeo((g) => ({ ...g, loading: true, error: undefined }));
+                                                navigator.geolocation.getCurrentPosition(
+                                                    (pos) => {
+                                                        setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude, loading: false });
+                                                    },
+                                                    (err) => {
+                                                        setGeo({ lat: null, lon: null, loading: false, error: err.message || "Gagal mengambil lokasi" });
+                                                    },
+                                                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+                                                );
+                                            }
+                                        }}
+                                        disabled={geo.loading}
+                                    >
+                                        Ambil Lokasi
+                                    </Button>
+                                </div>
                             </div>
 
                             {/* Reason */}

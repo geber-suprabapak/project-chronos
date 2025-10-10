@@ -113,7 +113,7 @@ export default function AbsensiPage() {
                           const isLateDisplay = a.isLate === true || /terlambat/i.test(a.reason ?? "");
                           const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplay
                             ? "Terlambat"
-                            : (a.status ?? "-");
+                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
 
                           return (
                             <TableRow key={`${a.id}`}>
@@ -162,7 +162,7 @@ export default function AbsensiPage() {
                           const lateStatus = isLateDisplayPdf ? `Dipulangkan (${a.lateMinutes ?? "-"} menit)` : "Absen";
                           const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
                             ? "Terlambat"
-                            : (a.status ?? "-");
+                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>

@@ -155,9 +155,19 @@ export default function PerizinanPage() {
                               {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary" className="rounded-full px-2.5 py-1">
-                                {item.kategoriIzin}
-                              </Badge>
+                              {(() => {
+                                const d = item.deskripsi ?? "";
+                                const displayKategori = /dipulangkan/i.test(d)
+                                  ? "dipulangkan"
+                                  : /terlambat/i.test(d)
+                                    ? "terlambat"
+                                    : (item.kategoriIzin ?? "-");
+                                return (
+                                  <Badge variant="secondary" className="rounded-full px-2.5 py-1">
+                                    {displayKategori}
+                                  </Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>{item.deskripsi}</TableCell>
                             <TableCell>
@@ -209,7 +219,14 @@ export default function PerizinanPage() {
                             <TableRow key={`${item.id}-pdf`}>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
-                              <TableCell>{item.kategoriIzin}</TableCell>
+                              <TableCell>{(() => {
+                                const d = item.deskripsi ?? "";
+                                return /dipulangkan/i.test(d)
+                                  ? "dipulangkan"
+                                  : /terlambat/i.test(d)
+                                    ? "terlambat"
+                                    : (item.kategoriIzin ?? "-");
+                              })()}</TableCell>
                               <TableCell>{item.deskripsi}</TableCell>
                               <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
                             </TableRow>
