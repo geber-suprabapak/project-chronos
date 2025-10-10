@@ -108,9 +108,8 @@ export default function AbsensiPage() {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
-                          // Derive display status:
-                          // If DB status is 'Datang' or 'Hadir' and row is computed late (isLate) OR reason mentions 'Terlambat', show 'Terlambat'
-                          const isLateDisplay = a.isLate === true || /terlambat/i.test(a.reason ?? "");
+                          // Derive display status from reason
+                          const isLateDisplay = /terlambat/i.test(a.reason ?? "");
                           const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplay
                             ? "Terlambat"
                             : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
@@ -158,8 +157,8 @@ export default function AbsensiPage() {
                         {rows2.map((a) => {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                          const isLateDisplayPdf = a.isLate === true || /terlambat/i.test(a.reason ?? "");
-                          const lateStatus = isLateDisplayPdf ? `Dipulangkan (${a.lateMinutes ?? "-"} menit)` : "Absen";
+                          const isLateDisplayPdf = /terlambat/i.test(a.reason ?? "");
+                          const lateStatus = isLateDisplayPdf ? "Dipulangkan" : "Absen";
                           const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
                             ? "Terlambat"
                             : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));

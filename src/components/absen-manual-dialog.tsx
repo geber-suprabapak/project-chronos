@@ -22,7 +22,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "~/components/ui/select";
-import { Textarea } from "~/components/ui/textarea";
 import { UserPlus, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 
@@ -36,10 +35,7 @@ export function AbsenManualDialog() {
         absen: number | null;
     } | null>(null);
     const [status, setStatus] = useState<"Hadir" | "Terlambat" | "Pulang" | "Dipulangkan" | undefined>(undefined);
-    const [reason, setReason] = useState("");
-    const [lateMinutes, setLateMinutes] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0] ?? "");
-    const [geo, setGeo] = useState<{ lat: number | null; lon: number | null; loading: boolean; error?: string }>({ lat: null, lon: null, loading: false });
 
     // Query untuk cek siswa by NIS
     const { isLoading: siswaLoading, refetch: refetchSiswa } =
@@ -53,8 +49,6 @@ export function AbsenManualDialog() {
             setNis("");
             setSiswaData(null);
             setStatus(undefined);
-            setReason("");
-            setLateMinutes("");
             setDate(new Date().toISOString().split("T")[0] ?? "");
             setOpen(false);
         },
@@ -97,22 +91,12 @@ export function AbsenManualDialog() {
             return;
         }
 
-        // Validasi untuk status terlambat
-        if (status === "Terlambat" && !lateMinutes) {
-            toast.error("Masukkan berapa menit terlambat");
-            return;
-        }
-
         createAbsence.mutate({
             nis: nis,
             status: status,
             date: date,
-            reason: reason || undefined,
-            lateMinutes: status === "Terlambat" ? parseInt(lateMinutes) : undefined,
-            latitude: typeof geo.lat === "number" ? geo.lat : undefined,
-            longitude: typeof geo.lon === "number" ? geo.lon : undefined,
         });
-    };
+    }
 
     const handleOpenChange = (newOpen: boolean) => {
         setOpen(newOpen);
@@ -121,25 +105,7 @@ export function AbsenManualDialog() {
             setNis("");
             setSiswaData(null);
             setStatus(undefined);
-            setReason("");
-            setLateMinutes("");
             setDate(new Date().toISOString().split("T")[0] ?? "");
-            setGeo({ lat: null, lon: null, loading: false });
-        } else {
-            // Auto-capture device location when dialog opens
-            if (typeof window !== "undefined" && "geolocation" in navigator) {
-                setGeo((g) => ({ ...g, loading: true, error: undefined }));
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude, loading: false });
-                    },
-                    (err) => {
-                        setGeo({ lat: null, lon: null, loading: false, error: err.message || "Gagal mengambil lokasi" });
-                        // optional toast; keep quiet to avoid noise
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-                );
-            }
         }
     };
 
@@ -232,22 +198,6 @@ export function AbsenManualDialog() {
                                 </Select>
                             </div>
 
-                            {/* Late Minutes - Only show if Terlambat */}
-                            {status === "Terlambat" && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="lateMinutes">Berapa Menit Terlambat?</Label>
-                                    <Input
-                                        id="lateMinutes"
-                                        type="number"
-                                        min="1"
-                                        max="120"
-                                        placeholder="Contoh: 15"
-                                        value={lateMinutes}
-                                        onChange={(e) => setLateMinutes(e.target.value)}
-                                    />
-                                </div>
-                            )}
-
                             {/* Date */}
                             <div className="space-y-2">
                                 <Label htmlFor="date">Tanggal</Label>
@@ -256,61 +206,6 @@ export function AbsenManualDialog() {
                                     type="date"
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Auto Location */}
-                            <div className="space-y-1">
-                                <Label>Lokasi (otomatis)</Label>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    {geo.loading ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Mengambil lokasi…
-                                        </>
-                                    ) : geo.lat != null && geo.lon != null ? (
-                                        <>
-                                            <span>Lat: {geo.lat.toFixed(6)}</span>
-                                            <span>Lon: {geo.lon.toFixed(6)}</span>
-                                        </>
-                                    ) : (
-                                        <span>{geo.error ? `Lokasi tidak tersedia (${geo.error})` : "Lokasi belum tersedia"}</span>
-                                    )}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            if (typeof window !== "undefined" && "geolocation" in navigator) {
-                                                setGeo((g) => ({ ...g, loading: true, error: undefined }));
-                                                navigator.geolocation.getCurrentPosition(
-                                                    (pos) => {
-                                                        setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude, loading: false });
-                                                    },
-                                                    (err) => {
-                                                        setGeo({ lat: null, lon: null, loading: false, error: err.message || "Gagal mengambil lokasi" });
-                                                    },
-                                                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-                                                );
-                                            }
-                                        }}
-                                        disabled={geo.loading}
-                                    >
-                                        Ambil Lokasi
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Reason */}
-                            <div className="space-y-2">
-                                <Label htmlFor="reason">
-                                    Keterangan <span className="text-muted-foreground">(Opsional)</span>
-                                </Label>
-                                <Textarea
-                                    id="reason"
-                                    placeholder="Contoh: Siswa terlambat karena macet"
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    rows={3}
                                 />
                             </div>
 
