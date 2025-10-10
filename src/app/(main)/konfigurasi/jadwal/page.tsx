@@ -317,9 +317,10 @@ export default function JadwalPage() {
                                                                 checked={schedule.isActive}
                                                                 onCheckedChange={() => handleToggleActive(schedule.id)}
                                                                 disabled={toggleActiveMutation.isPending}
+                                                                className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-red-600"
                                                             />
                                                             <Badge
-                                                                variant={schedule.isActive ? "default" : "secondary"}
+                                                                variant={schedule.isActive ? "success" : "destructive"}
                                                                 className="flex items-center gap-1"
                                                             >
                                                                 {schedule.isActive ? (
