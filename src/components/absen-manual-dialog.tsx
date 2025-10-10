@@ -1,13 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -36,15 +35,54 @@ export function AbsenManualDialog() {
     } | null>(null);
     const [status, setStatus] = useState<"Hadir" | "Terlambat" | "Pulang" | "Dipulangkan" | undefined>(undefined);
     const [date, setDate] = useState(new Date().toISOString().split("T")[0] ?? "");
+    const [isCheckingNis, setIsCheckingNis] = useState(false);
+
+    const utils = api.useUtils();
 
     // Query untuk cek siswa by NIS
-    const { isLoading: siswaLoading, refetch: refetchSiswa } =
+    const { refetch: refetchSiswa } =
         api.biodataSiswa.getByNis.useQuery({ nis: nis || "0" }, { enabled: false });
+
+    // Auto-check NIS saat mengetik (debounced)
+    useEffect(() => {
+        if (!nis || nis.length < 3) {
+            setSiswaData(null);
+            setIsCheckingNis(false);
+            return;
+        }
+
+        setIsCheckingNis(true);
+        const timer = setTimeout(() => {
+            void (async () => {
+                try {
+                    const result = await refetchSiswa();
+                    if (result.data) {
+                        setSiswaData(result.data);
+                    } else {
+                        setSiswaData(null);
+                    }
+                } catch {
+                    setSiswaData(null);
+                } finally {
+                    setIsCheckingNis(false);
+                }
+            })();
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [nis, refetchSiswa]);
 
     // Mutation untuk create absensi
     const createAbsence = api.absences.createManual.useMutation({
-        onSuccess: () => {
+        onSuccess: async () => {
             toast.success("Absensi berhasil ditambahkan!");
+            
+            // Invalidate queries untuk refresh data
+            await Promise.all([
+                utils.absences.list.invalidate(),
+                utils.absences.listRaw.invalidate(),
+            ]);
+            
             // Reset form
             setNis("");
             setSiswaData(null);
@@ -56,22 +94,6 @@ export function AbsenManualDialog() {
             toast.error(`Gagal menambahkan absensi: ${error.message}`);
         },
     });
-
-    const handleCheckNis = async () => {
-        if (!nis || nis.length < 5) {
-            toast.error("Masukkan NIS yang valid (minimal 5 digit)");
-            return;
-        }
-
-        const result = await refetchSiswa();
-        if (result.data) {
-            setSiswaData(result.data);
-            toast.success("Siswa ditemukan!");
-        } else {
-            setSiswaData(null);
-            toast.error("NIS tidak ditemukan");
-        }
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,59 +128,57 @@ export function AbsenManualDialog() {
             setSiswaData(null);
             setStatus(undefined);
             setDate(new Date().toISOString().split("T")[0] ?? "");
+            setIsCheckingNis(false);
         }
     };
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white shadow-lg">
-                    <UserPlus className="h-4 w-4 mr-2" />
+                <Button variant="default" size="default">
+                    <UserPlus />
                     Absen Manual
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <UserPlus className="h-5 w-5" />
+                        <UserPlus />
                         Absen Manual
                     </DialogTitle>
-                    <DialogDescription>
-                        Input absensi siswa secara manual oleh admin
-                    </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* NIS Input */}
                     <div className="space-y-2">
                         <Label htmlFor="nis">NIS Siswa</Label>
-                        <div className="flex gap-2">
+                        <div className="relative">
                             <Input
                                 id="nis"
                                 type="text"
-                                placeholder="Masukkan NIS"
+                                placeholder="Masukkan NIS (min 3 digit)"
                                 value={nis}
                                 onChange={(e) => setNis(e.target.value)}
-                                disabled={siswaLoading || createAbsence.isPending}
+                                disabled={createAbsence.isPending}
+                                className="pr-10"
                             />
-                            <Button
-                                type="button"
-                                onClick={handleCheckNis}
-                                disabled={siswaLoading || !nis || createAbsence.isPending}
-                            >
-                                {siswaLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    "Cek"
-                                )}
-                            </Button>
+                            {isCheckingNis && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <Loader2 className="animate-spin text-muted-foreground" />
+                                </div>
+                            )}
                         </div>
+                        {nis.length > 0 && nis.length < 3 && (
+                            <p className="text-xs text-muted-foreground">
+                                Minimal 3 digit untuk pengecekan otomatis
+                            </p>
+                        )}
                     </div>
 
                     {/* Siswa Info Alert */}
                     {siswaData && (
                         <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="text-green-600" />
                             <AlertDescription className="text-green-700 dark:text-green-400">
                                 <div className="font-semibold">{siswaData.nama ?? "Nama tidak tersedia"}</div>
                                 <div className="text-sm">
@@ -168,9 +188,9 @@ export function AbsenManualDialog() {
                         </Alert>
                     )}
 
-                    {nis && !siswaLoading && !siswaData && (
+                    {nis.length >= 5 && !isCheckingNis && !siswaData && (
                         <Alert className="bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800">
-                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertCircle className="text-red-600" />
                             <AlertDescription className="text-red-700 dark:text-red-400">
                                 NIS tidak ditemukan. Cek kembali NIS yang dimasukkan.
                             </AlertDescription>
@@ -190,10 +210,10 @@ export function AbsenManualDialog() {
                                         <SelectValue placeholder="Pilih status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Hadir">✅ Hadir</SelectItem>
-                                        <SelectItem value="Terlambat">⏰ Terlambat</SelectItem>
-                                        <SelectItem value="Pulang">👋 Pulang</SelectItem>
-                                        <SelectItem value="Dipulangkan">⚠️ Dipulangkan</SelectItem>
+                                        <SelectItem value="Hadir">Hadir</SelectItem>
+                                        <SelectItem value="Terlambat">Terlambat</SelectItem>
+                                        <SelectItem value="Pulang">Pulang</SelectItem>
+                                        <SelectItem value="Dipulangkan">Dipulangkan</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -222,12 +242,13 @@ export function AbsenManualDialog() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                                    variant="default"
+                                    className="flex-1"
                                     disabled={createAbsence.isPending || !status}
                                 >
                                     {createAbsence.isPending ? (
                                         <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            <Loader2 className="animate-spin" />
                                             Menyimpan...
                                         </>
                                     ) : (

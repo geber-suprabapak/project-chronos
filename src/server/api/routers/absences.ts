@@ -7,15 +7,17 @@ import type { SQL } from "drizzle-orm";
 /**
  * Router tRPC untuk tabel `absences`.
  *
- * Fitur yang disediakan (READ ONLY):
- *  - list     : Ambil daftar absensi dengan filter (userId, status, tanggal) + pagination.
- *  - getById  : Ambil satu record absensi berdasarkan primary key (id).
+ * Fitur yang disediakan:
+ *  - createManual : Buat absensi manual oleh admin
+ *  - delete       : Hapus data absensi berdasarkan ID
+ *  - list         : Ambil daftar absensi dengan filter (userId, status, tanggal) + pagination.
+ *  - listRaw      : Ambil seluruh data absensi tanpa pagination
+ *  - getById      : Ambil satu record absensi berdasarkan primary key (id).
  *
  * Catatan Implementasi:
  *  - Validasi input menggunakan Zod agar aman & terstruktur.
  *  - Filter tanggal memakai format YYYY-MM-DD (regex sederhana) sebelum dikirim ke DB.
  *  - Query list membangun array kondisi secara dinamis & hanya menerapkan WHERE jika ada filter.
- *  - Router ini READ ONLY: tidak ada endpoint create/update/delete.
  *  - Tidak ada otorisasi (auth) di sini; middleware bisa ditambahkan kemudian bila diperlukan.
  */
 
@@ -90,6 +92,46 @@ export const absencesRouter = createTRPCRouter({
         .returning();
 
       return newAbsence;
+    }),
+
+  // DELETE: Hapus data absensi berdasarkan ID
+  delete: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if absence exists
+      const absence = await ctx.db.query.absences.findFirst({
+        where: (table, { eq }) => eq(table.id, input.id),
+      });
+
+      if (!absence) {
+        throw new Error("Data absensi tidak ditemukan");
+      }
+
+      // Delete the absence record
+      const [deletedAbsence] = await ctx.db
+        .delete(absences)
+        .where(eq(absences.id, input.id))
+        .returning();
+
+      return deletedAbsence;
+    }),
+
+  // BULK DELETE: Hapus banyak data absensi sekaligus
+  bulkDelete: protectedProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      // Delete multiple records in one query using OR conditions
+      const deletedAbsences = await ctx.db
+        .delete(absences)
+        .where(
+          or(...input.ids.map(id => eq(absences.id, id)))
+        )
+        .returning();
+
+      return {
+        deletedCount: deletedAbsences.length,
+        deletedIds: deletedAbsences.map(a => a.id),
+      };
     }),
 
   // Mengambil daftar absensi dengan opsi filter & pagination.
