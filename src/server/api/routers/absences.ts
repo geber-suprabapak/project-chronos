@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { absences, perizinan } from "~/server/db/schema";
+import { absences } from "~/server/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
@@ -88,19 +88,6 @@ export const absencesRouter = createTRPCRouter({
           createdAt: new Date(),
         })
         .returning();
-
-      // Also create a perizinan record to mirror the manual entry without changing schema
-      // perizinan.kategori_izin is constrained to ('sakit','pergi')
-      const kategoriIzin: "sakit" | "pergi" = "pergi";
-      await ctx.db.insert(perizinan).values({
-        userId: userProfile.userId,
-        // tanggal expects timestamptz; use midnight of provided date in local time
-        // If you prefer UTC midnight, consider `${input.date}T00:00:00Z`
-        tanggal: new Date(input.date),
-        kategoriIzin,
-        deskripsi: reasonWithKeyword,
-        // approvalStatus defaults to 'pending', status boolean defaults to false
-      });
 
       return newAbsence;
     }),

@@ -116,12 +116,6 @@ export default function ShowPerizinanPage() {
   if (!perizinan) return <div className="p-8">Perizinan not found.</div>;
 
   const isActionable = perizinan.approvalStatus === "pending";
-  const descText = perizinan.deskripsi ?? "";
-  const displayKategori = /dipulangkan/i.test(descText)
-    ? "dipulangkan"
-    : /terlambat/i.test(descText)
-      ? "terlambat"
-      : (perizinan.kategoriIzin ?? "-");
   const user = perizinan.userProfile;
 
   return (
@@ -136,7 +130,7 @@ export default function ShowPerizinanPage() {
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Kategori</p>
-                <Badge variant="secondary" className="capitalize">{displayKategori}</Badge>
+                <Badge variant="secondary" className="capitalize">{perizinan.kategoriIzin ?? "-"}</Badge>
               </div>
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Tanggal Izin</p>
