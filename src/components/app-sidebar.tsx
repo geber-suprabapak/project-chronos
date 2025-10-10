@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SquareTerminal, Users, CalendarDays, BarChart2, GraduationCap, Settings } from "lucide-react";
+import { Users, CalendarDays, GraduationCap, Settings, Monitor, Mail } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
@@ -18,14 +18,9 @@ import Image from 'next/image';
 // Update icons to match each link
 const navItems = [
   {
-    title: "Debug Dash",
+    title: "Dashboard",
     url: "/dashboard",
-    icon: SquareTerminal,
-  },
-  {
-    title: "test",
-    url: "/test",
-    icon: SquareTerminal,
+    icon: Monitor,
   },
   {
     title: "Profiles",
@@ -45,12 +40,7 @@ const navItems = [
   {
     title: "Perizinan",
     url: "/perizinan",
-    icon: SquareTerminal,
-  },
-  {
-    title: "Statistik Siswa",
-    url: "/statistik",
-    icon: BarChart2,
+    icon: Mail,
   },
   {
     title: "Konfigurasi",

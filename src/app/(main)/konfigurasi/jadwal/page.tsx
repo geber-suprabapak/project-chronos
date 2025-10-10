@@ -260,13 +260,27 @@ export default function JadwalPage() {
                 {schedules && schedules.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Clock className="h-5 w-5" />
-                                Daftar Jadwal Mingguan
-                            </CardTitle>
-                            <CardDescription>
-                                Kelola jadwal absensi untuk setiap hari dalam seminggu
-                            </CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Clock className="h-5 w-5" />
+                                        Daftar Jadwal Mingguan
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Kelola jadwal absensi untuk setiap hari dalam seminggu
+                                    </CardDescription>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={resetMutation.isPending}
+                                >
+                                    <RotateCcw className="mr-1 h-3 w-3" />
+                                    {resetMutation.isPending ? "Mereset..." : "Reset Semua"}
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="rounded-md border">
@@ -357,130 +371,119 @@ export default function JadwalPage() {
                 )}
             </div>
 
-            {/* Edit Form */}
-            <Card className="w-full">
-                <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                        <Settings className="h-5 w-5" />
-                        <span>
-                            {selectedDayId
-                                ? `Edit Jadwal - ${DAY_MAP[schedules?.find(s => s.id === selectedDayId)?.hari as DayKey]?.label ?? ""}`
-                                : "Edit Jadwal Absensi"
-                            }
-                        </span>
-                    </CardTitle>
-                    <CardDescription>
-                        {selectedDayId
-                            ? "Ubah pengaturan jadwal untuk hari yang dipilih"
-                            : "Pilih hari dari tabel di atas untuk mengedit jadwal"
-                        }
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Form Fields in Grid Layout */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-                            {/* Mulai Masuk */}
-                            <div className="space-y-2">
-                                <Label htmlFor="mulaiMasuk" className="flex items-center gap-2 text-sm font-medium">
-                                    <Clock className="h-4 w-4" />
-                                    Mulai Masuk *
-                                </Label>
-                                <Input
-                                    id="mulaiMasuk"
-                                    type="time"
-                                    value={formData.mulaiMasuk}
-                                    onChange={(e) => handleInputChange("mulaiMasuk", e.target.value)}
-                                    required
-                                    disabled={!selectedDayId}
-                                    className="w-full"
-                                />
-                            </div>
+            {/* Edit Form - Only show when a day is selected */}
+            {selectedDayId && (
+                <Card className="w-full">
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                            <Settings className="h-5 w-5" />
+                            <span>
+                                Edit Jadwal - {DAY_MAP[schedules?.find(s => s.id === selectedDayId)?.hari as DayKey]?.label ?? ""}
+                            </span>
+                        </CardTitle>
+                        <CardDescription>
+                            Ubah pengaturan jadwal untuk hari yang dipilih
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Form Fields in Grid Layout */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                                {/* Mulai Masuk */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="mulaiMasuk" className="flex items-center gap-2 text-sm font-medium">
+                                        <Clock className="h-4 w-4" />
+                                        Mulai Masuk *
+                                    </Label>
+                                    <Input
+                                        id="mulaiMasuk"
+                                        type="time"
+                                        value={formData.mulaiMasuk}
+                                        onChange={(e) => handleInputChange("mulaiMasuk", e.target.value)}
+                                        required
+                                        className="w-full"
+                                    />
+                                </div>
 
-                            {/* Selesai Masuk */}
-                            <div className="space-y-2">
-                                <Label htmlFor="selesaiMasuk" className="flex items-center gap-2 text-sm font-medium">
-                                    <Clock className="h-4 w-4" />
-                                    Selesai Masuk *
-                                </Label>
-                                <Input
-                                    id="selesaiMasuk"
-                                    type="time"
-                                    value={formData.selesaiMasuk}
-                                    onChange={(e) => handleInputChange("selesaiMasuk", e.target.value)}
-                                    required
-                                    disabled={!selectedDayId}
-                                    className="w-full"
-                                />
-                            </div>
+                                {/* Selesai Masuk */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="selesaiMasuk" className="flex items-center gap-2 text-sm font-medium">
+                                        <Clock className="h-4 w-4" />
+                                        Selesai Masuk *
+                                    </Label>
+                                    <Input
+                                        id="selesaiMasuk"
+                                        type="time"
+                                        value={formData.selesaiMasuk}
+                                        onChange={(e) => handleInputChange("selesaiMasuk", e.target.value)}
+                                        required
+                                        className="w-full"
+                                    />
+                                </div>
 
-                            {/* Mulai Pulang */}
-                            <div className="space-y-2">
-                                <Label htmlFor="mulaiPulang" className="flex items-center gap-2 text-sm font-medium">
-                                    <Clock className="h-4 w-4" />
-                                    Mulai Pulang *
-                                </Label>
-                                <Input
-                                    id="mulaiPulang"
-                                    type="time"
-                                    value={formData.mulaiPulang}
-                                    onChange={(e) => handleInputChange("mulaiPulang", e.target.value)}
-                                    required
-                                    disabled={!selectedDayId}
-                                    className="w-full"
-                                />
-                            </div>
+                                {/* Mulai Pulang */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="mulaiPulang" className="flex items-center gap-2 text-sm font-medium">
+                                        <Clock className="h-4 w-4" />
+                                        Mulai Pulang *
+                                    </Label>
+                                    <Input
+                                        id="mulaiPulang"
+                                        type="time"
+                                        value={formData.mulaiPulang}
+                                        onChange={(e) => handleInputChange("mulaiPulang", e.target.value)}
+                                        required
+                                        className="w-full"
+                                    />
+                                </div>
 
-                            {/* Selesai Pulang */}
-                            <div className="space-y-2">
-                                <Label htmlFor="selesaiPulang" className="flex items-center gap-2 text-sm font-medium">
-                                    <Clock className="h-4 w-4" />
-                                    Selesai Pulang *
-                                </Label>
-                                <Input
-                                    id="selesaiPulang"
-                                    type="time"
-                                    value={formData.selesaiPulang}
-                                    onChange={(e) => handleInputChange("selesaiPulang", e.target.value)}
-                                    required
-                                    disabled={!selectedDayId}
-                                    className="w-full"
-                                />
-                            </div>
+                                {/* Selesai Pulang */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="selesaiPulang" className="flex items-center gap-2 text-sm font-medium">
+                                        <Clock className="h-4 w-4" />
+                                        Selesai Pulang *
+                                    </Label>
+                                    <Input
+                                        id="selesaiPulang"
+                                        type="time"
+                                        value={formData.selesaiPulang}
+                                        onChange={(e) => handleInputChange("selesaiPulang", e.target.value)}
+                                        required
+                                        className="w-full"
+                                    />
+                                </div>
 
-                            {/* Kompensasi Waktu */}
-                            <div className="space-y-2">
-                                <Label htmlFor="kompensasiWaktu" className="flex items-center gap-2 text-sm font-medium">
-                                    <Timer className="h-4 w-4" />
-                                    Kompensasi (menit) *
-                                </Label>
-                                <Input
-                                    id="kompensasiWaktu"
-                                    type="number"
-                                    min="0"
-                                    max="120"
-                                    value={formData.kompensasiWaktu}
-                                    onChange={(e) => handleInputChange("kompensasiWaktu", e.target.value)}
-                                    required
-                                    disabled={!selectedDayId}
-                                    className="w-full"
-                                    placeholder="15"
-                                />
-                            </div>
+                                {/* Kompensasi Waktu */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="kompensasiWaktu" className="flex items-center gap-2 text-sm font-medium">
+                                        <Timer className="h-4 w-4" />
+                                        Kompensasi (menit) *
+                                    </Label>
+                                    <Input
+                                        id="kompensasiWaktu"
+                                        type="number"
+                                        min="0"
+                                        max="120"
+                                        value={formData.kompensasiWaktu}
+                                        onChange={(e) => handleInputChange("kompensasiWaktu", e.target.value)}
+                                        required
+                                        className="w-full"
+                                        placeholder="15"
+                                    />
+                                </div>
 
-                            {/* Actions */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium opacity-0">Actions</Label>
-                                <div className="flex gap-2">
-                                    <Button
-                                        type="submit"
-                                        disabled={!selectedDayId || updateMutation.isPending}
-                                        size="sm"
-                                    >
-                                        <Save className="mr-1 h-3 w-3" />
-                                        {updateMutation.isPending ? "Saving..." : "Simpan"}
-                                    </Button>
-                                    {selectedDayId && (
+                                {/* Actions */}
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium opacity-0">Actions</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="submit"
+                                            disabled={updateMutation.isPending}
+                                            size="sm"
+                                        >
+                                            <Save className="mr-1 h-3 w-3" />
+                                            {updateMutation.isPending ? "Saving..." : "Simpan"}
+                                        </Button>
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -489,40 +492,22 @@ export default function JadwalPage() {
                                         >
                                             Batal
                                         </Button>
-                                    )}
-                                    {!selectedDayId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleReset}
-                                            disabled={resetMutation.isPending}
-                                        >
-                                            <RotateCcw className="mr-1 h-3 w-3" />
-                                            Reset All
-                                        </Button>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Helper Text */}
-                        <p className="text-xs text-muted-foreground">
-                            <strong>Kompensasi Waktu:</strong> Toleransi keterlambatan dalam menit (0-120 menit).
-                            Waktu dalam format 24 jam (HH:MM).
-                        </p>
-                    </form>
-
-                    {/* Info Alert */}
-                    <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                            <strong>Tips:</strong> Pilih hari dari tabel di atas untuk mengedit jadwalnya.
-                            Matikan status aktif untuk hari libur. Kompensasi waktu akan ditambahkan ke batas akhir waktu absen.
-                        </AlertDescription>
-                    </Alert>
-                </CardContent>
-            </Card>
+                            {/* Helper Text */}
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription>
+                                    <strong>Kompensasi Waktu:</strong> Toleransi keterlambatan dalam menit (0-120 menit).
+                                    Waktu dalam format 24 jam (HH:MM). Kompensasi waktu akan ditambahkan ke batas akhir waktu absen.
+                                </AlertDescription>
+                            </Alert>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

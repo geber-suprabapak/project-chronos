@@ -95,7 +95,6 @@ export default function ShowProfilePage() {
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Alasan</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,12 +107,11 @@ export default function ShowProfilePage() {
                           {a.status ?? "-"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-[360px] truncate">{a.reason ?? "-"}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
                   </TableRow>
                 )}
               </TableBody>

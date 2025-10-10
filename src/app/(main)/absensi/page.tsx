@@ -66,7 +66,7 @@ export default function AbsensiPage() {
             {/* Reusable filter bar */}
             <FilterBar
               value={filter}
-              statuses={["Hadir", "Pulang"]}
+              statuses={["Hadir", "Terlambat", "Pulang", "Alpha"]}
               onChange={(next) => {
                 setDate(next.date ?? "");
                 setQuery(next.query ?? "");
@@ -141,19 +141,20 @@ export default function AbsensiPage() {
                           <TableHead>Tanggal</TableHead>
                           <TableHead>Nama</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Alasan</TableHead>
+                          <TableHead>Lokasi</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
+                          const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
                               <TableCell>{a.status ?? "-"}</TableCell>
-                              <TableCell>{a.reason ?? "-"}</TableCell>
+                              <TableCell>{lokasi || "-"}</TableCell>
                             </TableRow>
                           );
                         })}
