@@ -10,19 +10,12 @@ import {
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { Badge } from "~/components/ui/badge";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem
-} from "~/components/ui/select";
 import { Users, UserCheck, User } from "lucide-react";
+import { AutoSearchForm } from "~/components/auto-search-form";
 
 export default async function SiswaPage({
     searchParams
@@ -177,63 +170,16 @@ export default async function SiswaPage({
                 {/* Filter Bar */}
                 <Card className="rounded-lg border-0 shadow-sm bg-background">
                     <CardContent className="pt-6">
-                        <form method="get" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                            <div className="flex flex-col gap-2 w-full">
-                                <label htmlFor="nama" className="text-sm font-medium">Cari Nama/NIS</label>
-                                <Input id="nama" name="nama" placeholder="Masukkan nama atau NIS siswa" defaultValue={nama} />
-                            </div>
-                            <input type="hidden" name="page" value="1" />
-                            <div className="flex flex-col gap-2 w-full">
-                                <label htmlFor="kelas" className="text-sm font-medium">Kelas</label>
-                                <Select name="kelas" defaultValue={kelas ?? "ALL"}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Semua Kelas" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Semua Kelas</SelectItem>
-                                        {uniqueClasses.map((kelasName) => (
-                                            <SelectItem key={kelasName} value={kelasName}>
-                                                {kelasName}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col gap-2 w-full">
-                                <label htmlFor="kelamin" className="text-sm font-medium">Jenis Kelamin</label>
-                                <Select name="kelamin" defaultValue={kelamin ?? "ALL"}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Semua" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Semua</SelectItem>
-                                        <SelectItem value="L">Laki-laki</SelectItem>
-                                        <SelectItem value="P">Perempuan</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col gap-2 w-full">
-                                <label htmlFor="activated" className="text-sm font-medium">Status Aktivasi</label>
-                                <Select name="activated" defaultValue={activated === undefined ? "ALL" : String(activated)}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Semua" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Semua</SelectItem>
-                                        <SelectItem value="true">Sudah Diaktifkan</SelectItem>
-                                        <SelectItem value="false">Belum Diaktifkan</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex gap-2 items-end w-full">
-                                <Button type="submit" variant="default" className="flex-1">Cari</Button>
-                                {(nama ?? kelas ?? kelamin ?? (activated !== undefined)) && (
-                                    <Button asChild type="button" variant="outline" className="flex-1">
-                                        <Link href="/siswa">Reset</Link>
-                                    </Button>
-                                )}
-                            </div>
-                        </form>
+                        <AutoSearchForm
+                            type="siswa"
+                            initialValues={{
+                                nama,
+                                kelas,
+                                kelamin,
+                                activated: activated === undefined ? "ALL" : String(activated),
+                            }}
+                            uniqueClasses={uniqueClasses}
+                        />
                     </CardContent>
                 </Card>
 

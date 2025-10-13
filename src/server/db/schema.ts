@@ -44,8 +44,8 @@ export const absences = pgTable(
     status: text("status").notNull(),
   },
   (t) => [
-    // Match the DB check constraint: status IN ('Hadir', 'Datang', 'Pulang')
-    sql`CONSTRAINT absences_status_check CHECK (${t.status} = ANY (ARRAY['Hadir','Datang','Pulang']))`,
+    // Match the DB check constraint: status IN ('Hadir', 'Terlambat', 'Pulang', 'Alpha')
+    sql`CONSTRAINT absences_status_check CHECK (${t.status} = ANY (ARRAY['Hadir','Terlambat','Pulang','Alpha']))`,
   ],
 );
 

@@ -30,7 +30,7 @@ export async function GET() {
   // Create a new workbook and add metadata
   const wb = new Workbook();
   Object.assign(wb, makeWorkbookMetadata('Absensi Data'));
-  
+
   // Create worksheet with columns
   const ws = wb.addWorksheet('Absensi');
   ws.columns = [
@@ -43,28 +43,28 @@ export async function GET() {
     { header: 'Status', key: 'status', width: 10 },
     { header: 'Created At', key: 'createdAt', width: 20 },
   ];
-  
+
   // Style the header row
   ws.getRow(1).font = { bold: true };
-  
+
   // Fetch all absences data
   const rows = await db.select().from(absences);
-  
+
   // Fetch all profiles to map user IDs to names
   const profiles = await db.select().from(userProfiles);
   const profileMap = new Map<string, typeof profiles[number]>();
-  
-  // Create a lookup map of user profiles by ID
+
+  // Create a lookup map of user profiles by userId (not id)
   for (const profile of profiles) {
-    if (profile.id) {
-      profileMap.set(profile.id, profile);
+    if (profile.userId) {
+      profileMap.set(profile.userId, profile);
     }
   }
-  
+
   // Add rows to worksheet
   for (const r of rows) {
     const profile = profileMap.get(r.userId);
-    
+
     ws.addRow({
       id: r.id,
       fullName: profile?.fullName ?? null,
@@ -76,16 +76,16 @@ export async function GET() {
       createdAt: formatDate(r.createdAt),
     });
   }
-  
+
   // Auto-filter for all columns
   ws.autoFilter = {
     from: { row: 1, column: 1 },
     to: { row: 1, column: ws.columns.length },
   };
-  
+
   // Generate Excel buffer
   const buffer = await workbookToResponseBuffer(wb);
-  
+
   // Return as downloadable Excel file
   return new NextResponse(buffer, {
     status: 200,

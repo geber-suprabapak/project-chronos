@@ -61,7 +61,14 @@ export const perizinanRouter = createTRPCRouter({
         },
       });
 
-      return rows;
+      // Filter out entries created from manual absence (identified by specific keywords in description)
+      const filtered = rows.filter((row) => {
+        const desc = (row.deskripsi ?? "").toLowerCase();
+        // Exclude if description is exactly "terlambat" or "dipulangkan" (from absen manual)
+        return desc !== "terlambat" && desc !== "dipulangkan";
+      });
+
+      return filtered;
     }),
 
   // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
@@ -72,7 +79,13 @@ export const perizinanRouter = createTRPCRouter({
         userProfile: true,
       },
     });
-    return rows;
+    // Filter out entries created from manual absence (identified by specific keywords in description)
+    const filtered = rows.filter((row) => {
+      const desc = (row.deskripsi ?? "").toLowerCase();
+      // Exclude if description is exactly "terlambat" or "dipulangkan" (from absen manual)
+      return desc !== "terlambat" && desc !== "dipulangkan";
+    });
+    return filtered;
   }),
 
   // Mengambil satu record perizinan berdasarkan UUID primary key.

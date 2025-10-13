@@ -80,8 +80,8 @@ export default function ShowPerizinanPage() {
 
   const updateStatusMutation = api.perizinan.updateStatus.useMutation({
     onSuccess: (data) => {
-  void utils.perizinan.getById.invalidate({ id });
-  void utils.perizinan.listRaw.invalidate();
+      void utils.perizinan.getById.invalidate({ id });
+      void utils.perizinan.listRaw.invalidate();
       setRejectDialogOpen(false);
       if (data) {
         toast.success(`Status updated to ${data.approvalStatus}`);
@@ -130,7 +130,7 @@ export default function ShowPerizinanPage() {
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Kategori</p>
-                <Badge variant="secondary">{perizinan.kategoriIzin}</Badge>
+                <Badge variant="secondary" className="capitalize">{perizinan.kategoriIzin ?? "-"}</Badge>
               </div>
               <div className="grid grid-cols-2 items-center">
                 <p className="text-sm font-semibold text-muted-foreground">Tanggal Izin</p>
@@ -138,32 +138,32 @@ export default function ShowPerizinanPage() {
               </div>
             </div>
             <div>
-                <p className="text-sm font-semibold text-muted-foreground">Deskripsi</p>
-                <p className="mt-1">{perizinan.deskripsi}</p>
+              <p className="text-sm font-semibold text-muted-foreground">Deskripsi</p>
+              <p className="mt-1">{perizinan.deskripsi}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-            <CardHeader><CardTitle>Riwayat Status</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-                 <p><strong>Status Saat Ini:</strong> <Badge variant={getBadgeVariant(perizinan.approvalStatus)} className="capitalize">{perizinan.approvalStatus}</Badge></p>
-                <p><strong>Dibuat pada:</strong> {formatDate(perizinan.createdAt)}</p>
-                {perizinan.approvalStatus === 'approved' && (
-                  <p><strong>Disetujui pada:</strong> {formatDate(perizinan.approvedAt)}</p>
-                )}
-                {perizinan.approvalStatus === 'rejected' && (
-                  <p><strong>Ditolak pada:</strong> {formatDate(perizinan.rejectedAt)}</p>
-                )}
-                {perizinan.rejectionReason && (
-                   <Alert className="mt-4">
-                    <Terminal className="h-4 w-4" />
-                    <AlertTitle>Alasan Penolakan</AlertTitle>
-                    <AlertDescription>
-                      {perizinan.rejectionReason}
-                    </AlertDescription>
-                  </Alert>
-                )}
-            </CardContent>
+          <CardHeader><CardTitle>Riwayat Status</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p><strong>Status Saat Ini:</strong> <Badge variant={getBadgeVariant(perizinan.approvalStatus)} className="capitalize">{perizinan.approvalStatus}</Badge></p>
+            <p><strong>Dibuat pada:</strong> {formatDate(perizinan.createdAt)}</p>
+            {perizinan.approvalStatus === 'approved' && (
+              <p><strong>Disetujui pada:</strong> {formatDate(perizinan.approvedAt)}</p>
+            )}
+            {perizinan.approvalStatus === 'rejected' && (
+              <p><strong>Ditolak pada:</strong> {formatDate(perizinan.rejectedAt)}</p>
+            )}
+            {perizinan.rejectionReason && (
+              <Alert className="mt-4">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Alasan Penolakan</AlertTitle>
+                <AlertDescription>
+                  {perizinan.rejectionReason}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
         </Card>
       </div>
 
@@ -176,7 +176,7 @@ export default function ShowPerizinanPage() {
           <CardContent className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage src={user?.avatarUrl ?? undefined} />
-              <AvatarFallback><User/></AvatarFallback>
+              <AvatarFallback><User /></AvatarFallback>
             </Avatar>
             <div>
               <p className="font-semibold">{user?.fullName ?? "N/A"}</p>
@@ -185,19 +185,20 @@ export default function ShowPerizinanPage() {
           </CardContent>
         </Card>
         {perizinan.linkFoto && (
-            <Card>
-                <CardHeader><CardTitle>Bukti Foto</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                    <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
-                        <Image src={perizinan.linkFoto} alt="Bukti Perizinan" fill style={{ objectFit: "cover" }}/>
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
-                        <ImageIcon className="mr-2 h-4 w-4"/> Lihat Ukuran Penuh
-                    </Button>
-                </CardContent>
-            </Card>
+          <Card>
+            <CardHeader><CardTitle>Bukti Foto</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
+                <Image src={perizinan.linkFoto} alt="Bukti Perizinan" fill style={{ objectFit: "cover" }} />
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
+                <ImageIcon className="mr-2 h-4 w-4" /> Lihat Ukuran Penuh
+              </Button>
+            </CardContent>
+          </Card>
         )}
         <Card>
+<<<<<<< HEAD
             <CardHeader><CardTitle>Panel Aksi</CardTitle></CardHeader>
             <CardContent>
                 {isActionable ? (
@@ -221,6 +222,31 @@ export default function ShowPerizinanPage() {
                     <p>Tindakan tidak dapat dilakukan karena permintaan ini sudah direspon.</p>
                 )}
             </CardContent>
+=======
+          <CardHeader><CardTitle>Panel Aksi</CardTitle></CardHeader>
+          <CardContent>
+            {isActionable ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
+                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg">
+                  {updateStatusMutation.isPending ? "Approving..." : "Approve"}
+                </Button>
+                <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>
+              </div>
+            ) : perizinan.approvalStatus === "rejected" ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-muted-foreground">Permintaan ini ditolak. Anda bisa membatalkan penolakan.</p>
+                <Button onClick={() => {
+                  updateStatusMutation.mutate({ id, approvalStatus: "pending" });
+                }} disabled={updateStatusMutation.isPending} size="lg">
+                  {updateStatusMutation.isPending ? "Membatalkan..." : "Batalkan Penolakan"}
+                </Button>
+              </div>
+            ) : (
+              <p>Tindakan tidak dapat dilakukan karena permintaan ini sudah direspon.</p>
+            )}
+          </CardContent>
+>>>>>>> 0c3aa8ae06577738cf75b1f4666836edb50ff69e
         </Card>
       </div>
 
@@ -228,7 +254,7 @@ export default function ShowPerizinanPage() {
       <Dialog open={isRejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Konfirmasi Penolakan</DialogTitle><DialogDescription>Harap berikan alasan mengapa perizinan ini ditolak.</DialogDescription></DialogHeader>
-          <div className="py-4"><Label htmlFor="rejection-reason">Alasan</Label><Textarea id="rejection-reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Contoh: Surat dokter tidak valid."/></div>
+          <div className="py-4"><Label htmlFor="rejection-reason">Alasan</Label><Textarea id="rejection-reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Contoh: Surat dokter tidak valid." /></div>
           <DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><Button onClick={handleRejectConfirm} disabled={updateStatusMutation.isPending}>{updateStatusMutation.isPending ? "Rejecting..." : "Konfirmasi Tolak"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
@@ -252,15 +278,15 @@ export default function ShowPerizinanPage() {
 }
 
 const SkeletonLayout = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8">
-        <div className="lg:col-span-2 flex flex-col gap-4 md:gap-8">
-            <Card><CardHeader><Skeleton className="h-8 w-1/2"/></CardHeader><CardContent className="space-y-4"><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-3/4"/></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-8 w-1/2"/></CardHeader><CardContent className="space-y-2"><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-3/4"/></CardContent></Card>
-        </div>
-        <div className="lg:col-span-1 flex flex-col gap-4 md:gap-8">
-            <Card><CardHeader><Skeleton className="h-8 w-1/2"/></CardHeader><CardContent><Skeleton className="h-16 w-full"/></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-8 w-1/2"/></CardHeader><CardContent><Skeleton className="h-48 w-full"/></CardContent></Card>
-            <Card><CardHeader><Skeleton className="h-8 w-1/2"/></CardHeader><CardContent><Skeleton className="h-24 w-full"/></CardContent></Card>
-        </div>
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8">
+    <div className="lg:col-span-2 flex flex-col gap-4 md:gap-8">
+      <Card><CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></CardContent></Card>
+      <Card><CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader><CardContent className="space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></CardContent></Card>
     </div>
+    <div className="lg:col-span-1 flex flex-col gap-4 md:gap-8">
+      <Card><CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader><CardContent><Skeleton className="h-16 w-full" /></CardContent></Card>
+      <Card><CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader><CardContent><Skeleton className="h-48 w-full" /></CardContent></Card>
+      <Card><CardHeader><Skeleton className="h-8 w-1/2" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent></Card>
+    </div>
+  </div>
 )

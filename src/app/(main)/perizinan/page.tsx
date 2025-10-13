@@ -156,7 +156,7 @@ export default function PerizinanPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="rounded-full px-2.5 py-1">
-                                {item.kategoriIzin}
+                                {item.kategoriIzin ?? "-"}
                               </Badge>
                             </TableCell>
                             <TableCell>{item.deskripsi}</TableCell>
@@ -209,7 +209,7 @@ export default function PerizinanPage() {
                             <TableRow key={`${item.id}-pdf`}>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
-                              <TableCell>{item.kategoriIzin}</TableCell>
+                              <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
                               <TableCell>{item.deskripsi}</TableCell>
                               <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
                             </TableRow>

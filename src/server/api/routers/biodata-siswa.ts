@@ -12,12 +12,17 @@ export const biodataSiswaRouter = createTRPCRouter({
     getByNis: protectedProcedure
         .input(z.object({ nis: z.string() }))
         .query(async ({ ctx, input }) => {
-            // Convert string to bigint for database query
-            const nisValue = BigInt(input.nis);
             const row = await ctx.db.query.biodataSiswa.findFirst({
-                where: (table, { eq }) => eq(table.nis, nisValue),
+                where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
             });
-            return row ?? null;
+
+            if (!row) return null;
+
+            // Convert BigInt to string for serialization
+            return {
+                ...row,
+                nis: row.nis.toString(),
+            };
         }),
 
     // LIST: ambil daftar biodata siswa dengan pagination dan filtering

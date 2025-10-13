@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/geber-suprabapak/project-chronos:${TAG:-latest}
+    image: ghcr.io/geber-suprabapak/project-chronos:latest
     ports:
       - '13000:3000'
     env_file:

@@ -28,7 +28,11 @@ export function CurrentPageTitle({ className }: { className?: string }) {
       title = "Dashboard";
       break;
     case "absensi":
-      title = "Absensi";
+      if (second === "show") {
+        title = "Absensi — Detail";
+      } else {
+        title = "Absensi";
+      }
       break;
     case "perizinan":
       if (second === "show") {
