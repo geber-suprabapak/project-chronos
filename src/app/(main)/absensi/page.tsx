@@ -42,11 +42,11 @@ export default function AbsensiPage() {
   const [deleteName, setDeleteName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-  
+
   const filter: FilterBarValue = { date: date || undefined, query, status: status || undefined, sort };
-  
+
   const utils = api.useUtils();
-  
+
   // Fetch absences with a reasonable default page size
   const {
     data: absences,
@@ -126,7 +126,7 @@ export default function AbsensiPage() {
   const confirmBulkDelete = () => {
     const idsToDelete = Array.from(selectedIds);
     if (idsToDelete.length === 0) return;
-    
+
     bulkDeleteMutation.mutate({ ids: idsToDelete });
   };
 
@@ -141,8 +141,8 @@ export default function AbsensiPage() {
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
           {selectedIds.size > 0 && (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleBulkDelete}
               disabled={bulkDeleteMutation.isPending || deleteMutation.isPending}
             >
@@ -220,11 +220,7 @@ export default function AbsensiPage() {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
-                          // Derive display status from reason
-                          const isLateDisplay = /terlambat/i.test(a.reason ?? "");
-                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplay
-                            ? "Terlambat"
-                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
+                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
 
                           return (
                             <TableRow key={`${a.id}`}>
@@ -286,37 +282,21 @@ export default function AbsensiPage() {
                           <TableHead>Tanggal</TableHead>
                           <TableHead>Nama</TableHead>
                           <TableHead>Status</TableHead>
-<<<<<<< HEAD
-=======
-                          <TableHead>Keterlambatan</TableHead>
-                          <TableHead>Alasan</TableHead>
                           <TableHead>Lokasi</TableHead>
->>>>>>> 0c3aa8ae06577738cf75b1f4666836edb50ff69e
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                          const isLateDisplayPdf = /terlambat/i.test(a.reason ?? "");
-                          const lateStatus = isLateDisplayPdf ? "Dipulangkan" : "Absen";
-                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
-                            ? "Terlambat"
-                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
+                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
-<<<<<<< HEAD
-                              <TableCell>{a.status ?? "-"}</TableCell>
-=======
                               <TableCell>{displayStatus}</TableCell>
-                              <TableCell>{lateStatus}</TableCell>
-                              <TableCell>{a.reason ?? "-"}</TableCell>
-                              <TableCell>{a.status ?? "-"}</TableCell>
                               <TableCell>{lokasi || "-"}</TableCell>
->>>>>>> 0c3aa8ae06577738cf75b1f4666836edb50ff69e
                             </TableRow>
                           );
                         })}
@@ -384,4 +364,3 @@ export default function AbsensiPage() {
     </div>
   );
 }
-          

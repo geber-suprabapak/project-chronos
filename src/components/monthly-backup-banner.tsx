@@ -31,7 +31,7 @@ export function MonthlyBackupBanner() {
 
     if (forceShow) {
       setVisible(true);
-    } else if (day <= 27) {
+    } else if (day >= 27) {
       try {
         const done = localStorage.getItem(storageKey) === "done";
         if (!done) setVisible(true);

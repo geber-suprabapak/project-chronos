@@ -198,37 +198,12 @@ export default function ShowPerizinanPage() {
           </Card>
         )}
         <Card>
-<<<<<<< HEAD
-            <CardHeader><CardTitle>Panel Aksi</CardTitle></CardHeader>
-            <CardContent>
-                {isActionable ? (
-                    <div className="flex flex-col gap-2">
-                        <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
-                        <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                          {updateStatusMutation.isPending ? "Approving..." : "Approve"}
-                        </Button>
-                        <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>
-                    </div>
-                ) : perizinan.approvalStatus === "rejected" ? (
-                    <div className="flex flex-col gap-2">
-                        <p className="text-sm text-muted-foreground">Permintaan ini ditolak. Anda bisa membatalkan penolakan.</p>
-                        <Button onClick={() => {
-                            updateStatusMutation.mutate({ id, approvalStatus: "pending" });
-                        }} disabled={updateStatusMutation.isPending} size="lg">
-                            {updateStatusMutation.isPending ? "Membatalkan..." : "Batalkan Penolakan"}
-                        </Button>
-                    </div>
-                ) : (
-                    <p>Tindakan tidak dapat dilakukan karena permintaan ini sudah direspon.</p>
-                )}
-            </CardContent>
-=======
           <CardHeader><CardTitle>Panel Aksi</CardTitle></CardHeader>
           <CardContent>
             {isActionable ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
-                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg">
+                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
                   {updateStatusMutation.isPending ? "Approving..." : "Approve"}
                 </Button>
                 <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>
@@ -238,7 +213,7 @@ export default function ShowPerizinanPage() {
                 <p className="text-sm text-muted-foreground">Permintaan ini ditolak. Anda bisa membatalkan penolakan.</p>
                 <Button onClick={() => {
                   updateStatusMutation.mutate({ id, approvalStatus: "pending" });
-                }} disabled={updateStatusMutation.isPending} size="lg">
+                }} disabled={updateStatusMutation.isPending} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                   {updateStatusMutation.isPending ? "Membatalkan..." : "Batalkan Penolakan"}
                 </Button>
               </div>
@@ -246,7 +221,6 @@ export default function ShowPerizinanPage() {
               <p>Tindakan tidak dapat dilakukan karena permintaan ini sudah direspon.</p>
             )}
           </CardContent>
->>>>>>> 0c3aa8ae06577738cf75b1f4666836edb50ff69e
         </Card>
       </div>
 

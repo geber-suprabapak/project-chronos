@@ -540,7 +540,7 @@ export default function ConfigurationPage() {
                     <Button
                         onClick={() => handleOpenForm(null)}
                         disabled={locations && locations.length >= 3}
-                        className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
+                        className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow bg-blue-600 hover:bg-blue-700 text-white"
                         size="lg"
                     >
                         <Plus className="h-5 w-5" />
@@ -650,8 +650,8 @@ export default function ConfigurationPage() {
                                                             className={location.isActive ? "data-[state=checked]:bg-emerald-600" : "data-[state=unchecked]:bg-red-600"}
                                                         />
                                                         <Badge
-                                                          variant={location.isActive ? "success" : "destructive"}
-                                                          className="flex items-center gap-1.5"
+                                                            variant={location.isActive ? "success" : "destructive"}
+                                                            className="flex items-center gap-1.5"
                                                         >
                                                             {location.isActive ? 'Aktif' : 'Nonaktif'}
                                                         </Badge>
@@ -663,7 +663,6 @@ export default function ConfigurationPage() {
                                                             size="sm"
                                                             variant="outline"
                                                             onClick={() => handleOpenForm(location.id)}
-                                                            className="hover:bg-muted hover:text-muted-foreground"
                                                         >
                                                             <Edit className="h-3.5 w-3.5 mr-1.5" />
                                                             {location.id === 1 ? "Lihat" : "Edit"}
@@ -671,10 +670,9 @@ export default function ConfigurationPage() {
                                                         {location.id !== 1 && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="outline"
+                                                                variant="destructive"
                                                                 onClick={() => handleDelete(location.id, location.name)}
                                                                 disabled={deleteMutation.isPending}
-                                                                className="hover:bg-muted hover:text-muted-foreground"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                                                                 Hapus
@@ -702,7 +700,7 @@ export default function ConfigurationPage() {
                             <p className="text-muted-foreground text-center mb-6 max-w-md">
                                 Mulai dengan menambahkan lokasi pertama untuk sistem absensi Anda
                             </p>
-                            <Button onClick={() => handleOpenForm(null)} size="lg">
+                            <Button onClick={() => handleOpenForm(null)} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Tambah Lokasi Pertama
                             </Button>
@@ -993,7 +991,7 @@ export default function ConfigurationPage() {
                                 type="submit"
                                 form="location-form"
                                 disabled={selectedLocationId === 1 || upsertMutation.isPending || updateMutation.isPending}
-                                className="min-w-32"
+                                className="min-w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
                             >
                                 <Save className="mr-2 h-4 w-4" />
                                 {(upsertMutation.isPending || updateMutation.isPending)
