@@ -145,7 +145,7 @@ export default function ShowProfilePage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="secondary">
+                        <Button asChild size="sm" variant="outline">
                           <Link href={`/perizinan/show/${p.id}`}>Detail</Link>
                         </Button>
                       </TableCell>

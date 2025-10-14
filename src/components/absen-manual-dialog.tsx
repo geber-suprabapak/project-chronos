@@ -76,13 +76,13 @@ export function AbsenManualDialog() {
     const createAbsence = api.absences.createManual.useMutation({
         onSuccess: async () => {
             toast.success("Absensi berhasil ditambahkan!");
-            
+
             // Invalidate queries untuk refresh data
             await Promise.all([
                 utils.absences.list.invalidate(),
                 utils.absences.listRaw.invalidate(),
             ]);
-            
+
             // Reset form
             setNis("");
             setSiswaData(null);
@@ -135,7 +135,7 @@ export function AbsenManualDialog() {
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="default" size="default">
+                <Button variant="success" size="default">
                     <UserPlus />
                     Absen Manual
                 </Button>
@@ -242,7 +242,7 @@ export function AbsenManualDialog() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    variant="default"
+                                    variant="success"
                                     className="flex-1"
                                     disabled={createAbsence.isPending || !status}
                                 >

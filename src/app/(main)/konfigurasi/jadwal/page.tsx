@@ -272,7 +272,7 @@ export default function JadwalPage() {
                                 </div>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="warning"
                                     size="sm"
                                     onClick={handleReset}
                                     disabled={resetMutation.isPending}
@@ -481,6 +481,7 @@ export default function JadwalPage() {
                                             type="submit"
                                             disabled={updateMutation.isPending}
                                             size="sm"
+                                            variant="success"
                                         >
                                             <Save className="mr-1 h-3 w-3" />
                                             {updateMutation.isPending ? "Saving..." : "Simpan"}

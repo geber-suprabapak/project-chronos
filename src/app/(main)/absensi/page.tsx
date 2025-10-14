@@ -253,7 +253,7 @@ export default function AbsensiPage() {
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
-                                          variant="outline"
+                                          variant="destructive"
                                           size="icon"
                                           aria-label="Hapus absensi"
                                           onClick={() => handleDelete(a.id, name)}

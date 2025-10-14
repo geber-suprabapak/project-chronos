@@ -23,27 +23,27 @@ export function DownloadExcelButton({
         method: "GET",
         cache: "no-store",
       });
-      
+
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
       }
-      
+
       // Convert the response to a blob
       const blob = await response.blob();
-      
+
       // Create a temporary URL for the blob
       const url = URL.createObjectURL(blob);
-      
+
       // Create a download link
       const a = document.createElement("a");
       a.href = url;
       a.download = filename ?? href.split("/").pop() ?? "export.xlsx";
-      
+
       // Append to the body, click, and remove
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
+
       // Release the object URL
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -51,12 +51,12 @@ export function DownloadExcelButton({
       alert("Failed to download Excel file. Please try again.");
     }
   };
-  
+
   return (
     <Button
       type="button"
       onClick={handleClick}
-      variant="outline"
+      variant="success"
       className={className}
       disabled={disabled}
     >

@@ -123,7 +123,7 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
         </Table>
         {permissions.length === 5 && (
           <div className="mt-4 text-center">
-            <Button asChild variant="link">
+            <Button asChild variant="info">
               <Link href="/perizinan">Lihat Semua Perizinan</Link>
             </Button>
           </div>
@@ -156,7 +156,7 @@ async function DashboardContent() {
   const dayOfWeek = new Date().getDay();
   const hariMap = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const currentDayName = hariMap[dayOfWeek];
-  
+
 
   return (
     <div className="space-y-6">
@@ -196,7 +196,7 @@ async function DashboardContent() {
         />
       </div>
 
-       <PendingPermissionsTable permissions={pendingPermissions} />
+      <PendingPermissionsTable permissions={pendingPermissions} />
 
       {/* Statistics Visualization Section */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -255,7 +255,7 @@ async function DashboardContent() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Tidak ada jadwal untuk hari ini
                 </p>
-                <Button asChild variant="outline">
+                <Button asChild variant="warning">
                   <Link href="/konfigurasi/jadwal">Konfigurasi Jadwal</Link>
                 </Button>
               </div>

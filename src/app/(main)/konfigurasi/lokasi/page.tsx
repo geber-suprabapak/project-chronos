@@ -540,7 +540,7 @@ export default function ConfigurationPage() {
                     <Button
                         onClick={() => handleOpenForm(null)}
                         disabled={locations && locations.length >= 3}
-                        className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow bg-blue-600 hover:bg-blue-700 text-white"
+                        variant="success"
                         size="lg"
                     >
                         <Plus className="h-5 w-5" />
@@ -700,7 +700,7 @@ export default function ConfigurationPage() {
                             <p className="text-muted-foreground text-center mb-6 max-w-md">
                                 Mulai dengan menambahkan lokasi pertama untuk sistem absensi Anda
                             </p>
-                            <Button onClick={() => handleOpenForm(null)} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Button onClick={() => handleOpenForm(null)} size="lg" variant="success">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Tambah Lokasi Pertama
                             </Button>
@@ -978,7 +978,7 @@ export default function ConfigurationPage() {
                             {!selectedLocationId && (
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="warning"
                                     onClick={handleReset}
                                     disabled={resetMutation.isPending}
                                     className="min-w-24"
@@ -990,8 +990,9 @@ export default function ConfigurationPage() {
                             <Button
                                 type="submit"
                                 form="location-form"
+                                variant="success"
                                 disabled={selectedLocationId === 1 || upsertMutation.isPending || updateMutation.isPending}
-                                className="min-w-32 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="min-w-32"
                             >
                                 <Save className="mr-2 h-4 w-4" />
                                 {(upsertMutation.isPending || updateMutation.isPending)

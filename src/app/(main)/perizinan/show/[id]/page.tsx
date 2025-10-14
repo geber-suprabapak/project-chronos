@@ -191,7 +191,7 @@ export default function ShowPerizinanPage() {
               <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
                 <Image src={perizinan.linkFoto} alt="Bukti Perizinan" fill style={{ objectFit: "cover" }} />
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
+              <Button variant="info" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
                 <ImageIcon className="mr-2 h-4 w-4" /> Lihat Ukuran Penuh
               </Button>
             </CardContent>
@@ -203,7 +203,7 @@ export default function ShowPerizinanPage() {
             {isActionable ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
-                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" variant="success">
                   {updateStatusMutation.isPending ? "Approving..." : "Approve"}
                 </Button>
                 <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>
@@ -213,7 +213,7 @@ export default function ShowPerizinanPage() {
                 <p className="text-sm text-muted-foreground">Permintaan ini ditolak. Anda bisa membatalkan penolakan.</p>
                 <Button onClick={() => {
                   updateStatusMutation.mutate({ id, approvalStatus: "pending" });
-                }} disabled={updateStatusMutation.isPending} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                }} disabled={updateStatusMutation.isPending} size="lg" variant="info">
                   {updateStatusMutation.isPending ? "Membatalkan..." : "Batalkan Penolakan"}
                 </Button>
               </div>
@@ -229,7 +229,7 @@ export default function ShowPerizinanPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Konfirmasi Penolakan</DialogTitle><DialogDescription>Harap berikan alasan mengapa perizinan ini ditolak.</DialogDescription></DialogHeader>
           <div className="py-4"><Label htmlFor="rejection-reason">Alasan</Label><Textarea id="rejection-reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Contoh: Surat dokter tidak valid." /></div>
-          <DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><Button onClick={handleRejectConfirm} disabled={updateStatusMutation.isPending}>{updateStatusMutation.isPending ? "Rejecting..." : "Konfirmasi Tolak"}</Button></DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><Button variant="destructive" onClick={handleRejectConfirm} disabled={updateStatusMutation.isPending}>{updateStatusMutation.isPending ? "Rejecting..." : "Konfirmasi Tolak"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>

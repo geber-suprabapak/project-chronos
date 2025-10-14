@@ -179,11 +179,11 @@ export default async function ProfilesPage({
 													<TableCell className="text-right">
 														<div className="flex justify-end gap-2">
 															{r?.id ? (
-																<Button asChild variant="secondary" size="sm">
+																<Button asChild variant="outline" size="sm">
 																	<Link href={`/profiles/show/${String(r.id)}`}>Detail</Link>
 																</Button>
 															) : (
-																<Button variant="secondary" size="sm" disabled>
+																<Button variant="outline" size="sm" disabled>
 																	Detail
 																</Button>
 															)}
