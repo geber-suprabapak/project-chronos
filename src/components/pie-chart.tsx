@@ -60,11 +60,10 @@ export function StatistikPieChart() {
   const { data: users, isLoading: loadingUsers } = api.userProfiles.listRaw.useQuery();
   const { data: absensi, isLoading: loadingAbsensi } = api.absences.listRaw.useQuery();
   const { data: izin, isLoading: loadingIzin } = api.perizinan.listRaw.useQuery();
-  const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
-  const totalActivated = statsSummary?.activated ?? (users ? users.length : 0);
-  // compute pie sizes: outerRadius and innerRadius scaled by totalActivated
-  const outerRadius = Math.min(110, Math.max(50, Math.round(40 + totalActivated / 5)));
-  const innerRadius = Math.min(80, Math.max(30, Math.round(outerRadius * 0.54)));
+
+  // Ukuran pie chart tetap
+  const outerRadius = 90;
+  const innerRadius = 60;
 
   // Data untuk chart absen masuk
   const chartDataMasuk = useMemo(() => {
@@ -211,16 +210,16 @@ export function StatistikPieChart() {
         <CardDescription>Rekap Hari Ini</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Chart Absen Masuk */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Masuk</h3>
               <p className="text-xs text-muted-foreground">Status kehadiran siswa</p>
             </div>
             <ChartContainer
               config={chartConfigMasuk}
-              className="mx-auto aspect-square max-h-[200px]"
+              className="mx-auto aspect-square max-h-[250px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -238,12 +237,12 @@ export function StatistikPieChart() {
                 />
               </PieChart>
             </ChartContainer>
-            <div className="text-center -mt-2">
+            <div className="text-center">
               <div className="text-2xl font-bold">{totalMasuk}</div>
               <div className="text-xs text-muted-foreground">Total Siswa</div>
             </div>
             {/* Legend untuk absen masuk */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 mt-4">
               {chartDataMasuk.map((entry) => {
                 const config = chartConfigMasuk[entry.category as keyof typeof chartConfigMasuk];
                 const percentage = totalMasuk > 0 ? ((entry.value / totalMasuk) * 100).toFixed(1) : '0.0';
@@ -274,14 +273,14 @@ export function StatistikPieChart() {
           </div>
 
           {/* Chart Absen Pulang */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Pulang</h3>
               <p className="text-xs text-muted-foreground">Status kepulangan siswa</p>
             </div>
             <ChartContainer
               config={chartConfigPulang}
-              className="mx-auto aspect-square max-h-[200px]"
+              className="mx-auto aspect-square max-h-[250px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -299,12 +298,12 @@ export function StatistikPieChart() {
                 />
               </PieChart>
             </ChartContainer>
-            <div className="text-center -mt-2">
+            <div className="text-center">
               <div className="text-2xl font-bold">{totalPulang}</div>
               <div className="text-xs text-muted-foreground">Total Siswa</div>
             </div>
             {/* Legend untuk absen pulang */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 mt-4">
               {chartDataPulang.map((entry) => {
                 const config = chartConfigPulang[entry.category as keyof typeof chartConfigPulang];
                 const percentage = totalPulang > 0 ? ((entry.value / totalPulang) * 100).toFixed(1) : '0.0';
