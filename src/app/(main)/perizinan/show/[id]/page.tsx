@@ -173,14 +173,39 @@ export default function ShowPerizinanPage() {
           <CardHeader>
             <CardTitle>Profil Pemohon</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user?.avatarUrl ?? undefined} />
-              <AvatarFallback><User /></AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-semibold">{user?.fullName ?? "N/A"}</p>
-              <p className="text-sm text-muted-foreground">{user?.email ?? "N/A"}</p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user?.avatarUrl ?? undefined} />
+                <AvatarFallback><User /></AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-lg font-semibold">{user?.fullName ?? "N/A"}</p>
+                <p className="text-sm text-muted-foreground">{user?.email ?? "N/A"}</p>
+              </div>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="grid gap-2">
+              {user?.nis && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">NIS</p>
+                  <p className="col-span-2">{user.nis}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-3 items-center gap-2">
+                <p className="col-span-1 text-sm font-semibold text-muted-foreground">Kelas</p>
+                <p className="col-span-2">{user?.className ?? "-"}</p>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2">
+                <p className="col-span-1 text-sm font-semibold text-muted-foreground">No. Absen</p>
+                <p className="col-span-2">{user?.absenceNumber ?? "-"}</p>
+              </div>
+              {user?.role && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">Role</p>
+                  <p className="col-span-2 capitalize">{user.role}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -51,13 +51,17 @@ const getBadgeVariant = (status: string | null) => {
 
 export default function PerizinanPage() {
   const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
+  const [page, setPage] = useState<number>(1);
+
+  const limit = 20;
+  const offset = (page - 1) * limit;
 
   const {
     data: perizinan,
     isLoading,
     error,
-  } = api.perizinan.listRaw.useQuery(
-    undefined,
+  } = api.perizinan.list.useQuery(
+    { limit, offset },
     {
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
     },
@@ -89,7 +93,10 @@ export default function PerizinanPage() {
         <CardContent>
           <FilterBar
             value={filter}
-            onChange={setFilter}
+            onChange={(newFilter) => {
+              setFilter(newFilter);
+              setPage(1); // Reset to page 1 when filter changes
+            }}
             statuses={["approved", "rejected", "pending"]}
             labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
             placeholders={{ query: "Nama...", status: "Pilih status" }}
@@ -107,8 +114,33 @@ export default function PerizinanPage() {
               const db = new Date(b.tanggal).getTime();
               return (filter.sort ?? "desc") === "desc" ? db - da : da - db;
             });
+            const hasMore = rows.length === limit;
+
             return (
               <>
+                {/* Pagination Info */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasMore}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Visible table for UI */}
                 <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                   <Table>
@@ -224,6 +256,29 @@ export default function PerizinanPage() {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Bottom Pagination */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasMore}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </>
             );

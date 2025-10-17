@@ -63,8 +63,8 @@ export function AttendanceTimeChart() {
                 const hour = date.getHours();
                 const minute = date.getMinutes();
 
-                // Round down to nearest 15-minute interval
-                const roundedMinute = Math.floor(minute / 15) * 15;
+                // Round down to nearest 5-minute interval
+                const roundedMinute = Math.floor(minute / 5) * 5;
                 const timeKey = `${hour.toString().padStart(2, '0')}:${roundedMinute.toString().padStart(2, '0')}`;
 
                 timeSlotCounts[timeKey] = (timeSlotCounts[timeKey] ?? 0) + 1;
@@ -75,7 +75,7 @@ export function AttendanceTimeChart() {
         const timeSlots: Array<{ jam: string; jumlah: number }> = [];
 
         for (let hour = startTime.hours; hour <= endTime.hours; hour++) {
-            for (let minute = 0; minute < 60; minute += 15) {
+            for (let minute = 0; minute < 60; minute += 5   ) {
                 // Skip if before start time
                 if (hour === startTime.hours && minute < startTime.minutes) continue;
                 // Skip if after end time

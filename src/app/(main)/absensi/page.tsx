@@ -38,6 +38,7 @@ export default function AbsensiPage() {
   const [sort, setSort] = useState<"asc" | "desc">("desc"); // newest (desc) by default
   const [query, setQuery] = useState<string>("");
   const [status, setStatus] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -47,12 +48,15 @@ export default function AbsensiPage() {
 
   const utils = api.useUtils();
 
-  // Fetch absences with a reasonable default page size
+  const limit = 20;
+  const offset = (page - 1) * limit;
+
+  // Fetch absences with pagination
   const {
     data: absences,
     isLoading: absencesLoading,
     error: absencesError,
-  } = api.absences.list.useQuery({ limit: 50, offset: 0, sort, date: date || undefined, status: status || undefined });
+  } = api.absences.list.useQuery({ limit, offset, sort, date: date || undefined, status: status || undefined });
 
   // Delete mutation using tRPC
   const deleteMutation = api.absences.delete.useMutation({
@@ -179,11 +183,10 @@ export default function AbsensiPage() {
                 setQuery(next.query ?? "");
                 setStatus(next.status ?? "");
                 setSort(next.sort ?? "desc");
+                setPage(1); // Reset to page 1 when filter changes
               }}
               className="mb-4"
-            />
-
-            {(() => {
+            />            {(() => {
               const rows = (absences ?? []).filter((a) => {
                 const q = query.trim().toLowerCase();
                 if (!q) return true;
@@ -194,8 +197,33 @@ export default function AbsensiPage() {
                 if (!status) return true;
                 return (a.status ?? "").toLowerCase() === status.toLowerCase();
               });
+              const hasMore = rows2.length === limit;
+
               return (
                 <>
+                  {/* Pagination Info */}
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasMore}
+                        onClick={() => setPage(p => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Main UI table */}
                   <div className="mb-4 w-full overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                     <Table>
@@ -302,6 +330,29 @@ export default function AbsensiPage() {
                         })}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Bottom Pagination */}
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasMore}
+                        onClick={() => setPage(p => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </>
               );
