@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { perizinan } from "~/server/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -46,8 +46,13 @@ export const perizinanRouter = createTRPCRouter({
         conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
       if (typeof input?.status === "boolean")
         conditions.push(eq(perizinan.status, input.status));
-      // Filter per hari: gunakan kolom tanggal_utc_date (DATE) yang diisi oleh trigger
-      if (input?.tanggal) conditions.push(eq(perizinan.tanggalUtcDate, input.tanggal));
+      // Filter per hari berdasarkan zona lokal (WIB, UTC+7) dengan rentang [start, end)
+      if (input?.tanggal) {
+        const startLocal = new Date(`${input.tanggal}T00:00:00+07:00`);
+        const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
+        conditions.push(gte(perizinan.tanggal, startLocal));
+        conditions.push(lt(perizinan.tanggal, endLocal));
+      }
 
       const where = conditions.length ? and(...conditions) : undefined;
 

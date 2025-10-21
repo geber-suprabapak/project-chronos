@@ -61,7 +61,12 @@ export default function PerizinanPage() {
     isLoading,
     error,
   } = api.perizinan.list.useQuery(
-    { limit, offset },
+    {
+      limit,
+      offset,
+      tanggal: filter.date ?? undefined,
+      approvalStatus: filter.status ?? undefined,
+    },
     {
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
     },
@@ -146,6 +151,7 @@ export default function PerizinanPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
                         <TableHead>Kategori</TableHead>
@@ -159,6 +165,9 @@ export default function PerizinanPage() {
                         // Skeleton loading state
                         Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i}>
+                            <TableCell>
+                              <Skeleton className="h-4 w-8" />
+                            </TableCell>
                             <TableCell>
                               <Skeleton className="h-4 w-24" />
                             </TableCell>
@@ -180,8 +189,11 @@ export default function PerizinanPage() {
                           </TableRow>
                         ))
                       ) : rows && rows.length > 0 ? (
-                        rows.map((item) => (
+                        rows.map((item, index) => (
                           <TableRow key={item.id}>
+                            <TableCell className="font-medium text-muted-foreground">
+                              {offset + index + 1}
+                            </TableCell>
                             <TableCell>{formatDate(item.tanggal)}</TableCell>
                             <TableCell>
                               {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
@@ -211,7 +223,7 @@ export default function PerizinanPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">
+                          <TableCell colSpan={7} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
@@ -225,6 +237,7 @@ export default function PerizinanPage() {
                   <Table id="perizinan-table">
                     <TableHeader>
                       <TableRow>
+                        <TableHead>No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
                         <TableHead>Kategori</TableHead>
@@ -234,11 +247,12 @@ export default function PerizinanPage() {
                     </TableHeader>
                     <TableBody>
                       {rows && rows.length > 0 ? (
-                        rows.map((item) => {
+                        rows.map((item, index) => {
                           const name = item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId;
 
                           return (
                             <TableRow key={`${item.id}-pdf`}>
+                              <TableCell>{offset + index + 1}</TableCell>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
                               <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
@@ -249,7 +263,7 @@ export default function PerizinanPage() {
                         })
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">
+                          <TableCell colSpan={6} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
