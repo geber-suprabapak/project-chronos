@@ -154,6 +154,7 @@ export default function PerizinanPage() {
                         <TableHead className="w-[60px]">No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
+                        <TableHead>Kelas</TableHead>
                         <TableHead>Kategori</TableHead>
                         <TableHead>Deskripsi</TableHead>
                         <TableHead>Status</TableHead>
@@ -173,6 +174,9 @@ export default function PerizinanPage() {
                             </TableCell>
                             <TableCell>
                               <Skeleton className="h-4 w-40" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-20" />
                             </TableCell>
                             <TableCell>
                               <Skeleton className="h-4 w-16" />
@@ -199,6 +203,11 @@ export default function PerizinanPage() {
                               {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
                             </TableCell>
                             <TableCell>
+                              <Badge variant="outline" className="rounded-full px-2.5 py-0.5 font-medium">
+                                {item.userProfile?.className ?? "-"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
                               <Badge variant="secondary" className="rounded-full px-2.5 py-1">
                                 {item.kategoriIzin ?? "-"}
                               </Badge>
@@ -223,7 +232,7 @@ export default function PerizinanPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center">
+                          <TableCell colSpan={8} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
@@ -240,6 +249,7 @@ export default function PerizinanPage() {
                         <TableHead>No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
+                        <TableHead>Kelas</TableHead>
                         <TableHead>Kategori</TableHead>
                         <TableHead>Deskripsi</TableHead>
                         <TableHead>Status</TableHead>
@@ -255,6 +265,7 @@ export default function PerizinanPage() {
                               <TableCell>{offset + index + 1}</TableCell>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
+                              <TableCell>{item.userProfile?.className ?? "-"}</TableCell>
                               <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
                               <TableCell>{item.deskripsi}</TableCell>
                               <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
@@ -263,7 +274,7 @@ export default function PerizinanPage() {
                         })
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center">
+                          <TableCell colSpan={7} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
