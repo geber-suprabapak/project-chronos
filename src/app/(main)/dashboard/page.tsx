@@ -139,19 +139,18 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
  */
 async function DashboardContent() {
   // Parallel data fetching using RSC
-  const [stats, perizinanRaw, activeLocation, currentSchedule] = await Promise.all([
+  const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
+  const [stats, perizinanToday, activeLocation, currentSchedule] = await Promise.all([
     api.biodataSiswa.getStatistics(),
-    api.perizinan.listRaw(),
+    api.perizinan.list({ approvalStatus: "pending", tanggal: todayStr, limit: 100, offset: 0 }),
     api.location.get(),
     api.jadwal.getCurrentDay(),
   ]);
 
-  // Filter pending permissions
-  const pendingPermissions = perizinanRaw
-    .filter((p) => p.approvalStatus === "pending")
-    .slice(0, 5); // Top 5 pending
+  // Pending permissions only for today
+  const pendingPermissions = perizinanToday.slice(0, 5);
 
-  const pendingCount = perizinanRaw.filter((p) => p.approvalStatus === "pending").length;
+  const pendingCount = perizinanToday.length;
 
   // Get current day name
   const dayOfWeek = new Date().getDay();
