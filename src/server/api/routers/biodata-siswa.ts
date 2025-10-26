@@ -91,11 +91,7 @@ export const biodataSiswaRouter = createTRPCRouter({
                     .select()
                     .from(biodataSiswa)
                     .where(whereCondition)
-                    .orderBy(
-                        sql`coalesce(${biodataSiswa.kelas}, '~~~~') ASC`,
-                        sql`coalesce(${biodataSiswa.absen}, 999) ASC`,
-                        sql`coalesce(${biodataSiswa.nama}, '~~~~') ASC`
-                    )
+                    .orderBy(biodataSiswa.nis)
                     .limit(limit)
                     .offset(offset),
                 ctx.db
@@ -159,11 +155,7 @@ export const biodataSiswaRouter = createTRPCRouter({
         const rows = await ctx.db
             .select()
             .from(biodataSiswa)
-            .orderBy(
-                sql`coalesce(${biodataSiswa.kelas}, '~~~~') ASC`,
-                sql`coalesce(${biodataSiswa.absen}, 999) ASC`,
-                sql`coalesce(${biodataSiswa.nama}, '~~~~') ASC`
-            );
+            .orderBy(biodataSiswa.nis);
         return rows;
     }),
 

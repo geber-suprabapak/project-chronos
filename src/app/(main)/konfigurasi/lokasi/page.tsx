@@ -540,7 +540,7 @@ export default function ConfigurationPage() {
                     <Button
                         onClick={() => handleOpenForm(null)}
                         disabled={locations && locations.length >= 3}
-                        className="flex items-center gap-2 shadow-md hover:shadow-lg transition-shadow"
+                        variant="success"
                         size="lg"
                     >
                         <Plus className="h-5 w-5" />
@@ -647,8 +647,12 @@ export default function ConfigurationPage() {
                                                             checked={location.isActive}
                                                             onCheckedChange={() => handleToggleActive(location.id)}
                                                             disabled={location.id === 1 || toggleActiveMutation.isPending}
+                                                            className={location.isActive ? "data-[state=checked]:bg-emerald-600" : "data-[state=unchecked]:bg-red-600"}
                                                         />
-                                                        <Badge className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                                        <Badge
+                                                            variant={location.isActive ? "success" : "destructive"}
+                                                            className="flex items-center gap-1.5"
+                                                        >
                                                             {location.isActive ? 'Aktif' : 'Nonaktif'}
                                                         </Badge>
                                                     </div>
@@ -659,7 +663,6 @@ export default function ConfigurationPage() {
                                                             size="sm"
                                                             variant="outline"
                                                             onClick={() => handleOpenForm(location.id)}
-                                                            className="hover:bg-muted hover:text-muted-foreground"
                                                         >
                                                             <Edit className="h-3.5 w-3.5 mr-1.5" />
                                                             {location.id === 1 ? "Lihat" : "Edit"}
@@ -667,10 +670,9 @@ export default function ConfigurationPage() {
                                                         {location.id !== 1 && (
                                                             <Button
                                                                 size="sm"
-                                                                variant="outline"
+                                                                variant="destructive"
                                                                 onClick={() => handleDelete(location.id, location.name)}
                                                                 disabled={deleteMutation.isPending}
-                                                                className="hover:bg-muted hover:text-muted-foreground"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                                                                 Hapus
@@ -698,7 +700,7 @@ export default function ConfigurationPage() {
                             <p className="text-muted-foreground text-center mb-6 max-w-md">
                                 Mulai dengan menambahkan lokasi pertama untuk sistem absensi Anda
                             </p>
-                            <Button onClick={() => handleOpenForm(null)} size="lg">
+                            <Button onClick={() => handleOpenForm(null)} size="lg" variant="success">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Tambah Lokasi Pertama
                             </Button>
@@ -976,7 +978,7 @@ export default function ConfigurationPage() {
                             {!selectedLocationId && (
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="warning"
                                     onClick={handleReset}
                                     disabled={resetMutation.isPending}
                                     className="min-w-24"
@@ -988,6 +990,7 @@ export default function ConfigurationPage() {
                             <Button
                                 type="submit"
                                 form="location-form"
+                                variant="success"
                                 disabled={selectedLocationId === 1 || upsertMutation.isPending || updateMutation.isPending}
                                 className="min-w-32"
                             >

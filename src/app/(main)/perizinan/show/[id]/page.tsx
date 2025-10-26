@@ -55,12 +55,12 @@ const formatDate = (input: string | Date | null | undefined) => {
 const getBadgeVariant = (status: string | null) => {
   switch (status) {
     case "approved":
-      return "default";
+      return "success" as const; // green
     case "rejected":
-      return "destructive";
+      return "destructive" as const; // red
     case "pending":
     default:
-      return "outline";
+      return "outline" as const;
   }
 };
 
@@ -173,14 +173,39 @@ export default function ShowPerizinanPage() {
           <CardHeader>
             <CardTitle>Profil Pemohon</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user?.avatarUrl ?? undefined} />
-              <AvatarFallback><User /></AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-semibold">{user?.fullName ?? "N/A"}</p>
-              <p className="text-sm text-muted-foreground">{user?.email ?? "N/A"}</p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user?.avatarUrl ?? undefined} />
+                <AvatarFallback><User /></AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-lg font-semibold">{user?.fullName ?? "N/A"}</p>
+                <p className="text-sm text-muted-foreground">{user?.email ?? "N/A"}</p>
+              </div>
+            </div>
+            <div className="h-px bg-border" />
+            <div className="grid gap-2">
+              {user?.nis && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">NIS</p>
+                  <p className="col-span-2">{user.nis}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-3 items-center gap-2">
+                <p className="col-span-1 text-sm font-semibold text-muted-foreground">Kelas</p>
+                <p className="col-span-2">{user?.className ?? "-"}</p>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-2">
+                <p className="col-span-1 text-sm font-semibold text-muted-foreground">No. Absen</p>
+                <p className="col-span-2">{user?.absenceNumber ?? "-"}</p>
+              </div>
+              {user?.role && (
+                <div className="grid grid-cols-3 items-center gap-2">
+                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">Role</p>
+                  <p className="col-span-2 capitalize">{user.role}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -191,7 +216,7 @@ export default function ShowPerizinanPage() {
               <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
                 <Image src={perizinan.linkFoto} alt="Bukti Perizinan" fill style={{ objectFit: "cover" }} />
               </div>
-              <Button variant="secondary" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
+              <Button variant="info" size="sm" onClick={() => setPhotoDialogOpen(true)} className="w-full">
                 <ImageIcon className="mr-2 h-4 w-4" /> Lihat Ukuran Penuh
               </Button>
             </CardContent>
@@ -203,7 +228,7 @@ export default function ShowPerizinanPage() {
             {isActionable ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-muted-foreground">Setujui atau tolak permintaan ini.</p>
-                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg">
+                <Button onClick={handleApprove} disabled={updateStatusMutation.isPending} size="lg" variant="success">
                   {updateStatusMutation.isPending ? "Approving..." : "Approve"}
                 </Button>
                 <Button variant="destructive" onClick={() => setRejectDialogOpen(true)} disabled={updateStatusMutation.isPending} size="lg">Reject</Button>
@@ -213,7 +238,7 @@ export default function ShowPerizinanPage() {
                 <p className="text-sm text-muted-foreground">Permintaan ini ditolak. Anda bisa membatalkan penolakan.</p>
                 <Button onClick={() => {
                   updateStatusMutation.mutate({ id, approvalStatus: "pending" });
-                }} disabled={updateStatusMutation.isPending} size="lg">
+                }} disabled={updateStatusMutation.isPending} size="lg" variant="info">
                   {updateStatusMutation.isPending ? "Membatalkan..." : "Batalkan Penolakan"}
                 </Button>
               </div>
@@ -229,7 +254,7 @@ export default function ShowPerizinanPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Konfirmasi Penolakan</DialogTitle><DialogDescription>Harap berikan alasan mengapa perizinan ini ditolak.</DialogDescription></DialogHeader>
           <div className="py-4"><Label htmlFor="rejection-reason">Alasan</Label><Textarea id="rejection-reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="Contoh: Surat dokter tidak valid." /></div>
-          <DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><Button onClick={handleRejectConfirm} disabled={updateStatusMutation.isPending}>{updateStatusMutation.isPending ? "Rejecting..." : "Konfirmasi Tolak"}</Button></DialogFooter>
+          <DialogFooter><DialogClose asChild><Button variant="outline">Batal</Button></DialogClose><Button variant="destructive" onClick={handleRejectConfirm} disabled={updateStatusMutation.isPending}>{updateStatusMutation.isPending ? "Rejecting..." : "Konfirmasi Tolak"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>

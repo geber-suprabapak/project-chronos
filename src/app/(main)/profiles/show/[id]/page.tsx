@@ -35,12 +35,12 @@ export default function ShowProfilePage() {
 
   // Related data (small lists) for additional context
   const { data: allAbsences } = api.absences.list.useQuery(
-    { userId: profile ? profile.id : "", limit: 5, offset: 0, sort: "desc" },
-    { enabled: !!profile?.id }
+    { userId: profile ? profile.userId : "", limit: 5, offset: 0, sort: "desc" },
+    { enabled: !!profile?.userId }
   );
   const { data: recentLeaves } = api.perizinan.list.useQuery(
-    undefined,
-    { enabled: !!profile?.id }
+    { userId: profile ? profile.userId : "", limit: 5, offset: 0 },
+    { enabled: !!profile?.userId }
   );
 
   if (!id) return <div className="p-8">Invalid ID.</div>;
@@ -95,23 +95,33 @@ export default function ShowProfilePage() {
                 <TableRow>
                   <TableHead>Tanggal</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Waktu</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {allAbsences?.length ? (
-                  allAbsences.map((a) => (
-                    <TableRow key={String(a.id)}>
-                      <TableCell>{formatDate(a.date as unknown as string)}</TableCell>
-                      <TableCell>
-                        <Badge variant={(a.status ?? "").toLowerCase() === "approved" ? "default" : (a.status ?? "") ? "outline" : "secondary"} className="capitalize">
-                          {a.status ?? "-"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  allAbsences.map((a) => {
+                    const waktu = a.createdAt ? new Intl.DateTimeFormat("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit"
+                    }).format(new Date(a.createdAt)) : "-";
+
+                    return (
+                      <TableRow key={String(a.id)}>
+                        <TableCell>{formatDate(a.date as unknown as string)}</TableCell>
+                        <TableCell>
+                          <Badge variant={(a.status ?? "").toLowerCase() === "approved" ? "default" : (a.status ?? "") ? "outline" : "secondary"} className="capitalize">
+                            {a.status ?? "-"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{waktu}</TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -140,12 +150,12 @@ export default function ShowProfilePage() {
                       <TableCell>{formatDate(p.tanggal)}</TableCell>
                       <TableCell>{p.kategoriIzin}</TableCell>
                       <TableCell>
-                        <Badge variant={p.approvalStatus === "approved" ? "default" : p.approvalStatus === "rejected" ? "destructive" : "outline"} className="capitalize">
+                        <Badge variant={p.approvalStatus === "approved" ? "success" : p.approvalStatus === "rejected" ? "destructive" : "outline"} className="capitalize">
                           {p.approvalStatus ?? "pending"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="secondary">
+                        <Button asChild size="sm" variant="outline">
                           <Link href={`/perizinan/show/${p.id}`}>Detail</Link>
                         </Button>
                       </TableCell>

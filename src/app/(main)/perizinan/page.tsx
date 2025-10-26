@@ -40,24 +40,33 @@ const formatDate = (dateString: string | Date) => {
 const getBadgeVariant = (status: string | null) => {
   switch (status) {
     case "approved":
-      return "success" as const;
+      return "success" as const; // green
     case "rejected":
-      return "destructive" as const;
+      return "destructive" as const; // red
     case "pending":
     default:
-      return "secondary" as const;
+      return "outline" as const;
   }
 };
 
 export default function PerizinanPage() {
   const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
+  const [page, setPage] = useState<number>(1);
+
+  const limit = 20;
+  const offset = (page - 1) * limit;
 
   const {
     data: perizinan,
     isLoading,
     error,
-  } = api.perizinan.listRaw.useQuery(
-    undefined,
+  } = api.perizinan.list.useQuery(
+    {
+      limit,
+      offset,
+      tanggal: filter.date ?? undefined,
+      approvalStatus: filter.status ?? undefined,
+    },
     {
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
     },
@@ -89,7 +98,10 @@ export default function PerizinanPage() {
         <CardContent>
           <FilterBar
             value={filter}
-            onChange={setFilter}
+            onChange={(newFilter) => {
+              setFilter(newFilter);
+              setPage(1); // Reset to page 1 when filter changes
+            }}
             statuses={["approved", "rejected", "pending"]}
             labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
             placeholders={{ query: "Nama...", status: "Pilih status" }}
@@ -107,15 +119,42 @@ export default function PerizinanPage() {
               const db = new Date(b.tanggal).getTime();
               return (filter.sort ?? "desc") === "desc" ? db - da : da - db;
             });
+            const hasMore = rows.length === limit;
+
             return (
               <>
+                {/* Pagination Info */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasMore}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Visible table for UI */}
                 <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
+                        <TableHead>Kelas</TableHead>
                         <TableHead>Kategori</TableHead>
                         <TableHead>Deskripsi</TableHead>
                         <TableHead>Status</TableHead>
@@ -128,10 +167,16 @@ export default function PerizinanPage() {
                         Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i}>
                             <TableCell>
+                              <Skeleton className="h-4 w-8" />
+                            </TableCell>
+                            <TableCell>
                               <Skeleton className="h-4 w-24" />
                             </TableCell>
                             <TableCell>
                               <Skeleton className="h-4 w-40" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-20" />
                             </TableCell>
                             <TableCell>
                               <Skeleton className="h-4 w-16" />
@@ -148,11 +193,19 @@ export default function PerizinanPage() {
                           </TableRow>
                         ))
                       ) : rows && rows.length > 0 ? (
-                        rows.map((item) => (
+                        rows.map((item, index) => (
                           <TableRow key={item.id}>
+                            <TableCell className="font-medium text-muted-foreground">
+                              {offset + index + 1}
+                            </TableCell>
                             <TableCell>{formatDate(item.tanggal)}</TableCell>
                             <TableCell>
                               {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="rounded-full px-2.5 py-0.5 font-medium">
+                                {item.userProfile?.className ?? "-"}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="rounded-full px-2.5 py-1">
@@ -179,7 +232,7 @@ export default function PerizinanPage() {
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">
+                          <TableCell colSpan={8} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
@@ -193,8 +246,10 @@ export default function PerizinanPage() {
                   <Table id="perizinan-table">
                     <TableHeader>
                       <TableRow>
+                        <TableHead>No</TableHead>
                         <TableHead>Tanggal</TableHead>
                         <TableHead>Nama</TableHead>
+                        <TableHead>Kelas</TableHead>
                         <TableHead>Kategori</TableHead>
                         <TableHead>Deskripsi</TableHead>
                         <TableHead>Status</TableHead>
@@ -202,13 +257,15 @@ export default function PerizinanPage() {
                     </TableHeader>
                     <TableBody>
                       {rows && rows.length > 0 ? (
-                        rows.map((item) => {
+                        rows.map((item, index) => {
                           const name = item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId;
 
                           return (
                             <TableRow key={`${item.id}-pdf`}>
+                              <TableCell>{offset + index + 1}</TableCell>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
+                              <TableCell>{item.userProfile?.className ?? "-"}</TableCell>
                               <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
                               <TableCell>{item.deskripsi}</TableCell>
                               <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
@@ -217,13 +274,36 @@ export default function PerizinanPage() {
                         })
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center">
+                          <TableCell colSpan={7} className="text-center">
                             Tidak ada data perizinan.
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Bottom Pagination */}
+                <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasMore}
+                      onClick={() => setPage(p => p + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               </>
             );

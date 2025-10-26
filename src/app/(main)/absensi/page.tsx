@@ -38,21 +38,25 @@ export default function AbsensiPage() {
   const [sort, setSort] = useState<"asc" | "desc">("desc"); // newest (desc) by default
   const [query, setQuery] = useState<string>("");
   const [status, setStatus] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-  
+
   const filter: FilterBarValue = { date: date || undefined, query, status: status || undefined, sort };
-  
+
   const utils = api.useUtils();
-  
-  // Fetch absences with a reasonable default page size
+
+  const limit = 20;
+  const offset = (page - 1) * limit;
+
+  // Fetch absences with pagination
   const {
     data: absences,
     isLoading: absencesLoading,
     error: absencesError,
-  } = api.absences.list.useQuery({ limit: 50, offset: 0, sort, date: date || undefined, status: status || undefined });
+  } = api.absences.list.useQuery({ limit, offset, sort, date: date || undefined, status: status || undefined });
 
   // Delete mutation using tRPC
   const deleteMutation = api.absences.delete.useMutation({
@@ -126,7 +130,7 @@ export default function AbsensiPage() {
   const confirmBulkDelete = () => {
     const idsToDelete = Array.from(selectedIds);
     if (idsToDelete.length === 0) return;
-    
+
     bulkDeleteMutation.mutate({ ids: idsToDelete });
   };
 
@@ -141,8 +145,8 @@ export default function AbsensiPage() {
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
           {selectedIds.size > 0 && (
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleBulkDelete}
               disabled={bulkDeleteMutation.isPending || deleteMutation.isPending}
             >
@@ -179,11 +183,10 @@ export default function AbsensiPage() {
                 setQuery(next.query ?? "");
                 setStatus(next.status ?? "");
                 setSort(next.sort ?? "desc");
+                setPage(1); // Reset to page 1 when filter changes
               }}
               className="mb-4"
-            />
-
-            {(() => {
+            />            {(() => {
               const rows = (absences ?? []).filter((a) => {
                 const q = query.trim().toLowerCase();
                 if (!q) return true;
@@ -194,8 +197,33 @@ export default function AbsensiPage() {
                 if (!status) return true;
                 return (a.status ?? "").toLowerCase() === status.toLowerCase();
               });
+              const hasMore = rows2.length === limit;
+
               return (
                 <>
+                  {/* Pagination Info */}
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasMore}
+                        onClick={() => setPage(p => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+
                   {/* Main UI table */}
                   <div className="mb-4 w-full overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                     <Table>
@@ -220,11 +248,7 @@ export default function AbsensiPage() {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
-                          // Derive display status from reason
-                          const isLateDisplay = /terlambat/i.test(a.reason ?? "");
-                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplay
-                            ? "Terlambat"
-                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
+                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
 
                           return (
                             <TableRow key={`${a.id}`}>
@@ -257,7 +281,7 @@ export default function AbsensiPage() {
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
-                                          variant="outline"
+                                          variant="destructive"
                                           size="icon"
                                           aria-label="Hapus absensi"
                                           onClick={() => handleDelete(a.id, name)}
@@ -286,8 +310,6 @@ export default function AbsensiPage() {
                           <TableHead>Tanggal</TableHead>
                           <TableHead>Nama</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Keterlambatan</TableHead>
-                          <TableHead>Alasan</TableHead>
                           <TableHead>Lokasi</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -295,26 +317,42 @@ export default function AbsensiPage() {
                         {rows2.map((a) => {
                           const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
                           const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                          const isLateDisplayPdf = /terlambat/i.test(a.reason ?? "");
-                          const lateStatus = isLateDisplayPdf ? "Dipulangkan" : "Absen";
-                          const displayStatus = (a.status === "Datang" || a.status === "Hadir") && isLateDisplayPdf
-                            ? "Terlambat"
-                            : (a.status === "Datang" ? "Hadir" : (a.status ?? "-"));
+                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
                           const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
                               <TableCell>{name}</TableCell>
                               <TableCell>{displayStatus}</TableCell>
-                              <TableCell>{lateStatus}</TableCell>
-                              <TableCell>{a.reason ?? "-"}</TableCell>
-                              <TableCell>{a.status ?? "-"}</TableCell>
                               <TableCell>{lokasi || "-"}</TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Bottom Pagination */}
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={page <= 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!hasMore}
+                        onClick={() => setPage(p => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </>
               );
@@ -377,4 +415,3 @@ export default function AbsensiPage() {
     </div>
   );
 }
-          

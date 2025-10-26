@@ -17,7 +17,7 @@ export function DownloadPdfButton({ tableId, filename, title, className, disable
       type="button"
       className={className}
       onClick={() => downloadTableAsPDF({ tableId, filename, title })}
-      variant="outline"
+      variant="destructive"
       disabled={disabled}
     >
       <DownloadIcon className="w-4 h-4 mr-2" />

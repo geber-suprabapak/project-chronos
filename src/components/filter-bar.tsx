@@ -64,13 +64,9 @@ export function FilterBar({ value, onChange, statuses = [], labels, placeholders
                             placeholder={placeholders?.date ?? "Pilih tanggal"}
                             value={formatDate(dateValue)}
                             onChange={(e) => {
-                                const v = e.target.value
-                                const d = new Date(v)
-                                if (!isNaN(d.getTime())) {
-                                    const y = d.getFullYear()
-                                    const m = String(d.getMonth() + 1).padStart(2, "0")
-                                    const da = String(d.getDate()).padStart(2, "0")
-                                    onChange({ ...value, date: `${y}-${m}-${da}` })
+                                // Prevent free typing from setting a bad date; rely on calendar popover
+                                if (!e.target.value) {
+                                    onChange({ ...value, date: undefined })
                                 }
                             }}
                             className="w-full pr-10"

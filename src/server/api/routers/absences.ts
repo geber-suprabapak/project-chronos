@@ -71,20 +71,12 @@ export const absencesRouter = createTRPCRouter({
       })();
 
       // Create absence record in PostgreSQL (no Supabase auth changes)
-      // Build reason with stable keywords for UI
-      const reasonWithKeyword = input.status === "Terlambat"
-        ? "Terlambat"
-        : input.status === "Dipulangkan"
-          ? "Dipulangkan"
-          : `Absen manual oleh admin - ${input.status}`;
-
       const [newAbsence] = await ctx.db
         .insert(absences)
         .values({
           userId: userProfile.userId,
           date: input.date,
           status: mappedAbsenceStatus,
-          reason: reasonWithKeyword,
           latitude: null,
           longitude: null,
           createdAt: new Date(),

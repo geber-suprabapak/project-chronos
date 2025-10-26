@@ -3,6 +3,6 @@ import { NextResponse } from 'next/server';
 /**
  * Health check endpoint
  */
-export async function GET(request: Request) {
+export async function GET() {
   return NextResponse.json({ status: 'ok' });
 }

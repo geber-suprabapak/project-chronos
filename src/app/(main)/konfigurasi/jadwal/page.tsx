@@ -272,7 +272,7 @@ export default function JadwalPage() {
                                 </div>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="warning"
                                     size="sm"
                                     onClick={handleReset}
                                     disabled={resetMutation.isPending}
@@ -331,9 +331,10 @@ export default function JadwalPage() {
                                                                 checked={schedule.isActive}
                                                                 onCheckedChange={() => handleToggleActive(schedule.id)}
                                                                 disabled={toggleActiveMutation.isPending}
+                                                                className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-red-600"
                                                             />
                                                             <Badge
-                                                                variant={schedule.isActive ? "default" : "secondary"}
+                                                                variant={schedule.isActive ? "success" : "destructive"}
                                                                 className="flex items-center gap-1"
                                                             >
                                                                 {schedule.isActive ? (
@@ -480,6 +481,7 @@ export default function JadwalPage() {
                                             type="submit"
                                             disabled={updateMutation.isPending}
                                             size="sm"
+                                            variant="success"
                                         >
                                             <Save className="mr-1 h-3 w-3" />
                                             {updateMutation.isPending ? "Saving..." : "Simpan"}
