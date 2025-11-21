@@ -50,10 +50,15 @@ export const biodataSiswaRouter = createTRPCRouter({
                 const isNumeric = /^\d+$/.test(searchTerm);
 
                 if (isNumeric) {
-                    // Search by NIS (convert to bigint for comparison)
+                    // Numeric queries match exact NIS or any partial substring
                     try {
                         const nisValue = BigInt(searchTerm);
-                        conditions.push(eq(biodataSiswa.nis, nisValue));
+                        conditions.push(
+                            or(
+                                eq(biodataSiswa.nis, nisValue),
+                                sql`CAST(${biodataSiswa.nis} AS TEXT) ILIKE ${`%${searchTerm}%`}`
+                            )
+                        );
                     } catch {
                         // If conversion fails, fall back to name search
                         conditions.push(ilike(biodataSiswa.nama, `%${searchTerm}%`));

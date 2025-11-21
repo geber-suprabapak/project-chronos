@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -28,6 +28,8 @@ interface AutoSearchFormProps {
 export function AutoSearchForm({ type, initialValues, uniqueClasses = [] }: AutoSearchFormProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const shouldRestoreFocusRef = useRef(false);
 
     // State for form fields
     const [searchTerm, setSearchTerm] = useState(
@@ -48,6 +50,25 @@ export function AutoSearchForm({ type, initialValues, uniqueClasses = [] }: Auto
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, kelas, kelamin, activated]);
+
+    // Restore focus to the search input after a route refresh triggered by typing
+    useEffect(() => {
+        if (!isPending && shouldRestoreFocusRef.current) {
+            requestAnimationFrame(() => {
+                const input = searchInputRef.current;
+                if (!input) return;
+
+                input.focus();
+                const caretPosition = input.value.length;
+                try {
+                    input.setSelectionRange(caretPosition, caretPosition);
+                } catch {
+                    // Some input types (e.g., number) do not support setSelectionRange
+                }
+                shouldRestoreFocusRef.current = false;
+            });
+        }
+    }, [isPending]);
 
     const updateURL = () => {
         const params = new URLSearchParams();
@@ -91,6 +112,13 @@ export function AutoSearchForm({ type, initialValues, uniqueClasses = [] }: Auto
         });
     };
 
+    const handleSearchInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(event.target.value);
+        if (document.activeElement === event.target) {
+            shouldRestoreFocusRef.current = true;
+        }
+    };
+
     const handleReset = () => {
         setSearchTerm("");
         setKelas("ALL");
@@ -115,8 +143,8 @@ export function AutoSearchForm({ type, initialValues, uniqueClasses = [] }: Auto
                         id="nama"
                         placeholder="Masukkan nama atau NIS siswa"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        disabled={isPending}
+                        onChange={handleSearchInputChange}
+                        ref={searchInputRef}
                     />
                 </div>
 
@@ -204,8 +232,8 @@ export function AutoSearchForm({ type, initialValues, uniqueClasses = [] }: Auto
                     id="name"
                     placeholder="Masukkan nama"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    disabled={isPending}
+                    onChange={handleSearchInputChange}
+                    ref={searchInputRef}
                 />
             </div>
 
