@@ -30,7 +30,7 @@ export const absencesRouter = createTRPCRouter({
         nis: z.string(),
         status: z.enum(["Hadir", "Terlambat", "Pulang", "Dipulangkan"]),
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       // Get siswa from biodata_siswa by NIS
@@ -39,7 +39,9 @@ export const absencesRouter = createTRPCRouter({
       });
 
       if (!siswa) {
-        throw new Error("Siswa dengan NIS tersebut tidak ditemukan di database");
+        throw new Error(
+          "Siswa dengan NIS tersebut tidak ditemukan di database",
+        );
       }
 
       // Get user_profile to find user_id (required for absences table foreign key)
@@ -50,7 +52,7 @@ export const absencesRouter = createTRPCRouter({
       if (!userProfile) {
         throw new Error(
           `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-          `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`
+            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
         );
       }
 
@@ -115,14 +117,12 @@ export const absencesRouter = createTRPCRouter({
       // Delete multiple records in one query using OR conditions
       const deletedAbsences = await ctx.db
         .delete(absences)
-        .where(
-          or(...input.ids.map(id => eq(absences.id, id)))
-        )
+        .where(or(...input.ids.map((id) => eq(absences.id, id))))
         .returning();
 
       return {
         deletedCount: deletedAbsences.length,
-        deletedIds: deletedAbsences.map(a => a.id),
+        deletedIds: deletedAbsences.map((a) => a.id),
       };
     }),
 
@@ -134,7 +134,7 @@ export const absencesRouter = createTRPCRouter({
         .object({
           userId: z.string().uuid().optional(),
           // pagination
-          limit: z.number().int().min(1).max(100).default(20),
+          limit: z.number().int().min(1).max(1500).default(20),
           offset: z.number().int().min(0).default(0),
           status: z.string().optional(),
           date: z
@@ -151,7 +151,9 @@ export const absencesRouter = createTRPCRouter({
       if (input?.status) {
         if (input.status === "Hadir") {
           // Treat 'Hadir' filter as both Hadir and legacy 'Datang'
-          conditions.push(or(eq(absences.status, "Hadir"), eq(absences.status, "Datang")));
+          conditions.push(
+            or(eq(absences.status, "Hadir"), eq(absences.status, "Datang")),
+          );
         } else {
           conditions.push(eq(absences.status, input.status));
         }
@@ -166,7 +168,9 @@ export const absencesRouter = createTRPCRouter({
         limit: input?.limit ?? 20,
         offset: input?.offset ?? 0,
         orderBy: (absences, { desc, asc }) => [
-          (input?.sort ?? "asc") === "desc" ? desc(absences.date) : asc(absences.date)
+          (input?.sort ?? "asc") === "desc"
+            ? desc(absences.date)
+            : asc(absences.date),
         ],
         with: {
           userProfile: true,
@@ -205,15 +209,17 @@ export const absencesRouter = createTRPCRouter({
   // Statistik kehadiran untuk dashboard dengan range waktu
   getAttendanceStats: protectedProcedure
     .input(
-      z.object({
-        days: z.number().int().min(1).max(365).default(7),
-      }).optional()
+      z
+        .object({
+          days: z.number().int().min(1).max(365).default(7),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const days = input?.days ?? 7;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
-      const startDateStr = startDate.toISOString().split('T')[0];
+      const startDateStr = startDate.toISOString().split("T")[0];
 
       // Get all user profiles (verified users)
       const allUsers = await ctx.db.query.userProfiles.findMany({
@@ -240,17 +246,20 @@ export const absencesRouter = createTRPCRouter({
       });
 
       // Group by date
-      const dateMap: Record<string, {
-        hadir: Set<string>;
-        izin: Set<string>;
-        terlambat: Set<string>;
-      }> = {};
+      const dateMap: Record<
+        string,
+        {
+          hadir: Set<string>;
+          izin: Set<string>;
+          terlambat: Set<string>;
+        }
+      > = {};
 
       // Initialize all dates in range
       for (let i = 0; i < days; i++) {
         const date = new Date();
         date.setDate(date.getDate() - (days - 1 - i));
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = date.toISOString().split("T")[0];
         if (dateStr) {
           dateMap[dateStr] = {
             hadir: new Set(),
@@ -264,7 +273,7 @@ export const absencesRouter = createTRPCRouter({
       absencesData.forEach((a) => {
         const dateStr = a.date; // Already a string in YYYY-MM-DD format
         if (dateStr && dateMap[dateStr]) {
-          if (a.status === 'Terlambat') {
+          if (a.status === "Terlambat") {
             dateMap[dateStr].terlambat.add(a.userId);
             dateMap[dateStr].hadir.add(a.userId); // Terlambat tetap termasuk dalam kehadiran
           } else {
@@ -276,7 +285,7 @@ export const absencesRouter = createTRPCRouter({
       // Fill in permission data
       perizinanData.forEach((p) => {
         const dateStr = p.tanggalUtcDate;
-        if (dateStr && dateMap[dateStr] && p.approvalStatus === 'approved') {
+        if (dateStr && dateMap[dateStr] && p.approvalStatus === "approved") {
           dateMap[dateStr].izin.add(p.userId);
         }
       });
@@ -286,7 +295,8 @@ export const absencesRouter = createTRPCRouter({
         const hadirCount = data.hadir.size;
         const izinCount = data.izin.size;
         const terlambatCount = data.terlambat.size;
-        const tidakHadirCount = totalUsers - hadirCount - izinCount - terlambatCount;
+        const tidakHadirCount =
+          totalUsers - hadirCount - izinCount - terlambatCount;
 
         return {
           date,

@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
-import { Workbook } from 'exceljs';
-import { db } from '~/server/db';
-import { perizinan, userProfiles } from '~/server/db/schema';
-import { makeWorkbookMetadata, workbookToResponseBuffer } from '../utils';
+import { NextResponse } from "next/server";
+import { Workbook } from "exceljs";
+import { db } from "~/server/db";
+import { perizinan, userProfiles } from "~/server/db/schema";
+import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 
 // Ensure fresh data on each request
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 /**
  * Helper to safely format date values
@@ -18,7 +18,7 @@ function formatDate(val: unknown): string | null {
     const t = val.getTime();
     return Number.isNaN(t) ? null : val.toISOString();
   }
-  if (typeof val === 'string' || typeof val === 'number') {
+  if (typeof val === "string" || typeof val === "number") {
     const d = new Date(val);
     const t = d.getTime();
     return Number.isNaN(t) ? null : d.toISOString();
@@ -29,26 +29,26 @@ function formatDate(val: unknown): string | null {
 export async function GET() {
   // Create a new workbook and add metadata
   const wb = new Workbook();
-  Object.assign(wb, makeWorkbookMetadata('Perizinan Data'));
+  Object.assign(wb, makeWorkbookMetadata("Perizinan Data"));
 
   // Create worksheet with columns
-  const ws = wb.addWorksheet('Perizinan');
+  const ws = wb.addWorksheet("Perizinan");
   ws.columns = [
-    { header: 'ID', key: 'id', width: 36 },
-    { header: 'Full Name', key: 'fullName', width: 30 },
-    { header: 'Email', key: 'email', width: 30 },
-    { header: 'NIS', key: 'nis', width: 15 },
-    { header: 'Class', key: 'className', width: 12 },
-    { header: 'Tanggal', key: 'tanggal', width: 15 },
-    { header: 'Kategori', key: 'kategoriIzin', width: 10 },
-    { header: 'Kategori (Tampilan)', key: 'kategoriIzinDisplay', width: 18 },
-    { header: 'Deskripsi', key: 'deskripsi', width: 40 },
-    { header: 'Status', key: 'approvalStatus', width: 10 },
-    { header: 'Approved At', key: 'approvedAt', width: 20 },
-    { header: 'Rejected At', key: 'rejectedAt', width: 20 },
-    { header: 'Rejection Reason', key: 'rejectionReason', width: 40 },
-    { header: 'Created At', key: 'createdAt', width: 20 },
-    { header: 'Updated At', key: 'updatedAt', width: 20 },
+    { header: "ID", key: "id", width: 36 },
+    { header: "Full Name", key: "fullName", width: 30 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "NIS", key: "nis", width: 15 },
+    { header: "Class", key: "className", width: 12 },
+    { header: "Tanggal", key: "tanggal", width: 15 },
+    { header: "Kategori", key: "kategoriIzin", width: 10 },
+    { header: "Kategori (Tampilan)", key: "kategoriIzinDisplay", width: 18 },
+    { header: "Deskripsi", key: "deskripsi", width: 40 },
+    { header: "Status", key: "approvalStatus", width: 10 },
+    { header: "Approved At", key: "approvedAt", width: 20 },
+    { header: "Rejected At", key: "rejectedAt", width: 20 },
+    { header: "Rejection Reason", key: "rejectionReason", width: 40 },
+    { header: "Created At", key: "createdAt", width: 20 },
+    { header: "Updated At", key: "updatedAt", width: 20 },
   ];
 
   // Style the header row
@@ -59,7 +59,7 @@ export async function GET() {
 
   // Fetch all profiles to map user IDs to names
   const profiles = await db.select().from(userProfiles);
-  const profileMap = new Map<string, typeof profiles[number]>();
+  const profileMap = new Map<string, (typeof profiles)[number]>();
 
   // Create a lookup map of user profiles by ID
   for (const profile of profiles) {
@@ -71,11 +71,11 @@ export async function GET() {
   // Add rows to worksheet
   for (const r of rows) {
     const profile = profileMap.get(r.userId);
-    const desc = r.deskripsi ?? '';
+    const desc = r.deskripsi ?? "";
     const kategoriDisplay = /dipulangkan/i.test(desc)
-      ? 'dipulangkan'
+      ? "dipulangkan"
       : /terlambat/i.test(desc)
-        ? 'terlambat'
+        ? "terlambat"
         : r.kategoriIzin;
 
     ws.addRow({
@@ -110,9 +110,10 @@ export async function GET() {
   return new NextResponse(buffer, {
     status: 200,
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="perizinan.xlsx"`,
-      'Cache-Control': 'no-store',
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="perizinan.xlsx"`,
+      "Cache-Control": "no-store",
     },
   });
 }

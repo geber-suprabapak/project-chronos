@@ -1,12 +1,36 @@
 import { api } from "~/trpc/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
-import { Users, UserCheck, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
+import {
+  Users,
+  UserCheck,
+  ClipboardList,
+  MapPin,
+  Calendar,
+  Clock,
+} from "lucide-react";
 import { StatistikPieChart } from "~/components/pie-chart";
-import { KehadiranBarChart, IzinBarChart, KeterlambatanBarChart } from "~/components/attendance-bar-charts";
+import {
+  KehadiranBarChart,
+  IzinBarChart,
+  KeterlambatanBarChart,
+} from "~/components/attendance-bar-charts";
 import { AttendanceTimeChart } from "~/components/linear-chart";
 
 /**
@@ -35,7 +59,13 @@ interface KPICardProps {
   variant?: "default" | "primary" | "success" | "warning";
 }
 
-function KPICard({ title, value, description, icon, variant = "default" }: KPICardProps) {
+function KPICard({
+  title,
+  value,
+  description,
+  icon,
+  variant = "default",
+}: KPICardProps) {
   const colorClasses = {
     default: "text-muted-foreground",
     primary: "text-blue-600",
@@ -51,7 +81,9 @@ function KPICard({ title, value, description, icon, variant = "default" }: KPICa
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -68,13 +100,17 @@ interface PendingPermissionsTableProps {
   }>;
 }
 
-function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) {
+function PendingPermissionsTable({
+  permissions,
+}: PendingPermissionsTableProps) {
   if (permissions.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Perizinan Tertunda</CardTitle>
-          <CardDescription>Daftar perizinan yang menunggu persetujuan</CardDescription>
+          <CardDescription>
+            Daftar perizinan yang menunggu persetujuan
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
@@ -89,7 +125,9 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
     <Card>
       <CardHeader>
         <CardTitle>Perizinan Tertunda</CardTitle>
-        <CardDescription>Daftar perizinan yang menunggu persetujuan</CardDescription>
+        <CardDescription>
+          Daftar perizinan yang menunggu persetujuan
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -108,14 +146,22 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
                   {permission.userProfile?.fullName ?? "N/A"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={permission.kategoriIzin === "sakit" ? "destructive" : "default"}>
+                  <Badge
+                    variant={
+                      permission.kategoriIzin === "sakit"
+                        ? "destructive"
+                        : "default"
+                    }
+                  >
                     {permission.kategoriIzin}
                   </Badge>
                 </TableCell>
                 <TableCell>{formatDate(permission.tanggal)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild size="sm" variant="outline">
-                    <Link href={`/perizinan/show/${permission.id}`}>Detail</Link>
+                    <Link href={`/perizinan/show/${permission.id}`}>
+                      Detail
+                    </Link>
                   </Button>
                 </TableCell>
               </TableRow>
@@ -140,12 +186,18 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
 async function DashboardContent() {
   // Parallel data fetching using RSC
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [stats, perizinanToday, activeLocation, currentSchedule] = await Promise.all([
-    api.biodataSiswa.getStatistics(),
-    api.perizinan.list({ approvalStatus: "pending", tanggal: todayStr, limit: 100, offset: 0 }),
-    api.location.get(),
-    api.jadwal.getCurrentDay(),
-  ]);
+  const [stats, perizinanToday, activeLocation, currentSchedule] =
+    await Promise.all([
+      api.biodataSiswa.getStatistics(),
+      api.perizinan.list({
+        approvalStatus: "pending",
+        tanggal: todayStr,
+        limit: 100,
+        offset: 0,
+      }),
+      api.location.get(),
+      api.jadwal.getCurrentDay(),
+    ]);
 
   // Pending permissions only for today
   const pendingPermissions = perizinanToday.slice(0, 5);
@@ -154,9 +206,16 @@ async function DashboardContent() {
 
   // Get current day name
   const dayOfWeek = new Date().getDay();
-  const hariMap = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const hariMap = [
+    "Minggu",
+    "Senin",
+    "Selasa",
+    "Rabu",
+    "Kamis",
+    "Jumat",
+    "Sabtu",
+  ];
   const currentDayName = hariMap[dayOfWeek];
-
 
   return (
     <div className="space-y-6">
@@ -219,7 +278,9 @@ async function DashboardContent() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Status Jadwal</span>
                   </div>
-                  <Badge variant={currentSchedule.isActive ? "default" : "secondary"}>
+                  <Badge
+                    variant={currentSchedule.isActive ? "default" : "secondary"}
+                  >
                     {currentSchedule.isActive ? "Aktif" : "Nonaktif"}
                   </Badge>
                 </div>
@@ -228,21 +289,29 @@ async function DashboardContent() {
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Waktu Masuk</p>
                     <p className="text-sm font-semibold">
-                      {currentSchedule.mulaiMasuk} - {currentSchedule.selesaiMasuk}
+                      {currentSchedule.mulaiMasuk} -{" "}
+                      {currentSchedule.selesaiMasuk}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Waktu Pulang</p>
+                    <p className="text-xs text-muted-foreground">
+                      Waktu Pulang
+                    </p>
                     <p className="text-sm font-semibold">
-                      {currentSchedule.mulaiPulang} - {currentSchedule.selesaiPulang}
+                      {currentSchedule.mulaiPulang} -{" "}
+                      {currentSchedule.selesaiPulang}
                     </p>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Kompensasi Waktu</span>
-                    <span className="text-sm font-medium">{currentSchedule.kompensasiWaktu} menit</span>
+                    <span className="text-xs text-muted-foreground">
+                      Kompensasi Waktu
+                    </span>
+                    <span className="text-sm font-medium">
+                      {currentSchedule.kompensasiWaktu} menit
+                    </span>
                   </div>
                 </div>
 
@@ -260,8 +329,6 @@ async function DashboardContent() {
                 </Button>
               </div>
             )}
-
-
           </CardContent>
         </Card>
       </div>
