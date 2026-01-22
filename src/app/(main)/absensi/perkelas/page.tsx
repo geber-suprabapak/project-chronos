@@ -52,7 +52,8 @@ function formatDate(date: Date | undefined): string {
 export default function AbsensiPerKelasPage() {
   // Filter states
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [date, setDate] = useState<string>(""); // YYYY-MM-DD
+  const [startDate, setStartDate] = useState<string>(""); // YYYY-MM-DD (dari)
+  const [endDate, setEndDate] = useState<string>(""); // YYYY-MM-DD (sampai)
   const [status, setStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>(""); // For instant client-side filtering (Nama/NIS)
   const [page, setPage] = useState<number>(1);
@@ -88,12 +89,28 @@ export default function AbsensiPerKelasPage() {
       limit,
       offset,
       sort: "desc",
-      date: date || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
       status: status || undefined,
       className: selectedClass || undefined,
     },
     {
       enabled: !!selectedClass, // Only fetch when a class is selected
+    },
+  );
+
+  // Fetch attendance summary for single date view (when startDate === endDate)
+  const isSingleDate = startDate && startDate === endDate;
+  const {
+    data: attendanceSummary,
+    isLoading: summaryLoading,
+  } = api.absences.getClassAttendanceSummary.useQuery(
+    {
+      className: selectedClass,
+      date: startDate,
+    },
+    {
+      enabled: !!selectedClass && !!isSingleDate,
     },
   );
 
@@ -113,12 +130,23 @@ export default function AbsensiPerKelasPage() {
     });
   }, [absences, searchQuery]);
 
-  const dateValue = date ? new Date(date + "T00:00:00") : undefined;
+  const startDateValue = startDate
+    ? new Date(startDate + "T00:00:00")
+    : undefined;
+  const endDateValue = endDate ? new Date(endDate + "T00:00:00") : undefined;
   const loading =
     absencesLoading === true ||
     userLoading === true ||
     classNamesLoading === true;
   const hasMore = absences?.length === limit;
+
+  // Helper to format date to YYYY-MM-DD
+  const formatToYMD = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${da}`;
+  };
 
   // Reset page when filters change
   const handleClassChange = (value: string) => {
@@ -127,25 +155,39 @@ export default function AbsensiPerKelasPage() {
     setPage(1);
     setSearchQuery("");
 
-    // Auto-set tanggal hari ini ketika kelas dipilih
-    if (newClass && !date) {
-      const today = new Date();
-      const y = today.getFullYear();
-      const m = String(today.getMonth() + 1).padStart(2, "0");
-      const d = String(today.getDate()).padStart(2, "0");
-      setDate(`${y}-${m}-${d}`);
+    // Auto-set tanggal hari ini ketika kelas dipilih (startDate dan endDate sama = hari ini)
+    if (newClass && !startDate) {
+      const today = formatToYMD(new Date());
+      setStartDate(today);
+      setEndDate(today);
     }
   };
 
-  const handleDateSelect = (d: Date | undefined) => {
+  const handleStartDateSelect = (d: Date | undefined) => {
     if (!d) {
-      setDate("");
+      setStartDate("");
       return;
     }
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    setDate(`${y}-${m}-${da}`);
+    const dateStr = formatToYMD(d);
+    setStartDate(dateStr);
+    // Jika endDate belum diset atau lebih kecil dari startDate, set endDate sama
+    if (!endDate || dateStr > endDate) {
+      setEndDate(dateStr);
+    }
+    setPage(1);
+  };
+
+  const handleEndDateSelect = (d: Date | undefined) => {
+    if (!d) {
+      setEndDate("");
+      return;
+    }
+    const dateStr = formatToYMD(d);
+    setEndDate(dateStr);
+    // Jika startDate belum diset atau lebih besar dari endDate, set startDate sama
+    if (!startDate || dateStr < startDate) {
+      setStartDate(dateStr);
+    }
     setPage(1);
   };
 
@@ -153,6 +195,13 @@ export default function AbsensiPerKelasPage() {
     setStatus(value === "all" ? "" : value);
     setPage(1);
   };
+
+  // Build export URL with date range
+  const exportParams = new URLSearchParams();
+  if (selectedClass) exportParams.set("className", selectedClass);
+  if (startDate) exportParams.set("startDate", startDate);
+  if (endDate) exportParams.set("endDate", endDate);
+  const exportUrl = `/api/export/absences?${exportParams.toString()}`;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
@@ -172,8 +221,8 @@ export default function AbsensiPerKelasPage() {
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
           <DownloadExcelButton
-            href={`/api/export/absences?className=${encodeURIComponent(selectedClass)}`}
-            filename={`absensi-${selectedClass ? selectedClass : "semua"}.xlsx`}
+            href={exportUrl}
+            filename={`absensi-${selectedClass ? selectedClass : "semua"}${startDate ? `-${startDate}` : ""}${endDate && endDate !== startDate ? `-sd-${endDate}` : ""}.xlsx`}
             disabled={
               loading === true ||
               !selectedClass ||
@@ -182,8 +231,8 @@ export default function AbsensiPerKelasPage() {
           />
           <DownloadPdfButton
             tableId="absensi-perkelas-table"
-            filename={`absensi-${selectedClass ? selectedClass : "semua"}.pdf`}
-            title={`Data Absensi Kelas ${selectedClass ?? ""}`}
+            filename={`absensi-${selectedClass ? selectedClass : "semua"}${startDate ? `-${startDate}` : ""}${endDate && endDate !== startDate ? `-sd-${endDate}` : ""}.pdf`}
+            title={`Data Absensi Kelas ${selectedClass ?? ""}${startDate ? ` (${startDate}${endDate && endDate !== startDate ? ` s/d ${endDate}` : ""})` : ""}`}
             disabled={
               loading === true ||
               !selectedClass ||
@@ -196,7 +245,7 @@ export default function AbsensiPerKelasPage() {
       <Card className="p-2 sm:p-4 overflow-hidden">
         {/* Filter Controls */}
         <div className="flex flex-col gap-4 mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 w-full">
             {/* Class Filter */}
             <div className="flex flex-col w-full">
               <Label
@@ -224,16 +273,19 @@ export default function AbsensiPerKelasPage() {
               </Select>
             </div>
 
-            {/* Date Filter */}
+            {/* Start Date Filter (Dari) */}
             <div className="flex flex-col w-full">
-              <Label htmlFor="filter-date" className="mb-2 text-sm font-medium">
-                Tanggal
+              <Label
+                htmlFor="filter-start-date"
+                className="mb-2 text-sm font-medium"
+              >
+                Dari Tanggal
               </Label>
               <div className="relative flex gap-2">
                 <Input
-                  id="filter-date"
+                  id="filter-start-date"
                   placeholder="Pilih tanggal"
-                  value={formatDate(dateValue)}
+                  value={formatDate(startDateValue)}
                   readOnly
                   className="w-full pr-10"
                 />
@@ -244,7 +296,7 @@ export default function AbsensiPerKelasPage() {
                       className="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0"
                     >
                       <CalendarIcon className="size-3.5" />
-                      <span className="sr-only">Pilih tanggal</span>
+                      <span className="sr-only">Pilih tanggal mulai</span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent
@@ -254,8 +306,49 @@ export default function AbsensiPerKelasPage() {
                   >
                     <Calendar
                       mode="single"
-                      selected={dateValue}
-                      onSelect={handleDateSelect}
+                      selected={startDateValue}
+                      onSelect={handleStartDateSelect}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* End Date Filter (Sampai) */}
+            <div className="flex flex-col w-full">
+              <Label
+                htmlFor="filter-end-date"
+                className="mb-2 text-sm font-medium"
+              >
+                Sampai Tanggal
+              </Label>
+              <div className="relative flex gap-2">
+                <Input
+                  id="filter-end-date"
+                  placeholder="Pilih tanggal"
+                  value={formatDate(endDateValue)}
+                  readOnly
+                  className="w-full pr-10"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0"
+                    >
+                      <CalendarIcon className="size-3.5" />
+                      <span className="sr-only">Pilih tanggal akhir</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0"
+                    align="end"
+                    alignOffset={-8}
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={endDateValue}
+                      onSelect={handleEndDateSelect}
                     />
                   </PopoverContent>
                 </Popover>
@@ -309,7 +402,7 @@ export default function AbsensiPerKelasPage() {
           </div>
 
           {/* Reset Button */}
-          {(date || status || searchQuery) && (
+          {(startDate || endDate || status || searchQuery) && (
             <div className="flex justify-start">
               <TooltipProvider>
                 <Tooltip>
@@ -319,7 +412,8 @@ export default function AbsensiPerKelasPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setDate("");
+                        setStartDate("");
+                        setEndDate("");
                         setStatus("");
                         setSearchQuery("");
                         setPage(1);
@@ -357,6 +451,81 @@ export default function AbsensiPerKelasPage() {
           </div>
         ) : (
           <>
+            {/* Attendance Summary Cards - Only shown for single date */}
+            {isSingleDate && attendanceSummary && (
+              <div className="mb-6">
+                <h3 className="text-md font-semibold mb-3">
+                  Ringkasan Kehadiran - {formatDate(new Date(startDate + "T00:00:00"))}
+                </h3>
+                
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {attendanceSummary.summary.hadir}
+                    </div>
+                    <div className="text-sm text-green-700 dark:text-green-300">Hadir</div>
+                  </div>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {attendanceSummary.summary.terlambat}
+                    </div>
+                    <div className="text-sm text-yellow-700 dark:text-yellow-300">Terlambat</div>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {attendanceSummary.summary.tidakHadir}
+                    </div>
+                    <div className="text-sm text-red-700 dark:text-red-300">Tidak Hadir</div>
+                  </div>
+                </div>
+
+                {/* Detail Lists for Non-Present Students */}
+                {attendanceSummary.summary.tidakHadir > 0 && (
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Tidak Hadir (Alpha) */}
+                    <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                      <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2 flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+                        Tidak Hadir ({attendanceSummary.summary.tidakHadir})
+                      </h4>
+                      <ul className="space-y-1 text-sm">
+                        {attendanceSummary.details.tidakHadir.map((s) => (
+                          <li key={s.userId} className="flex justify-between">
+                            <span>{s.fullName ?? "-"}</span>
+                            <span className="text-muted-foreground font-mono text-xs">
+                              {s.nis ?? "-"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* All present message */}
+                {attendanceSummary.summary.tidakHadir === 0 && (
+                  <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                    <p className="text-green-700 dark:text-green-400 font-medium">
+                      🎉 Semua siswa hadir hari ini!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Loading summary */}
+            {isSingleDate && summaryLoading && (
+              <div className="mb-6 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <div className="grid grid-cols-3 gap-3">
+                  <Skeleton className="h-20" />
+                  <Skeleton className="h-20" />
+                  <Skeleton className="h-20" />
+                </div>
+              </div>
+            )}
+
             {/* Pagination Info */}
             <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
               <span>

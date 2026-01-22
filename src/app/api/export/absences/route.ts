@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Workbook } from "exceljs";
 import { db } from "~/server/db";
 import { absences, userProfiles } from "~/server/db/schema";
-import { eq, and, ilike, exists } from "drizzle-orm";
+import { eq, and, ilike, exists, gte, lte } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 
 // Ensure fresh data on each request
@@ -28,9 +29,11 @@ function formatDate(val: unknown): string | null {
 }
 
 export async function GET(request: NextRequest) {
-  // Get className filter from query params
+  // Get filter params from query
   const { searchParams } = new URL(request.url);
   const className = searchParams.get("className");
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
 
   // Create a new workbook and add metadata
   const wb = new Workbook();
@@ -49,23 +52,35 @@ export async function GET(request: NextRequest) {
   // Style the header row
   ws.getRow(1).font = { bold: true };
 
-  // Build WHERE condition for className filter using EXISTS subquery
-  let whereCondition = undefined;
+  // Build WHERE conditions array
+  const conditions: (SQL | undefined)[] = [];
+
+  // className filter using EXISTS subquery
   if (className) {
-    whereCondition = exists(
-      db
-        .select({ one: userProfiles.userId })
-        .from(userProfiles)
-        .where(
-          and(
-            eq(userProfiles.userId, absences.userId),
-            ilike(userProfiles.className, `%${className}%`),
+    conditions.push(
+      exists(
+        db
+          .select({ one: userProfiles.userId })
+          .from(userProfiles)
+          .where(
+            and(
+              eq(userProfiles.userId, absences.userId),
+              ilike(userProfiles.className, `%${className}%`),
+            ),
           ),
-        ),
+      ),
     );
   }
 
-  // Fetch absences data with optional className filter
+  // Date range filter
+  if (startDate) conditions.push(gte(absences.date, startDate));
+  if (endDate) conditions.push(lte(absences.date, endDate));
+
+  // Combine conditions
+  const validConds = conditions.filter(Boolean) as SQL[];
+  const whereCondition = validConds.length > 0 ? and(...validConds) : undefined;
+
+  // Fetch absences data with filters
   const rows = await db.select().from(absences).where(whereCondition);
 
   // Fetch all profiles to map user IDs to names
@@ -79,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Sort rows by date first, then by NIS
+  // Sort rows by date first, then by class, then by NIS
   const sortedRows = rows.sort((a, b) => {
     const dateA = typeof a.date === "string" ? a.date : String(a.date);
     const dateB = typeof b.date === "string" ? b.date : String(b.date);
@@ -87,18 +102,33 @@ export async function GET(request: NextRequest) {
 
     if (dateCompare !== 0) return dateCompare;
 
-    // If dates are equal, sort by NIS
+    // If dates are equal, sort by class
+    const classA = profileMap.get(a.userId)?.className ?? "";
+    const classB = profileMap.get(b.userId)?.className ?? "";
+    const classCompare = classA.localeCompare(classB);
+
+    if (classCompare !== 0) return classCompare;
+
+    // If class is equal, sort by NIS
     const nisA = profileMap.get(a.userId)?.nis ?? "";
     const nisB = profileMap.get(b.userId)?.nis ?? "";
     return nisA.localeCompare(nisB);
   });
 
-  // Add rows to worksheet
+  // Add rows to worksheet with separator between dates
+  let lastDate = "";
   for (const r of sortedRows) {
     const profile = profileMap.get(r.userId);
+    const currentDate = typeof r.date === "string" ? r.date : String(r.date);
+
+    // Add empty row as separator when date changes (except for first row)
+    if (lastDate && currentDate !== lastDate) {
+      ws.addRow({}); // Empty row as separator
+    }
+    lastDate = currentDate;
 
     ws.addRow({
-      tanggal: typeof r.date === "string" ? r.date : String(r.date),
+      tanggal: currentDate,
       nis: profile?.nis ?? "-",
       kelas: profile?.className ?? "-",
       nama: profile?.fullName ?? "-",
