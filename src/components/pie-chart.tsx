@@ -57,17 +57,23 @@ const chartConfigPulang = {
 
 export function StatistikPieChart() {
   // Ambil semua user dan absensi
-  const { data: users, isLoading: loadingUsers } = api.userProfiles.listRaw.useQuery();
-  const { data: absensi, isLoading: loadingAbsensi } = api.absences.listRaw.useQuery();
-  
+  const { data: users, isLoading: loadingUsers } =
+    api.userProfiles.listRaw.useQuery();
+  const { data: absensi, isLoading: loadingAbsensi } =
+    api.absences.listRaw.useQuery();
+
   // Ambil perizinan hari ini menggunakan endpoint yang sama dengan halaman Perizinan
   // Gunakan useMemo untuk todayString agar stabil dan tidak re-compute setiap render
-  const todayString = useMemo(() => new Date().toISOString().split('T')[0]!, []);
-  const { data: perizinanHariIni, isLoading: loadingIzin } = api.perizinan.list.useQuery({
-    tanggal: todayString,
-    limit: 100,
-    offset: 0,
-  });
+  const todayString = useMemo(
+    () => new Date().toISOString().split("T")[0]!,
+    [],
+  );
+  const { data: perizinanHariIni, isLoading: loadingIzin } =
+    api.perizinan.list.useQuery({
+      tanggal: todayString,
+      limit: 100,
+      offset: 0,
+    });
 
   // Ukuran pie chart tetap
   const outerRadius = 90;
@@ -80,15 +86,20 @@ export function StatistikPieChart() {
 
     // Filter absensi untuk hari ini saja
     const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === 'string' ? a.date : String(a.date);
+      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
       return absenDate === todayString;
     });
 
     // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
     const sudahAbsenMasuk = new Set(
       absensiToday
-        .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
-        .map((a) => a.userId)
+        .filter(
+          (a) =>
+            a.status === "Hadir" ||
+            a.status === "Datang" ||
+            a.status === "Terlambat",
+        )
+        .map((a) => a.userId),
     );
 
     // Hitung user yang izin atau sakit dari data perizinan (sudah difilter server)
@@ -111,22 +122,22 @@ export function StatistikPieChart() {
       {
         category: "sudahAbsenMasuk",
         value: sudahAbsenMasuk.size,
-        fill: "var(--color-sudahAbsenMasuk)"
+        fill: "var(--color-sudahAbsenMasuk)",
       },
       {
         category: "belumAbsenMasuk",
         value: belumAbsenMasuk.size,
-        fill: "var(--color-belumAbsenMasuk)"
+        fill: "var(--color-belumAbsenMasuk)",
       },
       {
         category: "izin",
         value: izinPergi,
-        fill: "var(--color-izin)"
+        fill: "var(--color-izin)",
       },
       {
         category: "sakit",
         value: sakit,
-        fill: "var(--color-sakit)"
+        fill: "var(--color-sakit)",
       },
     ];
   }, [users, absensi, perizinanHariIni, todayString]);
@@ -137,26 +148,29 @@ export function StatistikPieChart() {
 
     // Get today's date in YYYY-MM-DD format
     const today = new Date();
-    const todayString = today.toISOString().split('T')[0]!;
+    const todayString = today.toISOString().split("T")[0]!;
 
     // Filter absensi untuk hari ini saja
     const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === 'string' ? a.date : String(a.date);
+      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
       return absenDate === todayString;
     });
 
     // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
     const sudahAbsenMasuk = new Set(
       absensiToday
-        .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
-        .map((a) => a.userId)
+        .filter(
+          (a) =>
+            a.status === "Hadir" ||
+            a.status === "Datang" ||
+            a.status === "Terlambat",
+        )
+        .map((a) => a.userId),
     );
 
     // Hitung absensi pulang (status: "Pulang")
     const sudahAbsenPulang = new Set(
-      absensiToday
-        .filter((a) => a.status === "Pulang")
-        .map((a) => a.userId)
+      absensiToday.filter((a) => a.status === "Pulang").map((a) => a.userId),
     );
 
     // Belum absen pulang = user yang sudah absen masuk tapi belum pulang
@@ -167,12 +181,12 @@ export function StatistikPieChart() {
       {
         category: "sudahAbsenPulang",
         value: sudahAbsenPulang.size,
-        fill: "var(--color-sudahAbsenPulang)"
+        fill: "var(--color-sudahAbsenPulang)",
       },
       {
         category: "belumAbsenPulang",
         value: belumAbsenPulang.size,
-        fill: "var(--color-belumAbsenPulang)"
+        fill: "var(--color-belumAbsenPulang)",
       },
     ];
   }, [users, absensi]);
@@ -187,7 +201,14 @@ export function StatistikPieChart() {
   }, [chartDataPulang]);
 
   // Only render chart if all data is loaded and chartData is available
-  if (loadingUsers || loadingAbsensi || loadingIzin || !users || !absensi || !perizinanHariIni) {
+  if (
+    loadingUsers ||
+    loadingAbsensi ||
+    loadingIzin ||
+    !users ||
+    !absensi ||
+    !perizinanHariIni
+  ) {
     return (
       <Card className="flex flex-col">
         <CardHeader className="items-center pb-0">
@@ -213,7 +234,9 @@ export function StatistikPieChart() {
           <div className="space-y-3">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Masuk</h3>
-              <p className="text-xs text-muted-foreground">Status kehadiran siswa</p>
+              <p className="text-xs text-muted-foreground">
+                Status kehadiran siswa
+              </p>
             </div>
             <ChartContainer
               config={chartConfigMasuk}
@@ -242,9 +265,16 @@ export function StatistikPieChart() {
             {/* Legend untuk absen masuk */}
             <div className="grid grid-cols-2 gap-2 mt-4">
               {chartDataMasuk.map((entry) => {
-                const config = chartConfigMasuk[entry.category as keyof typeof chartConfigMasuk];
-                const percentage = totalMasuk > 0 ? ((entry.value / totalMasuk) * 100).toFixed(1) : '0.0';
-                const color = 'color' in config ? config.color : 'hsl(var(--muted))';
+                const config =
+                  chartConfigMasuk[
+                    entry.category as keyof typeof chartConfigMasuk
+                  ];
+                const percentage =
+                  totalMasuk > 0
+                    ? ((entry.value / totalMasuk) * 100).toFixed(1)
+                    : "0.0";
+                const color =
+                  "color" in config ? config.color : "hsl(var(--muted))";
 
                 return (
                   <div
@@ -260,7 +290,9 @@ export function StatistikPieChart() {
                         {config.label}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">{entry.value}</span>
+                        <span className="font-semibold text-foreground">
+                          {entry.value}
+                        </span>
                         <span className="text-[10px]">({percentage}%)</span>
                       </div>
                     </div>
@@ -274,7 +306,9 @@ export function StatistikPieChart() {
           <div className="space-y-3">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Pulang</h3>
-              <p className="text-xs text-muted-foreground">Status kepulangan siswa</p>
+              <p className="text-xs text-muted-foreground">
+                Status kepulangan siswa
+              </p>
             </div>
             <ChartContainer
               config={chartConfigPulang}
@@ -303,9 +337,16 @@ export function StatistikPieChart() {
             {/* Legend untuk absen pulang */}
             <div className="grid grid-cols-2 gap-2 mt-4">
               {chartDataPulang.map((entry) => {
-                const config = chartConfigPulang[entry.category as keyof typeof chartConfigPulang];
-                const percentage = totalPulang > 0 ? ((entry.value / totalPulang) * 100).toFixed(1) : '0.0';
-                const color = 'color' in config ? config.color : 'hsl(var(--muted))';
+                const config =
+                  chartConfigPulang[
+                    entry.category as keyof typeof chartConfigPulang
+                  ];
+                const percentage =
+                  totalPulang > 0
+                    ? ((entry.value / totalPulang) * 100).toFixed(1)
+                    : "0.0";
+                const color =
+                  "color" in config ? config.color : "hsl(var(--muted))";
 
                 return (
                   <div
@@ -321,7 +362,9 @@ export function StatistikPieChart() {
                         {config.label}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">{entry.value}</span>
+                        <span className="font-semibold text-foreground">
+                          {entry.value}
+                        </span>
                         <span className="text-[10px]">({percentage}%)</span>
                       </div>
                     </div>

@@ -18,7 +18,8 @@ interface LocationPickerProps {
 // Simple map component that loads Leaflet dynamically
 const LeafletMap = dynamic(
   async () => {
-    const { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } = await import("react-leaflet");
+    const { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } =
+      await import("react-leaflet");
     const L = await import("leaflet");
 
     // Fix marker icons
@@ -26,9 +27,12 @@ const LeafletMap = dynamic(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+        iconRetinaUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+        iconUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+        shadowUrl:
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
       });
     } catch (error) {
       console.warn("Failed to configure Leaflet icons:", error);
@@ -41,7 +45,11 @@ const LeafletMap = dynamic(
       onLocationChange: (lat: number, lng: number) => void;
     }
 
-    const MapClickHandler = ({ onLocationChange }: { onLocationChange: (lat: number, lng: number) => void }) => {
+    const MapClickHandler = ({
+      onLocationChange,
+    }: {
+      onLocationChange: (lat: number, lng: number) => void;
+    }) => {
       useMapEvents({
         click: (e) => {
           const { lat, lng } = e.latlng;
@@ -52,20 +60,31 @@ const LeafletMap = dynamic(
     };
 
     // Component to auto-pan map when coordinates change
-    const MapCenterUpdater = ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+    const MapCenterUpdater = ({
+      latitude,
+      longitude,
+    }: {
+      latitude: number;
+      longitude: number;
+    }) => {
       const map = useMap();
 
       React.useEffect(() => {
         // Smoothly pan to new coordinates
         map.flyTo([latitude, longitude], map.getZoom(), {
-          duration: 0.5 // Animation duration in seconds
+          duration: 0.5, // Animation duration in seconds
         });
       }, [latitude, longitude, map]);
 
       return null;
     };
 
-    return function LeafletMapComponent({ latitude, longitude, distance, onLocationChange }: MapProps) {
+    return function LeafletMapComponent({
+      latitude,
+      longitude,
+      distance,
+      onLocationChange,
+    }: MapProps) {
       return (
         <div className="w-full h-80 rounded-lg overflow-hidden border border-border">
           <MapContainer
@@ -105,14 +124,14 @@ const LeafletMap = dynamic(
         </div>
       </div>
     ),
-  }
+  },
 );
 
 export default function LocationPicker({
   latitude,
   longitude,
   onLocationChange,
-  distance = 500
+  distance = 500,
 }: LocationPickerProps) {
   return (
     <Card>
@@ -137,7 +156,9 @@ export default function LocationPicker({
                 <MapPin className="h-10 w-10 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="font-medium text-muted-foreground">Pilih Lokasi</h3>
+                <h3 className="font-medium text-muted-foreground">
+                  Pilih Lokasi
+                </h3>
                 <p className="text-sm text-muted-foreground/80">
                   Isi koordinat pada form di atas untuk menampilkan peta
                 </p>

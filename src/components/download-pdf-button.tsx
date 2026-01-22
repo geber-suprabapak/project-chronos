@@ -11,7 +11,13 @@ interface DownloadPdfButtonProps {
   disabled?: boolean;
 }
 
-export function DownloadPdfButton({ tableId, filename, title, className, disabled }: DownloadPdfButtonProps) {
+export function DownloadPdfButton({
+  tableId,
+  filename,
+  title,
+  className,
+  disabled,
+}: DownloadPdfButtonProps) {
   return (
     <Button
       type="button"

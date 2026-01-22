@@ -18,38 +18,67 @@ import { Users, UserCheck, User } from "lucide-react";
 import { AutoSearchForm } from "~/components/auto-search-form";
 
 export default async function SiswaPage({
-    searchParams
+    searchParams,
 }: {
-    searchParams?: Promise<Record<string, string | string[] | undefined>>
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
     // Process searchParams safely - await the promise in Next.js 15
     const resolvedSearchParams = await searchParams;
     const params = {
-        nama: typeof resolvedSearchParams?.nama === 'string' ? resolvedSearchParams.nama : '',
-        kelas: typeof resolvedSearchParams?.kelas === 'string' ? resolvedSearchParams.kelas : '',
-        kelamin: typeof resolvedSearchParams?.kelamin === 'string' ? resolvedSearchParams.kelamin : '',
-        activated: typeof resolvedSearchParams?.activated === 'string' ? resolvedSearchParams.activated : '',
-        page: typeof resolvedSearchParams?.page === 'string' ? resolvedSearchParams.page : '',
+        nama:
+            typeof resolvedSearchParams?.nama === "string"
+                ? resolvedSearchParams.nama
+                : "",
+        kelas:
+            typeof resolvedSearchParams?.kelas === "string"
+                ? resolvedSearchParams.kelas
+                : "",
+        kelamin:
+            typeof resolvedSearchParams?.kelamin === "string"
+                ? resolvedSearchParams.kelamin
+                : "",
+        activated:
+            typeof resolvedSearchParams?.activated === "string"
+                ? resolvedSearchParams.activated
+                : "",
+        page:
+            typeof resolvedSearchParams?.page === "string"
+                ? resolvedSearchParams.page
+                : "",
     };
 
     // Parse parameters
     const nama = params?.nama ? params.nama.trim() : "";
     const kelas = params?.kelas ?? "";
-    const kelamin = params?.kelamin && ['L', 'P'].includes(params.kelamin) ? params.kelamin as 'L' | 'P' : undefined;
-    const activated = params?.activated === 'true' ? true : params?.activated === 'false' ? false : undefined;
+    const kelamin =
+        params?.kelamin && ["L", "P"].includes(params.kelamin)
+            ? (params.kelamin as "L" | "P")
+            : undefined;
+    const activated =
+        params?.activated === "true"
+            ? true
+            : params?.activated === "false"
+                ? false
+                : undefined;
     const pageParam = params?.page ? parseInt(params.page, 10) : 1;
     const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
     const limit = 50; // Maximum 50 per page as requested
     const offset = (page - 1) * limit;
 
     // Helper function to create query string safely
-    function createQueryString(nama: string, kelas: string, kelamin?: string, activated?: boolean, pageNum?: number): string {
+    function createQueryString(
+        nama: string,
+        kelas: string,
+        kelamin?: string,
+        activated?: boolean,
+        pageNum?: number,
+    ): string {
         const params = new URLSearchParams();
-        if (nama) params.set('nama', nama);
-        if (kelas && kelas !== 'ALL') params.set('kelas', kelas);
-        if (kelamin) params.set('kelamin', kelamin);
-        if (activated !== undefined) params.set('activated', String(activated));
-        if (pageNum) params.set('page', String(pageNum));
+        if (nama) params.set("nama", nama);
+        if (kelas && kelas !== "ALL") params.set("kelas", kelas);
+        if (kelamin) params.set("kelamin", kelamin);
+        if (activated !== undefined) params.set("activated", String(activated));
+        if (pageNum) params.set("page", String(pageNum));
         return params.toString();
     }
 
@@ -63,11 +92,11 @@ export default async function SiswaPage({
     }> = [];
     let total = 0;
     let hasMore = false;
-    let statistics = {
-        total: 0,
-        laki: 0,
-        perempuan: 0,
-        activated: 0,
+    let statistics: {
+        total: number;
+        laki: number;
+        perempuan: number;
+        activated: number;
     };
     let uniqueClasses: string[] = [];
 
@@ -78,7 +107,10 @@ export default async function SiswaPage({
                 limit,
                 offset,
                 nama: nama && nama.trim().length > 0 ? nama.trim() : undefined,
-                kelas: kelas && kelas !== "ALL" && kelas.trim().length > 0 ? kelas.trim() : undefined,
+                kelas:
+                    kelas && kelas !== "ALL" && kelas.trim().length > 0
+                        ? kelas.trim()
+                        : undefined,
                 kelamin,
                 activated,
             }),
@@ -93,14 +125,18 @@ export default async function SiswaPage({
         }
 
         statistics = statsRes;
-        uniqueClasses = classesRes.filter((kelas): kelas is string => kelas !== null);
+        uniqueClasses = classesRes.filter(
+            (kelas): kelas is string => kelas !== null,
+        );
 
         console.log(`Loaded ${rows.length} siswa out of ${total}`);
     } catch (error) {
         console.error("Failed to load siswa data:", error);
         return (
             <div className="p-6">
-                <p className="text-red-600">Gagal memuat data siswa. Silahkan coba lagi.</p>
+                <p className="text-red-600">
+                    Gagal memuat data siswa. Silahkan coba lagi.
+                </p>
             </div>
         );
     }
@@ -135,34 +171,48 @@ export default async function SiswaPage({
                             <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{statistics.total.toLocaleString()}</div>
+                            <div className="text-2xl font-bold">
+                                {statistics.total.toLocaleString()}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Siswa Laki-laki</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Siswa Laki-laki
+                            </CardTitle>
                             <User className="h-4 w-4 text-blue-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">{statistics.laki.toLocaleString()}</div>
+                            <div className="text-2xl font-bold text-blue-600">
+                                {statistics.laki.toLocaleString()}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Siswa Perempuan</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Siswa Perempuan
+                            </CardTitle>
                             <User className="h-4 w-4 text-pink-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-pink-600">{statistics.perempuan.toLocaleString()}</div>
+                            <div className="text-2xl font-bold text-pink-600">
+                                {statistics.perempuan.toLocaleString()}
+                            </div>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Sudah Diaktifkan</CardTitle>
+                            <CardTitle className="text-sm font-medium">
+                                Sudah Diaktifkan
+                            </CardTitle>
                             <UserCheck className="h-4 w-4 text-green-600" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{statistics.activated.toLocaleString()}</div>
+                            <div className="text-2xl font-bold text-green-600">
+                                {statistics.activated.toLocaleString()}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -187,20 +237,35 @@ export default async function SiswaPage({
 
                 {/* Top Pagination */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Menampilkan {rows.length ? offset + 1 : 0}-{offset + rows.length} dari {total} data</span>
+                    <span>
+                        Menampilkan {rows.length ? offset + 1 : 0}-{offset + rows.length}{" "}
+                        dari {total} data
+                    </span>
                     <div className="flex gap-2">
                         {page <= 1 ? (
-                            <Button variant="outline" size="sm" disabled>Prev</Button>
+                            <Button variant="outline" size="sm" disabled>
+                                Prev
+                            </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}>Prev</Link>
+                                <Link
+                                    href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
+                                >
+                                    Prev
+                                </Link>
                             </Button>
                         )}
                         {!hasMore ? (
-                            <Button variant="outline" size="sm" disabled>Next</Button>
+                            <Button variant="outline" size="sm" disabled>
+                                Next
+                            </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}>Next</Link>
+                                <Link
+                                    href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
+                                >
+                                    Next
+                                </Link>
                             </Button>
                         )}
                     </div>
@@ -227,17 +292,27 @@ export default async function SiswaPage({
                                             const rowKey = `nis:${siswa.nis.toString()}`;
                                             return (
                                                 <TableRow key={rowKey}>
-                                                    <TableCell className="font-mono text-xs">{siswa.nis.toString()}</TableCell>
-                                                    <TableCell className="font-medium">{siswa.nama ?? "-"}</TableCell>
+                                                    <TableCell className="font-mono text-xs">
+                                                        {siswa.nis.toString()}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">
+                                                        {siswa.nama ?? "-"}
+                                                    </TableCell>
                                                     <TableCell>{siswa.kelas ?? "-"}</TableCell>
                                                     <TableCell>{siswa.absen ?? "-"}</TableCell>
                                                     <TableCell>
-                                                        {siswa.kelamin === 'L' ? (
-                                                            <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                                        {siswa.kelamin === "L" ? (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-blue-600 border-blue-600"
+                                                            >
                                                                 Laki-laki
                                                             </Badge>
-                                                        ) : siswa.kelamin === 'P' ? (
-                                                            <Badge variant="outline" className="text-pink-600 border-pink-600">
+                                                        ) : siswa.kelamin === "P" ? (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-pink-600 border-pink-600"
+                                                            >
                                                                 Perempuan
                                                             </Badge>
                                                         ) : (
@@ -246,13 +321,14 @@ export default async function SiswaPage({
                                                     </TableCell>
                                                     <TableCell>
                                                         {siswa.activated ? (
-                                                            <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                                                            <Badge
+                                                                variant="default"
+                                                                className="bg-green-600 hover:bg-green-700"
+                                                            >
                                                                 Aktif
                                                             </Badge>
                                                         ) : (
-                                                            <Badge variant="secondary">
-                                                                Belum Aktif
-                                                            </Badge>
+                                                            <Badge variant="secondary">Belum Aktif</Badge>
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -273,20 +349,35 @@ export default async function SiswaPage({
 
                 {/* Bottom Pagination */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Menampilkan {rows.length ? offset + 1 : 0}-{offset + rows.length} dari {total} data</span>
+                    <span>
+                        Menampilkan {rows.length ? offset + 1 : 0}-{offset + rows.length}{" "}
+                        dari {total} data
+                    </span>
                     <div className="flex gap-2">
                         {page <= 1 ? (
-                            <Button variant="outline" size="sm" disabled>Prev</Button>
+                            <Button variant="outline" size="sm" disabled>
+                                Prev
+                            </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}>Prev</Link>
+                                <Link
+                                    href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
+                                >
+                                    Prev
+                                </Link>
                             </Button>
                         )}
                         {!hasMore ? (
-                            <Button variant="outline" size="sm" disabled>Next</Button>
+                            <Button variant="outline" size="sm" disabled>
+                                Next
+                            </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}>Next</Link>
+                                <Link
+                                    href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
+                                >
+                                    Next
+                                </Link>
                             </Button>
                         )}
                     </div>

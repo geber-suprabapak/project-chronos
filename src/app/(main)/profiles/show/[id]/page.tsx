@@ -6,7 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { Separator } from "~/components/ui/separator";
 import { User } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -14,38 +21,56 @@ import { Button } from "~/components/ui/button";
 // Helper to format date or datetime; handles date-only strings without timezone skew
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "-";
-  const isDateOnly = typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
+  const isDateOnly =
+    typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
   if (isDateOnly) {
     const [yStr, mStr, dStr] = input.split("-") as [string, string, string];
     const date = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
-    return new Intl.DateTimeFormat("id-ID", { year: "numeric", month: "long", day: "numeric" }).format(date);
+    return new Intl.DateTimeFormat("id-ID", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
   }
   const date = new Date(input);
-  return new Intl.DateTimeFormat("id-ID", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 };
 
 export default function ShowProfilePage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
 
-  const { data: profile, isLoading, error } = api.userProfiles.getById.useQuery(
-    { id },
-    { enabled: !!id }
-  );
+  const {
+    data: profile,
+    isLoading,
+    error,
+  } = api.userProfiles.getById.useQuery({ id }, { enabled: !!id });
 
   // Related data (small lists) for additional context
   const { data: allAbsences } = api.absences.list.useQuery(
-    { userId: profile ? profile.userId : "", limit: 5, offset: 0, sort: "desc" },
-    { enabled: !!profile?.userId }
+    {
+      userId: profile ? profile.userId : "",
+      limit: 5,
+      offset: 0,
+      sort: "desc",
+    },
+    { enabled: !!profile?.userId },
   );
   const { data: recentLeaves } = api.perizinan.list.useQuery(
     { userId: profile ? profile.userId : "", limit: 5, offset: 0 },
-    { enabled: !!profile?.userId }
+    { enabled: !!profile?.userId },
   );
 
   if (!id) return <div className="p-8">Invalid ID.</div>;
   if (isLoading) return <SkeletonLayout />;
-  if (error) return <div className="p-8 text-red-500">Error: {error.message}</div>;
+  if (error)
+    return <div className="p-8 text-red-500">Error: {error.message}</div>;
   if (!profile) return <div className="p-8">Profil tidak ditemukan.</div>;
 
   return (
@@ -65,7 +90,9 @@ export default function ShowProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-lg font-semibold">{profile.fullName ?? "-"}</p>
+                <p className="text-lg font-semibold">
+                  {profile.fullName ?? "-"}
+                </p>
                 <p className="text-sm text-muted-foreground">{profile.email}</p>
               </div>
             </div>
@@ -76,8 +103,14 @@ export default function ShowProfilePage() {
               <Row label="Kelas" value={profile.className ?? "-"} />
               <Row label="No. Absen" value={profile.absenceNumber ?? "-"} />
               <Row label="Role" value={profile.role ?? "-"} />
-              <Row label="Dibuat" value={formatDate(profile.createdAt as unknown as Date)} />
-              <Row label="Diupdate" value={formatDate(profile.updatedAt as unknown as Date)} />
+              <Row
+                label="Dibuat"
+                value={formatDate(profile.createdAt as unknown as Date)}
+              />
+              <Row
+                label="Diupdate"
+                value={formatDate(profile.updatedAt as unknown as Date)}
+              />
             </div>
           </CardContent>
         </Card>
@@ -101,17 +134,30 @@ export default function ShowProfilePage() {
               <TableBody>
                 {allAbsences?.length ? (
                   allAbsences.map((a) => {
-                    const waktu = a.createdAt ? new Intl.DateTimeFormat("id-ID", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit"
-                    }).format(new Date(a.createdAt)) : "-";
+                    const waktu = a.createdAt
+                      ? new Intl.DateTimeFormat("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        }).format(new Date(a.createdAt))
+                      : "-";
 
                     return (
                       <TableRow key={String(a.id)}>
-                        <TableCell>{formatDate(a.date as unknown as string)}</TableCell>
                         <TableCell>
-                          <Badge variant={(a.status ?? "").toLowerCase() === "approved" ? "default" : (a.status ?? "") ? "outline" : "secondary"} className="capitalize">
+                          {formatDate(a.date as unknown as string)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              (a.status ?? "").toLowerCase() === "approved"
+                                ? "default"
+                                : (a.status ?? "")
+                                  ? "outline"
+                                  : "secondary"
+                            }
+                            className="capitalize"
+                          >
                             {a.status ?? "-"}
                           </Badge>
                         </TableCell>
@@ -121,7 +167,12 @@ export default function ShowProfilePage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center text-muted-foreground"
+                    >
+                      Tidak ada data.
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -150,7 +201,16 @@ export default function ShowProfilePage() {
                       <TableCell>{formatDate(p.tanggal)}</TableCell>
                       <TableCell>{p.kategoriIzin}</TableCell>
                       <TableCell>
-                        <Badge variant={p.approvalStatus === "approved" ? "success" : p.approvalStatus === "rejected" ? "destructive" : "outline"} className="capitalize">
+                        <Badge
+                          variant={
+                            p.approvalStatus === "approved"
+                              ? "success"
+                              : p.approvalStatus === "rejected"
+                                ? "destructive"
+                                : "outline"
+                          }
+                          className="capitalize"
+                        >
                           {p.approvalStatus ?? "pending"}
                         </Badge>
                       </TableCell>
@@ -163,7 +223,12 @@ export default function ShowProfilePage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">Tidak ada data.</TableCell>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground"
+                    >
+                      Tidak ada data.
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -175,10 +240,20 @@ export default function ShowProfilePage() {
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Row({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="grid grid-cols-3 items-center gap-2">
-      <p className="col-span-1 text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className="col-span-1 text-sm font-semibold text-muted-foreground">
+        {label}
+      </p>
       <p className={`col-span-2 ${mono ? "font-mono text-xs" : ""}`}>{value}</p>
     </div>
   );

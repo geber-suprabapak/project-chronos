@@ -18,7 +18,12 @@ import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Checkbox } from "~/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +49,12 @@ export default function AbsensiPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  const filter: FilterBarValue = { date: date || undefined, query, status: status || undefined, sort };
+  const filter: FilterBarValue = {
+    date: date || undefined,
+    query,
+    status: status || undefined,
+    sort,
+  };
 
   const utils = api.useUtils();
 
@@ -56,7 +66,13 @@ export default function AbsensiPage() {
     data: absences,
     isLoading: absencesLoading,
     error: absencesError,
-  } = api.absences.list.useQuery({ limit, offset, sort, date: date || undefined, status: status || undefined });
+  } = api.absences.list.useQuery({
+    limit,
+    offset,
+    sort,
+    date: date || undefined,
+    status: status || undefined,
+  });
 
   // Delete mutation using tRPC
   const deleteMutation = api.absences.delete.useMutation({
@@ -108,7 +124,7 @@ export default function AbsensiPage() {
     if (selectedIds.size === rows.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(rows.map(r => r.id)));
+      setSelectedIds(new Set(rows.map((r) => r.id)));
     }
   };
 
@@ -140,23 +156,38 @@ export default function AbsensiPage() {
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Daftar Absensi</h1>
-          <p className="text-muted-foreground text-sm">Ringkasan absensi terbaru</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
+            Daftar Absensi
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Ringkasan absensi terbaru
+          </p>
         </div>
         <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
           {selectedIds.size > 0 && (
             <Button
               variant="destructive"
               onClick={handleBulkDelete}
-              disabled={bulkDeleteMutation.isPending || deleteMutation.isPending}
+              disabled={
+                bulkDeleteMutation.isPending || deleteMutation.isPending
+              }
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Hapus ({selectedIds.size})
             </Button>
           )}
           <AbsenManualDialog />
-          <DownloadExcelButton href="/api/export/absences" filename="absensi.xlsx" disabled={loading || (absences && absences.length === 0)} />
-          <DownloadPdfButton tableId="absensi-table" filename="absensi.pdf" title="Data Absensi" disabled={loading || (absences && absences.length === 0)} />
+          <DownloadExcelButton
+            href="/api/export/absences"
+            filename="absensi.xlsx"
+            disabled={loading || (absences && absences.length === 0)}
+          />
+          <DownloadPdfButton
+            tableId="absensi-table"
+            filename="absensi.pdf"
+            title="Data Absensi"
+            disabled={loading || (absences && absences.length === 0)}
+          />
         </div>
       </div>
 
@@ -186,11 +217,13 @@ export default function AbsensiPage() {
                 setPage(1); // Reset to page 1 when filter changes
               }}
               className="mb-4"
-            />            {(() => {
+            />{" "}
+            {(() => {
               const rows = (absences ?? []).filter((a) => {
                 const q = query.trim().toLowerCase();
                 if (!q) return true;
-                const hayName = `${a.userProfile?.fullName ?? ""}`.toLowerCase();
+                const hayName =
+                  `${a.userProfile?.fullName ?? ""}`.toLowerCase();
                 return hayName.includes(q);
               });
               const rows2 = rows.filter((a) => {
@@ -203,13 +236,15 @@ export default function AbsensiPage() {
                 <>
                   {/* Pagination Info */}
                   <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <span>
+                      Halaman {page} - Menampilkan {rows2.length} data
+                    </span>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         disabled={page <= 1}
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
                       >
                         Prev
                       </Button>
@@ -217,7 +252,7 @@ export default function AbsensiPage() {
                         variant="outline"
                         size="sm"
                         disabled={!hasMore}
-                        onClick={() => setPage(p => p + 1)}
+                        onClick={() => setPage((p) => p + 1)}
                       >
                         Next
                       </Button>
@@ -231,7 +266,10 @@ export default function AbsensiPage() {
                         <TableRow>
                           <TableHead className="w-12">
                             <Checkbox
-                              checked={selectedIds.size === rows2.length && rows2.length > 0}
+                              checked={
+                                selectedIds.size === rows2.length &&
+                                rows2.length > 0
+                              }
                               onCheckedChange={() => toggleSelectAll(rows2)}
                               aria-label="Pilih semua"
                             />
@@ -245,10 +283,19 @@ export default function AbsensiPage() {
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
-                          const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
-                          const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                          const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
-                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
+                          const name =
+                            a.userProfile?.fullName ??
+                            a.userProfile?.email ??
+                            a.userId;
+                          const tanggal =
+                            typeof a.date === "string"
+                              ? a.date
+                              : String(a.date);
+                          const lokasi = [a.latitude, a.longitude]
+                            .filter((v) => v != null)
+                            .join(", ");
+                          const displayStatus =
+                            a.status === "Datang" ? "Hadir" : (a.status ?? "-");
 
                           return (
                             <TableRow key={`${a.id}`}>
@@ -268,7 +315,12 @@ export default function AbsensiPage() {
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <Button asChild variant="outline" size="icon" aria-label="Detail absensi">
+                                        <Button
+                                          asChild
+                                          variant="outline"
+                                          size="icon"
+                                          aria-label="Detail absensi"
+                                        >
                                           <Link href={`/absensi/show/${a.id}`}>
                                             <Eye />
                                           </Link>
@@ -284,7 +336,9 @@ export default function AbsensiPage() {
                                           variant="destructive"
                                           size="icon"
                                           aria-label="Hapus absensi"
-                                          onClick={() => handleDelete(a.id, name)}
+                                          onClick={() =>
+                                            handleDelete(a.id, name)
+                                          }
                                           disabled={deleteMutation.isPending}
                                         >
                                           <Trash2 />
@@ -315,10 +369,19 @@ export default function AbsensiPage() {
                       </TableHeader>
                       <TableBody>
                         {rows2.map((a) => {
-                          const name = a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
-                          const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-                          const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
-                          const lokasi = [a.latitude, a.longitude].filter((v) => v != null).join(", ");
+                          const name =
+                            a.userProfile?.fullName ??
+                            a.userProfile?.email ??
+                            a.userId;
+                          const tanggal =
+                            typeof a.date === "string"
+                              ? a.date
+                              : String(a.date);
+                          const displayStatus =
+                            a.status === "Datang" ? "Hadir" : (a.status ?? "-");
+                          const lokasi = [a.latitude, a.longitude]
+                            .filter((v) => v != null)
+                            .join(", ");
                           return (
                             <TableRow key={`${a.id}-pdf`}>
                               <TableCell>{tanggal}</TableCell>
@@ -334,13 +397,15 @@ export default function AbsensiPage() {
 
                   {/* Bottom Pagination */}
                   <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                    <span>Halaman {page} - Menampilkan {rows2.length} data</span>
+                    <span>
+                      Halaman {page} - Menampilkan {rows2.length} data
+                    </span>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         disabled={page <= 1}
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
                       >
                         Prev
                       </Button>
@@ -348,7 +413,7 @@ export default function AbsensiPage() {
                         variant="outline"
                         size="sm"
                         disabled={!hasMore}
-                        onClick={() => setPage(p => p + 1)}
+                        onClick={() => setPage((p) => p + 1)}
                       >
                         Next
                       </Button>
@@ -362,12 +427,16 @@ export default function AbsensiPage() {
       </Card>
 
       {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+      <AlertDialog
+        open={showBulkDeleteDialog}
+        onOpenChange={setShowBulkDeleteDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Data Absensi</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus <strong>{selectedIds.size} data absensi</strong> yang dipilih?
+              Apakah Anda yakin ingin menghapus{" "}
+              <strong>{selectedIds.size} data absensi</strong> yang dipilih?
               <br />
               Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
@@ -388,12 +457,16 @@ export default function AbsensiPage() {
       </AlertDialog>
 
       {/* Single Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Data Absensi</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus data absensi untuk <strong>{deleteName}</strong>?
+              Apakah Anda yakin ingin menghapus data absensi untuk{" "}
+              <strong>{deleteName}</strong>?
               <br />
               Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>

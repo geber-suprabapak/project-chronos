@@ -32,6 +32,10 @@ export const perizinanRouter = createTRPCRouter({
             .string()
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
             .optional(),
+          date: z
+            .string()
+            .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+            .optional(), // Alias for tanggal
           limit: z.number().int().min(1).max(100).default(20),
           offset: z.number().int().min(0).default(0),
         })
@@ -47,8 +51,9 @@ export const perizinanRouter = createTRPCRouter({
       if (typeof input?.status === "boolean")
         conditions.push(eq(perizinan.status, input.status));
       // Filter per hari berdasarkan zona lokal (WIB, UTC+7) dengan rentang [start, end)
-      if (input?.tanggal) {
-        const startLocal = new Date(`${input.tanggal}T00:00:00+07:00`);
+      const dateParam = input?.date || input?.tanggal;
+      if (dateParam) {
+        const startLocal = new Date(`${dateParam}T00:00:00+07:00`);
         const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
         conditions.push(gte(perizinan.tanggal, startLocal));
         conditions.push(lt(perizinan.tanggal, endLocal));
@@ -121,7 +126,8 @@ export const perizinanRouter = createTRPCRouter({
         .set({
           approvalStatus: input.approvalStatus,
           // Clear rejection fields if status is moved back to pending or approved
-          rejectionReason: input.approvalStatus === "rejected" ? input.rejectionReason : null,
+          rejectionReason:
+            input.approvalStatus === "rejected" ? input.rejectionReason : null,
           rejectedAt: input.approvalStatus === "rejected" ? new Date() : null,
           rejectedBy: input.approvalStatus === "rejected" ? ctx.user.id : null,
           // Set approval fields only if approved

@@ -16,7 +16,8 @@ import Image from "next/image";
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "N/A";
 
-  const isDateOnly = typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
+  const isDateOnly =
+    typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
 
   if (isDateOnly) {
     const [yStr, mStr, dStr] = input.split("-") as [string, string, string];
@@ -44,27 +45,35 @@ const formatDate = (input: string | Date | null | undefined) => {
 const getBadgeVariant = (status: string | null | undefined) => {
   const s = (status ?? "").toLowerCase();
   if (["approved", "present", "hadir"].includes(s)) return "default" as const;
-  if (["rejected", "absent", "alpha", "izin", "sakit"].includes(s)) return "destructive" as const;
+  if (["rejected", "absent", "alpha", "izin", "sakit"].includes(s))
+    return "destructive" as const;
   return "outline" as const;
 };
 
 export default function ShowAbsensiPage() {
   const params = useParams();
   const idParam = (params as Record<string, string | string[] | undefined>)?.id;
-  const id: string = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] ?? "" : "";
+  const id: string =
+    typeof idParam === "string"
+      ? idParam
+      : Array.isArray(idParam)
+        ? (idParam[0] ?? "")
+        : "";
 
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);
 
-  const { data: absence, isLoading, error } = api.absences.getById.useQuery(
-    { id },
-    { enabled: !!id }
-  );
+  const {
+    data: absence,
+    isLoading,
+    error,
+  } = api.absences.getById.useQuery({ id }, { enabled: !!id });
 
   const user = absence?.userProfile ?? null;
 
   if (!id) return <div className="p-8">Invalid ID.</div>;
   if (isLoading) return <SkeletonLayout />;
-  if (error) return <div className="p-8 text-red-500">Error: {error.message}</div>;
+  if (error)
+    return <div className="p-8 text-red-500">Error: {error.message}</div>;
   if (!absence) return <div className="p-8">Absensi tidak ditemukan.</div>;
 
   return (
@@ -78,25 +87,38 @@ export default function ShowAbsensiPage() {
           <CardContent className="space-y-4 pt-4">
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">Tanggal</p>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Tanggal
+                </p>
                 <p>{formatDate(absence.date as unknown as string)}</p>
               </div>
               <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">Status</p>
-                <Badge variant={getBadgeVariant(absence.status)} className="capitalize">
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Status
+                </p>
+                <Badge
+                  variant={getBadgeVariant(absence.status)}
+                  className="capitalize"
+                >
                   {absence.status ?? "-"}
                 </Badge>
               </div>
             </div>
             <div className="grid gap-2">
               <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">Lokasi</p>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Lokasi
+                </p>
                 <p>
-                  {[absence.latitude, absence.longitude].filter((v) => v != null).join(", ") || "-"}
+                  {[absence.latitude, absence.longitude]
+                    .filter((v) => v != null)
+                    .join(", ") || "-"}
                 </p>
               </div>
               <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">Dibuat pada</p>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  Dibuat pada
+                </p>
                 <p>{formatDate(absence.createdAt as unknown as Date)}</p>
               </div>
             </div>
@@ -118,8 +140,12 @@ export default function ShowAbsensiPage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold">{user?.fullName ?? user?.email ?? absence.userId}</p>
-              <p className="text-sm text-muted-foreground">{user?.email ?? "-"}</p>
+              <p className="font-semibold">
+                {user?.fullName ?? user?.email ?? absence.userId}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {user?.email ?? "-"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -131,7 +157,12 @@ export default function ShowAbsensiPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
-                <Image src={absence.photoUrl} alt="Bukti Absensi" fill style={{ objectFit: "cover" }} />
+                <Image
+                  src={absence.photoUrl}
+                  alt="Bukti Absensi"
+                  fill
+                  style={{ objectFit: "cover" }}
+                />
               </div>
               <Button
                 variant="secondary"
@@ -150,7 +181,13 @@ export default function ShowAbsensiPage() {
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>
         <DialogContent className="p-0 max-w-none sm:max-w-none w-[95vw] md:w-[85vw] lg:w-[75vw] xl:w-[65vw] h-[80vh] overflow-hidden">
           <div className="relative w-full h-full bg-muted">
-            <Image src={absence.photoUrl ?? ""} alt="Bukti Absensi" fill className="object-contain" priority />
+            <Image
+              src={absence.photoUrl ?? ""}
+              alt="Bukti Absensi"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
         </DialogContent>
       </Dialog>
