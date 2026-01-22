@@ -69,7 +69,6 @@ function sortClasses(classes: (string | null)[]): string[] {
 
 export default function PerkelasPage() {
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(today);
@@ -98,17 +97,21 @@ export default function PerkelasPage() {
     return new Set(students.data.map((s) => s.userId));
   }, [students]);
 
-  // Fetch attendance records for selected date (all classes, we'll filter by students later)
-  const { data: absencesRaw } = api.absences.list.useQuery(
-    { date: dateStr, limit: 1500 },
-    { enabled: !!selectedClass },
-  );
+  // Get userIds array for API filtering
+  const studentUserIdsArray = useMemo(() => {
+    if (!students?.data) return [];
+    return students.data.map((s) => s.userId);
+  }, [students]);
 
-  // Filter absences to only include students from selected class
-  const absences = useMemo(() => {
-    if (!absencesRaw) return [];
-    return absencesRaw.filter((a) => studentUserIds.has(a.userId));
-  }, [absencesRaw, studentUserIds]);
+  // Fetch attendance records for selected date, filtered by class students on server
+  const { data: absences } = api.absences.list.useQuery(
+    {
+      date: dateStr,
+      userIds: studentUserIdsArray,
+      limit: 500, // Reduced limit since we're now filtering on server
+    },
+    { enabled: !!selectedClass && studentUserIdsArray.length > 0 },
+  );
 
   // Fetch permissions for selected date
   const { data: permissionsRaw } = api.perizinan.list.useQuery(
@@ -131,9 +134,9 @@ export default function PerkelasPage() {
       if (permission.approvalStatus === "approved") {
         const time = permission.createdAt
           ? new Date(permission.createdAt).toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : undefined;
         map.set(permission.userId, { status: "Izin", time });
       }
@@ -144,9 +147,9 @@ export default function PerkelasPage() {
     absences?.forEach((absence) => {
       const time = absence.createdAt
         ? new Date(absence.createdAt).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : undefined;
 
       // Check if this is a late arrival

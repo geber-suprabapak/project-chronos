@@ -52,7 +52,7 @@ export const absencesRouter = createTRPCRouter({
       if (!userProfile) {
         throw new Error(
           `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
+          `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
         );
       }
 
@@ -133,6 +133,8 @@ export const absencesRouter = createTRPCRouter({
       z
         .object({
           userId: z.string().uuid().optional(),
+          // Filter by multiple user IDs (for class-based filtering)
+          userIds: z.array(z.string().uuid()).optional(),
           // pagination
           limit: z.number().int().min(1).max(1500).default(20),
           offset: z.number().int().min(0).default(0),
@@ -148,6 +150,12 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const conditions: (SQL | undefined)[] = [];
       if (input?.userId) conditions.push(eq(absences.userId, input.userId));
+      // Support filtering by multiple userIds (for per-class attendance)
+      if (input?.userIds && input.userIds.length > 0) {
+        conditions.push(
+          or(...input.userIds.map((id) => eq(absences.userId, id))),
+        );
+      }
       if (input?.status) {
         if (input.status === "Hadir") {
           // Treat 'Hadir' filter as both Hadir and legacy 'Datang'
