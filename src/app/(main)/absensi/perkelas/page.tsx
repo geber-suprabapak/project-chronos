@@ -122,9 +122,19 @@ export default function AbsensiPerKelasPage() {
 
   // Reset page when filters change
   const handleClassChange = (value: string) => {
-    setSelectedClass(value === "all" ? "" : value);
+    const newClass = value === "all" ? "" : value;
+    setSelectedClass(newClass);
     setPage(1);
     setSearchQuery("");
+
+    // Auto-set tanggal hari ini ketika kelas dipilih
+    if (newClass && !date) {
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, "0");
+      const d = String(today.getDate()).padStart(2, "0");
+      setDate(`${y}-${m}-${d}`);
+    }
   };
 
   const handleDateSelect = (d: Date | undefined) => {
