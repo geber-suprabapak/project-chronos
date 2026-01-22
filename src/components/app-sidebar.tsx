@@ -36,6 +36,16 @@ const navItems = [
     title: "Absensi",
     url: "/absensi",
     icon: CalendarDays,
+    items: [
+      {
+        title: "Semua Absensi",
+        url: "/absensi",
+      },
+      {
+        title: "Per Kelas",
+        url: "/absensi/perkelas",
+      },
+    ],
   },
   {
     title: "Perizinan",

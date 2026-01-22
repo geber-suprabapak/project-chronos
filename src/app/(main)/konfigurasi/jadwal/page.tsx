@@ -355,7 +355,14 @@ export default function JadwalPage() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => setSelectedDayId(schedule.id)}
+                                                            onClick={() => {
+                                                                setSelectedDayId(schedule.id);
+                                                                setTimeout(() => {
+                                                                    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                                                                    const firstInput = document.querySelector<HTMLInputElement>("#mulaiMasuk");
+                                                                    firstInput?.focus();
+                                                                }, 100);
+                                                            }}
                                                         >
                                                             <Edit className="h-3 w-3 mr-1" />
                                                             Edit
