@@ -102,7 +102,7 @@ export const userProfilesRouter = createTRPCRouter({
     return classNames.map((c) => c.className).filter(Boolean);
   }),
 
-  // (removed) upsertByUserId: not applicable; table has no user_id column
+  // (intentionally omitted) upsertByUserId: this router is read-only even though `userId` exists in the schema
 });
 
 export type UserProfilesRouter = typeof userProfilesRouter;
