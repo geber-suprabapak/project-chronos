@@ -134,9 +134,9 @@ export default function PerkelasPage() {
       if (permission.approvalStatus === "approved") {
         const time = permission.createdAt
           ? new Date(permission.createdAt).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : undefined;
         map.set(permission.userId, { status: "Izin", time });
       }
@@ -147,9 +147,9 @@ export default function PerkelasPage() {
     absences?.forEach((absence) => {
       const time = absence.createdAt
         ? new Date(absence.createdAt).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+            hour: "2-digit",
+            minute: "2-digit",
+          })
         : undefined;
 
       // Check if this is a late arrival

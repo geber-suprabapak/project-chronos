@@ -52,7 +52,7 @@ export const absencesRouter = createTRPCRouter({
       if (!userProfile) {
         throw new Error(
           `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-          `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
+            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
         );
       }
 
