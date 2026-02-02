@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { absences } from "~/server/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { absences, userProfiles } from "~/server/db/schema";
+import { eq, and, or, ilike, exists, gte, lte } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -143,7 +143,18 @@ export const absencesRouter = createTRPCRouter({
             .string()
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
             .optional(), // expecting YYYY-MM-DD
+          // Date range filter (untuk export per kelas)
+          startDate: z
+            .string()
+            .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+            .optional(),
+          endDate: z
+            .string()
+            .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+            .optional(),
           sort: z.enum(["asc", "desc"]).default("asc"),
+          // Filter by className from user_profiles (untuk fitur Absensi Per Kelas)
+          className: z.string().optional(),
         })
         .optional(),
     )
@@ -167,6 +178,29 @@ export const absencesRouter = createTRPCRouter({
         }
       }
       if (input?.date) conditions.push(eq(absences.date, input.date));
+
+      // Date range filter (startDate - endDate)
+      if (input?.startDate)
+        conditions.push(gte(absences.date, input.startDate));
+      if (input?.endDate) conditions.push(lte(absences.date, input.endDate));
+
+      // Filter by className using exists subquery untuk efisiensi
+      // Ini mencari absences yang userId-nya ada di user_profiles dengan className yang cocok
+      if (input?.className) {
+        conditions.push(
+          exists(
+            ctx.db
+              .select({ one: userProfiles.userId })
+              .from(userProfiles)
+              .where(
+                and(
+                  eq(userProfiles.userId, absences.userId),
+                  ilike(userProfiles.className, `%${input.className}%`),
+                ),
+              ),
+          ),
+        );
+      }
 
       const validConds = conditions.filter(Boolean) as SQL[];
       const where = validConds.length ? and(...validConds) : undefined;
@@ -316,6 +350,147 @@ export const absencesRouter = createTRPCRouter({
       });
 
       return result;
+    }),
+
+  // Ringkasan kehadiran per kelas: siapa yang hadir, tidak hadir, izin, sakit
+  getClassAttendanceSummary: protectedProcedure
+    .input(
+      z.object({
+        className: z.string().min(1),
+        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // 1. Get all students in this class
+      const studentsInClass = await ctx.db.query.userProfiles.findMany({
+        where: (table, { ilike }) =>
+          ilike(table.className, `%${input.className}%`),
+        orderBy: (table, { asc }) => [asc(table.fullName)],
+      });
+
+      const studentUserIds = new Set(studentsInClass.map((s) => s.userId));
+      const studentIdsArray = Array.from(studentUserIds);
+
+      // If no students in class, short-circuit with empty summary
+      if (studentIdsArray.length === 0) {
+        return {
+          date: input.date,
+          className: input.className,
+          totalStudents: 0,
+          summary: {
+            hadir: 0,
+            terlambat: 0,
+            sakit: 0,
+            izin: 0,
+            tidakHadir: 0,
+          },
+          details: {
+            hadir: [],
+            terlambat: [],
+            sakit: [],
+            izin: [],
+            tidakHadir: [],
+          },
+        } as const;
+      }
+
+      // 2. Get absences for this class on this date (filtered in DB)
+      const classAbsences = await ctx.db.query.absences.findMany({
+        where: (table, { eq, inArray }) =>
+          and(eq(table.date, input.date), inArray(table.userId, studentIdsArray)),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      // 3. Get perizinan for this date
+      const startLocal = new Date(`${input.date}T00:00:00+07:00`);
+      const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
+
+      const perizinanOnDate = await ctx.db.query.perizinan.findMany({
+        where: (table, { gte, lt, and }) =>
+          and(gte(table.tanggal, startLocal), lt(table.tanggal, endLocal)),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      // Filter to only students in this class with approved status
+      const classPerizinan = perizinanOnDate.filter(
+        (p) =>
+          p.userProfile &&
+          studentUserIds.has(p.userProfile.userId) &&
+          p.approvalStatus === "approved",
+      );
+
+      // 4. Categorize students
+      const hadirSet = new Set<string>();
+      const terlambatSet = new Set<string>();
+      const sakitSet = new Set<string>();
+      const izinSet = new Set<string>();
+
+      // Process absences
+      for (const a of classAbsences) {
+        const userId = a.userId;
+        if (a.status === "Hadir" || a.status === "Datang") {
+          hadirSet.add(userId);
+        } else if (a.status === "Terlambat") {
+          terlambatSet.add(userId);
+          hadirSet.add(userId); // Terlambat counts as hadir
+        }
+      }
+
+      // Process perizinan
+      for (const p of classPerizinan) {
+        const userId = p.userId;
+        if (p.kategoriIzin === "sakit") {
+          sakitSet.add(userId);
+        } else if (p.kategoriIzin === "pergi") {
+          izinSet.add(userId);
+        }
+      }
+
+      // 5. Calculate tidak hadir (alpha) - students not in any category
+      const allAccountedFor = new Set([...hadirSet, ...sakitSet, ...izinSet]);
+      const tidakHadirList = studentsInClass.filter(
+        (s) => !allAccountedFor.has(s.userId),
+      );
+
+      // 6. Build detailed lists
+      const getStudentDetails = (userIds: Set<string>) =>
+        studentsInClass
+          .filter((s) => userIds.has(s.userId))
+          .map((s) => ({
+            userId: s.userId,
+            nis: s.nis,
+            fullName: s.fullName,
+            absenceNumber: s.absenceNumber,
+          }));
+
+      return {
+        date: input.date,
+        className: input.className,
+        totalStudents: studentsInClass.length,
+        summary: {
+          hadir: hadirSet.size,
+          terlambat: terlambatSet.size,
+          sakit: sakitSet.size,
+          izin: izinSet.size,
+          tidakHadir: tidakHadirList.length,
+        },
+        details: {
+          hadir: getStudentDetails(hadirSet),
+          terlambat: getStudentDetails(terlambatSet),
+          sakit: getStudentDetails(sakitSet),
+          izin: getStudentDetails(izinSet),
+          tidakHadir: tidakHadirList.map((s) => ({
+            userId: s.userId,
+            nis: s.nis,
+            fullName: s.fullName,
+            absenceNumber: s.absenceNumber,
+          })),
+        },
+      };
     }),
 });
 

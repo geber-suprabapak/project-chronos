@@ -18,6 +18,14 @@ import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Checkbox } from "~/components/ui/checkbox";
+import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +51,7 @@ export default function AbsensiPage() {
   const [sort, setSort] = useState<"asc" | "desc">("desc"); // newest (desc) by default
   const [query, setQuery] = useState<string>("");
   const [status, setStatus] = useState<string>("");
+  const [selectedClass, setSelectedClass] = useState<string>(""); // Filter kelas
   const [page, setPage] = useState<number>(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState<string>("");
@@ -61,7 +70,11 @@ export default function AbsensiPage() {
   const limit = 20;
   const offset = (page - 1) * limit;
 
-  // Fetch absences with pagination
+  // Get unique class names for dropdown
+  const { data: classNames, isLoading: classNamesLoading } =
+    api.userProfiles.getUniqueClassNames.useQuery();
+
+  // Fetch absences with pagination and className filter
   const {
     data: absences,
     isLoading: absencesLoading,
@@ -72,6 +85,7 @@ export default function AbsensiPage() {
     sort,
     date: date || undefined,
     status: status || undefined,
+    className: selectedClass || undefined,
   });
 
   // Delete mutation using tRPC
@@ -150,7 +164,14 @@ export default function AbsensiPage() {
     bulkDeleteMutation.mutate({ ids: idsToDelete });
   };
 
-  const loading = absencesLoading;
+  const loading = absencesLoading || classNamesLoading;
+
+  // Build export URL with className filter
+  const exportParams = new URLSearchParams();
+  if (selectedClass) exportParams.set("className", selectedClass);
+  if (date) exportParams.set("startDate", date);
+  if (date) exportParams.set("endDate", date);
+  const exportUrl = `/api/export/absences${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
@@ -178,14 +199,14 @@ export default function AbsensiPage() {
           )}
           <AbsenManualDialog />
           <DownloadExcelButton
-            href="/api/export/absences"
-            filename="absensi.xlsx"
+            href={exportUrl}
+            filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.xlsx`}
             disabled={loading || (absences && absences.length === 0)}
           />
           <DownloadPdfButton
             tableId="absensi-table"
-            filename="absensi.pdf"
-            title="Data Absensi"
+            filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.pdf`}
+            title={`Data Absensi${selectedClass ? ` Kelas ${selectedClass}` : ""}`}
             disabled={loading || (absences && absences.length === 0)}
           />
         </div>
@@ -205,6 +226,37 @@ export default function AbsensiPage() {
           </div>
         ) : (
           <>
+            {/* Class filter dropdown */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="flex flex-col w-full sm:w-48">
+                <Label
+                  htmlFor="filter-class"
+                  className="mb-2 text-sm font-medium"
+                >
+                  Filter Kelas
+                </Label>
+                <Select
+                  value={selectedClass || "all"}
+                  onValueChange={(v) => {
+                    setSelectedClass(v === "all" ? "" : v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger id="filter-class" className="w-full h-9">
+                    <SelectValue placeholder="Semua Kelas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kelas</SelectItem>
+                    {(classNames ?? []).map((cn) => (
+                      <SelectItem key={cn} value={cn!}>
+                        {cn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Reusable filter bar */}
             <FilterBar
               value={filter}
@@ -217,7 +269,7 @@ export default function AbsensiPage() {
                 setPage(1); // Reset to page 1 when filter changes
               }}
               className="mb-4"
-            />{" "}
+            />
             {(() => {
               const rows = (absences ?? []).filter((a) => {
                 const q = query.trim().toLowerCase();

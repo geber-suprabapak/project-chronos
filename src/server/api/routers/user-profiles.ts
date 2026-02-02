@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userProfiles } from "~/server/db/schema";
 
@@ -8,6 +8,14 @@ import { userProfiles } from "~/server/db/schema";
  * Fokus pada operasi READ-ONLY (get, list).
  */
 export const userProfilesRouter = createTRPCRouter({
+  // GET ME: Ambil profil user yang sedang login berdasarkan ctx.user.id
+  getMe: protectedProcedure.query(async ({ ctx }) => {
+    const row = await ctx.db.query.userProfiles.findFirst({
+      where: (table, { eq }) => eq(table.userId, ctx.user.id),
+    });
+    return row ?? null;
+  }),
+
   // GET BY ID
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
@@ -94,7 +102,7 @@ export const userProfilesRouter = createTRPCRouter({
     return classNames.map((c) => c.className).filter(Boolean);
   }),
 
-  // (removed) upsertByUserId: not applicable; table has no user_id column
+  // (intentionally omitted) upsertByUserId: this router is read-only even though `userId` exists in the schema
 });
 
 export type UserProfilesRouter = typeof userProfilesRouter;

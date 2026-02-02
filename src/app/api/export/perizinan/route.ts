@@ -34,21 +34,11 @@ export async function GET() {
   // Create worksheet with columns
   const ws = wb.addWorksheet("Perizinan");
   ws.columns = [
-    { header: "ID", key: "id", width: 36 },
-    { header: "Full Name", key: "fullName", width: 30 },
-    { header: "Email", key: "email", width: 30 },
-    { header: "NIS", key: "nis", width: 15 },
-    { header: "Class", key: "className", width: 12 },
     { header: "Tanggal", key: "tanggal", width: 15 },
-    { header: "Kategori", key: "kategoriIzin", width: 10 },
-    { header: "Kategori (Tampilan)", key: "kategoriIzinDisplay", width: 18 },
-    { header: "Deskripsi", key: "deskripsi", width: 40 },
-    { header: "Status", key: "approvalStatus", width: 10 },
-    { header: "Approved At", key: "approvedAt", width: 20 },
-    { header: "Rejected At", key: "rejectedAt", width: 20 },
-    { header: "Rejection Reason", key: "rejectionReason", width: 40 },
-    { header: "Created At", key: "createdAt", width: 20 },
-    { header: "Updated At", key: "updatedAt", width: 20 },
+    { header: "NIS", key: "nis", width: 15 },
+    { header: "Kelas", key: "kelas", width: 12 },
+    { header: "Nama", key: "nama", width: 30 },
+    { header: "Keterangan", key: "keterangan", width: 20 },
   ];
 
   // Style the header row
@@ -68,8 +58,22 @@ export async function GET() {
     }
   }
 
+  // Sort rows by date first, then by NIS
+  const sortedRows = rows.sort((a, b) => {
+    const dateA = formatDate(a.tanggal) ?? "";
+    const dateB = formatDate(b.tanggal) ?? "";
+    const dateCompare = dateA.localeCompare(dateB);
+
+    if (dateCompare !== 0) return dateCompare;
+
+    // If dates are equal, sort by NIS
+    const nisA = profileMap.get(a.userId)?.nis ?? "";
+    const nisB = profileMap.get(b.userId)?.nis ?? "";
+    return nisA.localeCompare(nisB);
+  });
+
   // Add rows to worksheet
-  for (const r of rows) {
+  for (const r of sortedRows) {
     const profile = profileMap.get(r.userId);
     const desc = r.deskripsi ?? "";
     const kategoriDisplay = /dipulangkan/i.test(desc)
@@ -78,22 +82,25 @@ export async function GET() {
         ? "terlambat"
         : r.kategoriIzin;
 
+    // Format tanggal as YYYY-MM-DD only
+    const tanggalStr = formatDate(r.tanggal)?.split("T")[0] ?? "-";
+
+    // Build keterangan with kategori and status
+    let keterangan = kategoriDisplay ?? "-";
+    if (r.approvalStatus === "approved") {
+      keterangan += " (Disetujui)";
+    } else if (r.approvalStatus === "rejected") {
+      keterangan += " (Ditolak)";
+    } else if (r.approvalStatus === "pending") {
+      keterangan += " (Menunggu)";
+    }
+
     ws.addRow({
-      id: r.id,
-      fullName: profile?.fullName ?? null,
-      email: profile?.email ?? null,
-      nis: profile?.nis ?? null,
-      className: profile?.className ?? null,
-      tanggal: formatDate(r.tanggal),
-      kategoriIzin: r.kategoriIzin,
-      kategoriIzinDisplay: kategoriDisplay,
-      deskripsi: r.deskripsi,
-      approvalStatus: r.approvalStatus ?? null,
-      approvedAt: formatDate(r.approvedAt),
-      rejectedAt: formatDate(r.rejectedAt),
-      rejectionReason: r.rejectionReason ?? null,
-      createdAt: formatDate(r.createdAt),
-      updatedAt: formatDate(r.updatedAt),
+      tanggal: tanggalStr,
+      nis: profile?.nis ?? "-",
+      kelas: profile?.className ?? "-",
+      nama: profile?.fullName ?? "-",
+      keterangan: keterangan,
     });
   }
 

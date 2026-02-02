@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -53,6 +53,7 @@ type DayKey = keyof typeof DAY_MAP;
 
 export default function JadwalPage() {
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const editFormRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     mulaiMasuk: "",
     selesaiMasuk: "",
@@ -129,6 +130,22 @@ export default function JadwalPage() {
       });
     }
   }, [selectedDayId, schedules]);
+
+  useEffect(() => {
+    if (selectedDayId && editFormRef.current) {
+      console.debug("[jadwal] selectedDayId change -> scroll/focus", {
+        selectedDayId,
+        hasRef: !!editFormRef.current,
+      });
+      editFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+      editFormRef.current
+        .querySelector<HTMLInputElement>("#mulaiMasuk")
+        ?.focus();
+    }
+  }, [selectedDayId]);
 
   const handleInputChange = useCallback(
     (field: keyof typeof formData, value: string) => {
@@ -417,7 +434,7 @@ export default function JadwalPage() {
 
       {/* Edit Form - Only show when a day is selected */}
       {selectedDayId && (
-        <Card className="w-full">
+        <Card ref={editFormRef} className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Settings className="h-5 w-5" />
