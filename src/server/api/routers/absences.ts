@@ -369,19 +369,39 @@ export const absencesRouter = createTRPCRouter({
       });
 
       const studentUserIds = new Set(studentsInClass.map((s) => s.userId));
+      const studentIdsArray = Array.from(studentUserIds);
 
-      // 2. Get absences for this class on this date
-      const absencesOnDate = await ctx.db.query.absences.findMany({
-        where: (table, { eq }) => eq(table.date, input.date),
+      // If no students in class, short-circuit with empty summary
+      if (studentIdsArray.length === 0) {
+        return {
+          date: input.date,
+          className: input.className,
+          totalStudents: 0,
+          summary: {
+            hadir: 0,
+            terlambat: 0,
+            sakit: 0,
+            izin: 0,
+            tidakHadir: 0,
+          },
+          details: {
+            hadir: [],
+            terlambat: [],
+            sakit: [],
+            izin: [],
+            tidakHadir: [],
+          },
+        } as const;
+      }
+
+      // 2. Get absences for this class on this date (filtered in DB)
+      const classAbsences = await ctx.db.query.absences.findMany({
+        where: (table, { eq, inArray }) =>
+          and(eq(table.date, input.date), inArray(table.userId, studentIdsArray)),
         with: {
           userProfile: true,
         },
       });
-
-      // Filter to only students in this class
-      const classAbsences = absencesOnDate.filter(
-        (a) => a.userProfile && studentUserIds.has(a.userProfile.userId),
-      );
 
       // 3. Get perizinan for this date
       const startLocal = new Date(`${input.date}T00:00:00+07:00`);
@@ -406,7 +426,6 @@ export const absencesRouter = createTRPCRouter({
       // 4. Categorize students
       const hadirSet = new Set<string>();
       const terlambatSet = new Set<string>();
-      const pulangSet = new Set<string>();
       const sakitSet = new Set<string>();
       const izinSet = new Set<string>();
 
@@ -418,8 +437,6 @@ export const absencesRouter = createTRPCRouter({
         } else if (a.status === "Terlambat") {
           terlambatSet.add(userId);
           hadirSet.add(userId); // Terlambat counts as hadir
-        } else if (a.status === "Pulang") {
-          pulangSet.add(userId);
         }
       }
 

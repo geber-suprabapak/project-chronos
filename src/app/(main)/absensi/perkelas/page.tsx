@@ -75,6 +75,10 @@ export default function AbsensiPerKelasPage() {
       // Check if user role is "wali_kelas" or "guru" - auto-fill their class
       if (currentUser.role === "wali_kelas" || currentUser.role === "guru") {
         setSelectedClass(currentUser.className);
+        // Also set dates to today (same logic as handleClassChange)
+        const today = formatToYMD(new Date());
+        setStartDate(today);
+        setEndDate(today);
       }
     }
   }, [currentUser, selectedClass]);
@@ -133,9 +137,9 @@ export default function AbsensiPerKelasPage() {
     : undefined;
   const endDateValue = endDate ? new Date(endDate + "T00:00:00") : undefined;
   const loading =
-    absencesLoading === true ||
-    userLoading === true ||
-    classNamesLoading === true;
+    absencesLoading ||
+    userLoading ||
+    classNamesLoading;
   const hasMore = absences?.length === limit;
 
   // Helper to format date to YYYY-MM-DD
@@ -144,6 +148,87 @@ export default function AbsensiPerKelasPage() {
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const da = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${da}`;
+  };
+
+  const renderTableRows = (
+    absencesToRender: typeof filteredAbsences,
+    options?: {
+      includeActionColumn?: boolean;
+      includeStatusBadge?: boolean;
+      rowKeySuffix?: string;
+    },
+  ) => {
+    const {
+      includeActionColumn = false,
+      includeStatusBadge = false,
+      rowKeySuffix = "",
+    } = options ?? {};
+
+    return absencesToRender.map((a) => {
+      const name = a.userProfile?.fullName ?? a.userProfile?.email ?? "-";
+      const nis = a.userProfile?.nis ?? "-";
+      const className = a.userProfile?.className ?? "-";
+      const tanggal = typeof a.date === "string" ? a.date : String(a.date);
+      const displayStatus = a.status === "Datang" ? "Hadir" : a.status ?? "-";
+      const waktu = a.createdAt
+        ? new Date(a.createdAt).toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-";
+
+      return (
+        <TableRow key={`${a.id}${rowKeySuffix}`}>
+          <TableCell>{tanggal}</TableCell>
+          <TableCell className={includeActionColumn ? "font-mono" : undefined}>
+            {nis}
+          </TableCell>
+          <TableCell>{name}</TableCell>
+          <TableCell>{className}</TableCell>
+          <TableCell>
+            {includeStatusBadge ? (
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                  displayStatus === "Hadir"
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : displayStatus === "Terlambat"
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      : displayStatus === "Pulang"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                }`}
+              >
+                {displayStatus}
+              </span>
+            ) : (
+              displayStatus
+            )}
+          </TableCell>
+          <TableCell>{waktu}</TableCell>
+          {includeActionColumn && (
+            <TableCell>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="icon"
+                      aria-label="Detail absensi"
+                    >
+                      <Link href={`/absensi/show/${a.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Detail</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </TableCell>
+          )}
+        </TableRow>
+      );
+    });
   };
 
   // Reset page when filters change
@@ -584,65 +669,9 @@ export default function AbsensiPerKelasPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredAbsences.map((a) => {
-                      const name =
-                        a.userProfile?.fullName ?? a.userProfile?.email ?? "-";
-                      const nis = a.userProfile?.nis ?? "-";
-                      const className = a.userProfile?.className ?? "-";
-                      const tanggal =
-                        typeof a.date === "string" ? a.date : String(a.date);
-                      const displayStatus =
-                        a.status === "Datang" ? "Hadir" : (a.status ?? "-");
-                      const waktu = a.createdAt
-                        ? new Date(a.createdAt).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "-";
-
-                      return (
-                        <TableRow key={a.id}>
-                          <TableCell>{tanggal}</TableCell>
-                          <TableCell className="font-mono">{nis}</TableCell>
-                          <TableCell>{name}</TableCell>
-                          <TableCell>{className}</TableCell>
-                          <TableCell>
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                displayStatus === "Hadir"
-                                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                  : displayStatus === "Terlambat"
-                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    : displayStatus === "Pulang"
-                                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                              }`}
-                            >
-                              {displayStatus}
-                            </span>
-                          </TableCell>
-                          <TableCell>{waktu}</TableCell>
-                          <TableCell>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    asChild
-                                    variant="outline"
-                                    size="icon"
-                                    aria-label="Detail absensi"
-                                  >
-                                    <Link href={`/absensi/show/${a.id}`}>
-                                      <Eye className="h-4 w-4" />
-                                    </Link>
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Detail</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
-                        </TableRow>
-                      );
+                    renderTableRows(filteredAbsences, {
+                      includeActionColumn: true,
+                      includeStatusBadge: true,
                     })
                   )}
                 </TableBody>
@@ -663,32 +692,10 @@ export default function AbsensiPerKelasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAbsences.map((a) => {
-                    const name =
-                      a.userProfile?.fullName ?? a.userProfile?.email ?? "-";
-                    const nis = a.userProfile?.nis ?? "-";
-                    const className = a.userProfile?.className ?? "-";
-                    const tanggal =
-                      typeof a.date === "string" ? a.date : String(a.date);
-                    const displayStatus =
-                      a.status === "Datang" ? "Hadir" : (a.status ?? "-");
-                    const waktu = a.createdAt
-                      ? new Date(a.createdAt).toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "-";
-
-                    return (
-                      <TableRow key={`${a.id}-pdf`}>
-                        <TableCell>{tanggal}</TableCell>
-                        <TableCell>{nis}</TableCell>
-                        <TableCell>{name}</TableCell>
-                        <TableCell>{className}</TableCell>
-                        <TableCell>{displayStatus}</TableCell>
-                        <TableCell>{waktu}</TableCell>
-                      </TableRow>
-                    );
+                  {renderTableRows(filteredAbsences, {
+                    includeActionColumn: false,
+                    includeStatusBadge: false,
+                    rowKeySuffix: "-pdf",
                   })}
                 </TableBody>
               </Table>
