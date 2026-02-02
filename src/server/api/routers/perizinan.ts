@@ -121,7 +121,8 @@ export const perizinanRouter = createTRPCRouter({
         .set({
           approvalStatus: input.approvalStatus,
           // Clear rejection fields if status is moved back to pending or approved
-          rejectionReason: input.approvalStatus === "rejected" ? input.rejectionReason : null,
+          rejectionReason:
+            input.approvalStatus === "rejected" ? input.rejectionReason : null,
           rejectedAt: input.approvalStatus === "rejected" ? new Date() : null,
           rejectedBy: input.approvalStatus === "rejected" ? ctx.user.id : null,
           // Set approval fields only if approved

@@ -1,4 +1,3 @@
-
 "use client";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
@@ -91,8 +90,17 @@ export default function PerizinanPage() {
             </CardDescription>
           </div>
           <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
-            <DownloadExcelButton href="/api/export/perizinan" filename="perizinan.xlsx" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
-            <DownloadPdfButton tableId="perizinan-table" filename="perizinan.pdf" title="Data Perizinan" disabled={isLoading || !(perizinan && perizinan.length > 0)} />
+            <DownloadExcelButton
+              href="/api/export/perizinan"
+              filename="perizinan.xlsx"
+              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+            />
+            <DownloadPdfButton
+              tableId="perizinan-table"
+              filename="perizinan.pdf"
+              title="Data Perizinan"
+              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -111,7 +119,8 @@ export default function PerizinanPage() {
             const q = (filter.query ?? "").trim().toLowerCase();
             let rows = (perizinan ?? []).filter((p) => {
               if (!q) return true;
-              const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
+              const name =
+                p.userProfile?.fullName ?? p.userProfile?.email ?? "";
               return name.toLowerCase().includes(q);
             });
             rows = rows.sort((a, b) => {
@@ -125,13 +134,15 @@ export default function PerizinanPage() {
               <>
                 {/* Pagination Info */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <span>
+                    Halaman {page} - Menampilkan {rows.length} data
+                  </span>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={page <= 1}
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
                       Prev
                     </Button>
@@ -139,7 +150,7 @@ export default function PerizinanPage() {
                       variant="outline"
                       size="sm"
                       disabled={!hasMore}
-                      onClick={() => setPage(p => p + 1)}
+                      onClick={() => setPage((p) => p + 1)}
                     >
                       Next
                     </Button>
@@ -200,15 +211,23 @@ export default function PerizinanPage() {
                             </TableCell>
                             <TableCell>{formatDate(item.tanggal)}</TableCell>
                             <TableCell>
-                              {item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId}
+                              {item.userProfile?.fullName ??
+                                item.userProfile?.email ??
+                                item.userId}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="rounded-full px-2.5 py-0.5 font-medium">
+                              <Badge
+                                variant="outline"
+                                className="rounded-full px-2.5 py-0.5 font-medium"
+                              >
                                 {item.userProfile?.className ?? "-"}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary" className="rounded-full px-2.5 py-1">
+                              <Badge
+                                variant="secondary"
+                                className="rounded-full px-2.5 py-1"
+                              >
                                 {item.kategoriIzin ?? "-"}
                               </Badge>
                             </TableCell>
@@ -222,7 +241,10 @@ export default function PerizinanPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Link href={`/perizinan/show/${item.id}`} passHref>
+                              <Link
+                                href={`/perizinan/show/${item.id}`}
+                                passHref
+                              >
                                 <Button variant="outline" size="sm">
                                   Detail
                                 </Button>
@@ -258,17 +280,24 @@ export default function PerizinanPage() {
                     <TableBody>
                       {rows && rows.length > 0 ? (
                         rows.map((item, index) => {
-                          const name = item.userProfile?.fullName ?? item.userProfile?.email ?? item.userId;
+                          const name =
+                            item.userProfile?.fullName ??
+                            item.userProfile?.email ??
+                            item.userId;
 
                           return (
                             <TableRow key={`${item.id}-pdf`}>
                               <TableCell>{offset + index + 1}</TableCell>
                               <TableCell>{formatDate(item.tanggal)}</TableCell>
                               <TableCell>{name}</TableCell>
-                              <TableCell>{item.userProfile?.className ?? "-"}</TableCell>
+                              <TableCell>
+                                {item.userProfile?.className ?? "-"}
+                              </TableCell>
                               <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
                               <TableCell>{item.deskripsi}</TableCell>
-                              <TableCell>{item.approvalStatus ?? "pending"}</TableCell>
+                              <TableCell>
+                                {item.approvalStatus ?? "pending"}
+                              </TableCell>
                             </TableRow>
                           );
                         })
@@ -285,13 +314,15 @@ export default function PerizinanPage() {
 
                 {/* Bottom Pagination */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                  <span>Halaman {page} - Menampilkan {rows.length} data</span>
+                  <span>
+                    Halaman {page} - Menampilkan {rows.length} data
+                  </span>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={page <= 1}
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
                       Prev
                     </Button>
@@ -299,7 +330,7 @@ export default function PerizinanPage() {
                       variant="outline"
                       size="sm"
                       disabled={!hasMore}
-                      onClick={() => setPage(p => p + 1)}
+                      onClick={() => setPage((p) => p + 1)}
                     >
                       Next
                     </Button>

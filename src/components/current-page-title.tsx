@@ -59,6 +59,12 @@ export function CurrentPageTitle({ className }: { className?: string }) {
   if (!title) title = "";
 
   return (
-    <div className={["text-sm font-medium truncate", className].filter(Boolean).join(" ")}>{title}</div>
+    <div
+      className={["text-sm font-medium truncate", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {title}
+    </div>
   );
 }

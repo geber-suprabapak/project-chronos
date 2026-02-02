@@ -1,9 +1,11 @@
-import type { Workbook } from 'exceljs';
+import type { Workbook } from "exceljs";
 
 /**
  * Converts an ExcelJS workbook to an ArrayBuffer for use in HTTP responses
  */
-export async function workbookToResponseBuffer(wb: Workbook): Promise<ArrayBuffer> {
+export async function workbookToResponseBuffer(
+  wb: Workbook,
+): Promise<ArrayBuffer> {
   const buffer = await wb.xlsx.writeBuffer();
   return buffer as ArrayBuffer;
 }
@@ -16,12 +18,12 @@ export function makeWorkbookMetadata(title: string) {
   return {
     created: now,
     modified: now,
-    lastModifiedBy: 'Chronos System',
+    lastModifiedBy: "Chronos System",
     title,
     subject: `${title} Export`,
-    keywords: 'chronos,export,data',
-    category: 'Data Export',
-    company: 'Chronos',
-    manager: 'Administrator',
+    keywords: "chronos,export,data",
+    category: "Data Export",
+    company: "Chronos",
+    manager: "Administrator",
   };
 }

@@ -101,18 +101,16 @@ export default function AbsensiPerKelasPage() {
 
   // Fetch attendance summary for single date view (when startDate === endDate)
   const isSingleDate = startDate && startDate === endDate;
-  const {
-    data: attendanceSummary,
-    isLoading: summaryLoading,
-  } = api.absences.getClassAttendanceSummary.useQuery(
-    {
-      className: selectedClass,
-      date: startDate,
-    },
-    {
-      enabled: !!selectedClass && !!isSingleDate,
-    },
-  );
+  const { data: attendanceSummary, isLoading: summaryLoading } =
+    api.absences.getClassAttendanceSummary.useQuery(
+      {
+        className: selectedClass,
+        date: startDate,
+      },
+      {
+        enabled: !!selectedClass && !!isSingleDate,
+      },
+    );
 
   // Client-side instant filtering for Nama and NIS using useMemo
   const filteredAbsences = useMemo(() => {
@@ -455,28 +453,35 @@ export default function AbsensiPerKelasPage() {
             {isSingleDate && attendanceSummary && (
               <div className="mb-6">
                 <h3 className="text-md font-semibold mb-3">
-                  Ringkasan Kehadiran - {formatDate(new Date(startDate + "T00:00:00"))}
+                  Ringkasan Kehadiran -{" "}
+                  {formatDate(new Date(startDate + "T00:00:00"))}
                 </h3>
-                
+
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                       {attendanceSummary.summary.hadir}
                     </div>
-                    <div className="text-sm text-green-700 dark:text-green-300">Hadir</div>
+                    <div className="text-sm text-green-700 dark:text-green-300">
+                      Hadir
+                    </div>
                   </div>
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                       {attendanceSummary.summary.terlambat}
                     </div>
-                    <div className="text-sm text-yellow-700 dark:text-yellow-300">Terlambat</div>
+                    <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                      Terlambat
+                    </div>
                   </div>
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                       {attendanceSummary.summary.tidakHadir}
                     </div>
-                    <div className="text-sm text-red-700 dark:text-red-300">Tidak Hadir</div>
+                    <div className="text-sm text-red-700 dark:text-red-300">
+                      Tidak Hadir
+                    </div>
                   </div>
                 </div>
 

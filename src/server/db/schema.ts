@@ -32,7 +32,10 @@ export const absences = pgTable(
   "absences",
   {
     // Match new SQL schema: UUID primary key with default gen_random_uuid()
-    id: uuid("id").default(sql`gen_random_uuid()`).primaryKey().notNull(),
+    id: uuid("id")
+      .default(sql`gen_random_uuid()`)
+      .primaryKey()
+      .notNull(),
     userId: uuid("user_id").notNull(), // Foreign key to auth.users(id)
     date: date("date").notNull(),
     photoUrl: text("photo_url"),
@@ -73,9 +76,7 @@ export const userProfiles = pgTable(
       .notNull(),
     role: text("role"),
   },
-  (t) => [
-    uniqueIndex("user_profiles_user_id_unique").on(t.userId),
-  ],
+  (t) => [uniqueIndex("user_profiles_user_id_unique").on(t.userId)],
 );
 
 export const absencesRelations = relations(absences, ({ one }) => ({
@@ -157,8 +158,12 @@ export const location = pgTable("location", {
   latitude: doublePrecision("latitude").notNull(),
   distance: integer("distance").notNull(), // distance in meters
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 // jadwal_absensi - Schedule configuration for attendance system
@@ -171,6 +176,10 @@ export const jadwalAbsensi = pgTable("jadwal_absensi", {
   selesaiPulang: varchar("selesai_pulang", { length: 8 }).notNull(), // HH:MM:SS format
   kompensasiWaktu: integer("kompensasi_waktu").notNull().default(0), // in minutes
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });

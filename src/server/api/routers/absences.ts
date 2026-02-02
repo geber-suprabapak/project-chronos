@@ -426,11 +426,7 @@ export const absencesRouter = createTRPCRouter({
       }
 
       // 5. Calculate tidak hadir (alpha) - students not in any category
-      const allAccountedFor = new Set([
-        ...hadirSet,
-        ...sakitSet,
-        ...izinSet,
-      ]);
+      const allAccountedFor = new Set([...hadirSet, ...sakitSet, ...izinSet]);
       const tidakHadirList = studentsInClass.filter(
         (s) => !allAccountedFor.has(s.userId),
       );

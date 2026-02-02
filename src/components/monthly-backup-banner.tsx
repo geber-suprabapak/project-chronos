@@ -26,7 +26,10 @@ export function MonthlyBackupBanner() {
         forceShow = true;
       }
     } catch (err) {
-      console.error("Failed to parse URL parameters in MonthlyBackupBanner:", err);
+      console.error(
+        "Failed to parse URL parameters in MonthlyBackupBanner:",
+        err,
+      );
     }
 
     if (forceShow) {
@@ -42,16 +45,20 @@ export function MonthlyBackupBanner() {
 
     // Expose helper for manual reset in console: window.__resetMonthlyBackup()
     try {
-      (window as typeof window & { __resetMonthlyBackup?: () => void }).__resetMonthlyBackup = () => {
+      (
+        window as typeof window & { __resetMonthlyBackup?: () => void }
+      ).__resetMonthlyBackup = () => {
         localStorage.removeItem(storageKey);
         setVisible(true);
         toast.info("Banner backup dimunculkan kembali.");
       };
-    } catch { }
+    } catch {}
   }, [day, storageKey]);
 
   const markDone = useCallback(() => {
-    try { localStorage.setItem(storageKey, "done"); } catch { }
+    try {
+      localStorage.setItem(storageKey, "done");
+    } catch {}
     setVisible(false);
     toast.success("Backup ditandai selesai.");
   }, [storageKey]);
@@ -62,7 +69,9 @@ export function MonthlyBackupBanner() {
       const tableId = "absensi-table"; // Mengandalkan hidden table di halaman Absensi
       const table = document.getElementById(tableId);
       if (!table) {
-        toast.info("Tabel absensi tidak ditemukan. Buka halaman Absensi lalu klik Backup lagi.");
+        toast.info(
+          "Tabel absensi tidak ditemukan. Buka halaman Absensi lalu klik Backup lagi.",
+        );
         return;
       }
       const dateStamp = today.toISOString().slice(0, 10);

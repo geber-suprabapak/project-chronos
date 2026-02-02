@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 import { AppSidebar } from "~/components/app-sidebar";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "~/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "~/components/ui/sidebar";
 import { CurrentPageTitle } from "~/components/current-page-title";
 import { MonthlyBackupBanner } from "~/components/monthly-backup-banner";
 

@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
-import { Workbook } from 'exceljs';
-import { db } from '~/server/db';
-import { perizinan, userProfiles } from '~/server/db/schema';
-import { makeWorkbookMetadata, workbookToResponseBuffer } from '../utils';
+import { NextResponse } from "next/server";
+import { Workbook } from "exceljs";
+import { db } from "~/server/db";
+import { perizinan, userProfiles } from "~/server/db/schema";
+import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 
 // Ensure fresh data on each request
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 /**
  * Helper to safely format date values
@@ -18,7 +18,7 @@ function formatDate(val: unknown): string | null {
     const t = val.getTime();
     return Number.isNaN(t) ? null : val.toISOString();
   }
-  if (typeof val === 'string' || typeof val === 'number') {
+  if (typeof val === "string" || typeof val === "number") {
     const d = new Date(val);
     const t = d.getTime();
     return Number.isNaN(t) ? null : d.toISOString();
@@ -29,16 +29,16 @@ function formatDate(val: unknown): string | null {
 export async function GET() {
   // Create a new workbook and add metadata
   const wb = new Workbook();
-  Object.assign(wb, makeWorkbookMetadata('Perizinan Data'));
+  Object.assign(wb, makeWorkbookMetadata("Perizinan Data"));
 
   // Create worksheet with columns
-  const ws = wb.addWorksheet('Perizinan');
+  const ws = wb.addWorksheet("Perizinan");
   ws.columns = [
-    { header: 'Tanggal', key: 'tanggal', width: 15 },
-    { header: 'NIS', key: 'nis', width: 15 },
-    { header: 'Kelas', key: 'kelas', width: 12 },
-    { header: 'Nama', key: 'nama', width: 30 },
-    { header: 'Keterangan', key: 'keterangan', width: 20 },
+    { header: "Tanggal", key: "tanggal", width: 15 },
+    { header: "NIS", key: "nis", width: 15 },
+    { header: "Kelas", key: "kelas", width: 12 },
+    { header: "Nama", key: "nama", width: 30 },
+    { header: "Keterangan", key: "keterangan", width: 20 },
   ];
 
   // Style the header row
@@ -49,7 +49,7 @@ export async function GET() {
 
   // Fetch all profiles to map user IDs to names
   const profiles = await db.select().from(userProfiles);
-  const profileMap = new Map<string, typeof profiles[number]>();
+  const profileMap = new Map<string, (typeof profiles)[number]>();
 
   // Create a lookup map of user profiles by ID
   for (const profile of profiles) {
@@ -60,46 +60,46 @@ export async function GET() {
 
   // Sort rows by date first, then by NIS
   const sortedRows = rows.sort((a, b) => {
-    const dateA = formatDate(a.tanggal) ?? '';
-    const dateB = formatDate(b.tanggal) ?? '';
+    const dateA = formatDate(a.tanggal) ?? "";
+    const dateB = formatDate(b.tanggal) ?? "";
     const dateCompare = dateA.localeCompare(dateB);
-    
+
     if (dateCompare !== 0) return dateCompare;
-    
+
     // If dates are equal, sort by NIS
-    const nisA = profileMap.get(a.userId)?.nis ?? '';
-    const nisB = profileMap.get(b.userId)?.nis ?? '';
+    const nisA = profileMap.get(a.userId)?.nis ?? "";
+    const nisB = profileMap.get(b.userId)?.nis ?? "";
     return nisA.localeCompare(nisB);
   });
 
   // Add rows to worksheet
   for (const r of sortedRows) {
     const profile = profileMap.get(r.userId);
-    const desc = r.deskripsi ?? '';
+    const desc = r.deskripsi ?? "";
     const kategoriDisplay = /dipulangkan/i.test(desc)
-      ? 'dipulangkan'
+      ? "dipulangkan"
       : /terlambat/i.test(desc)
-        ? 'terlambat'
+        ? "terlambat"
         : r.kategoriIzin;
 
     // Format tanggal as YYYY-MM-DD only
-    const tanggalStr = formatDate(r.tanggal)?.split('T')[0] ?? '-';
-    
+    const tanggalStr = formatDate(r.tanggal)?.split("T")[0] ?? "-";
+
     // Build keterangan with kategori and status
-    let keterangan = kategoriDisplay ?? '-';
-    if (r.approvalStatus === 'approved') {
-      keterangan += ' (Disetujui)';
-    } else if (r.approvalStatus === 'rejected') {
-      keterangan += ' (Ditolak)';
-    } else if (r.approvalStatus === 'pending') {
-      keterangan += ' (Menunggu)';
+    let keterangan = kategoriDisplay ?? "-";
+    if (r.approvalStatus === "approved") {
+      keterangan += " (Disetujui)";
+    } else if (r.approvalStatus === "rejected") {
+      keterangan += " (Ditolak)";
+    } else if (r.approvalStatus === "pending") {
+      keterangan += " (Menunggu)";
     }
 
     ws.addRow({
       tanggal: tanggalStr,
-      nis: profile?.nis ?? '-',
-      kelas: profile?.className ?? '-',
-      nama: profile?.fullName ?? '-',
+      nis: profile?.nis ?? "-",
+      kelas: profile?.className ?? "-",
+      nama: profile?.fullName ?? "-",
       keterangan: keterangan,
     });
   }
@@ -117,9 +117,10 @@ export async function GET() {
   return new NextResponse(buffer, {
     status: 200,
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="perizinan.xlsx"`,
-      'Cache-Control': 'no-store',
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="perizinan.xlsx"`,
+      "Cache-Control": "no-store",
     },
   });
 }
