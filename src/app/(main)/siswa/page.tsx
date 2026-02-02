@@ -92,11 +92,11 @@ export default async function SiswaPage({
   }> = [];
   let total = 0;
   let hasMore = false;
-  let statistics = {
-    total: 0,
-    laki: 0,
-    perempuan: 0,
-    activated: 0,
+  let statistics: {
+    total: number;
+    laki: number;
+    perempuan: number;
+    activated: number;
   };
   let uniqueClasses: string[] = [];
 
