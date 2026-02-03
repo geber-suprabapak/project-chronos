@@ -6,90 +6,126 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import Link from "next/link";
+import { Input } from "~/components/ui/input";
 import {
+  Search,
+  Bell,
+  User,
+  Download,
   Users,
-  UserCheck,
-  ClipboardList,
-  MapPin,
   Calendar,
-  Clock,
 } from "lucide-react";
-import { StatistikPieChart } from "~/components/pie-chart";
-import {
-  KehadiranBarChart,
-  IzinBarChart,
-  KeterlambatanBarChart,
-} from "~/components/attendance-bar-charts";
-import { AttendanceTimeChart } from "~/components/linear-chart";
+import Link from "next/link";
+import { AverageAttendanceChart } from "~/components/average-attendance-chart";
 
 /**
  * Helper: Format date to readable Indonesian format
  */
-function formatDate(dateString: string | Date | null | undefined): string {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "-";
-
+function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
+    day: "numeric",
+    month: "long",
     year: "numeric",
   }).format(date);
 }
 
 /**
- * Helper Component: KPI Card
+ * Helper: Format time to HH:MM
  */
-interface KPICardProps {
-  title: string;
-  value: string | number;
-  description?: string;
-  icon: React.ReactNode;
-  variant?: "default" | "primary" | "success" | "warning";
+function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
-function KPICard({
-  title,
-  value,
-  description,
-  icon,
-  variant = "default",
-}: KPICardProps) {
-  const colorClasses = {
-    default: "text-muted-foreground",
-    primary: "text-blue-600",
-    success: "text-green-600",
-    warning: "text-amber-600",
-  };
+/**
+ * Statistics Card Component
+ */
+interface StatCardProps {
+  label: string;
+  value: string;
+  total: number;
+  href: string;
+}
 
+function StatCard({ label, value, total, href }: StatCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className={colorClasses[variant]}>{icon}</div>
+    <Link href={href} className="block transition-transform hover:scale-[1.02]">
+      <Card className="bg-white hover:shadow-md transition-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-gray-100 p-3">
+              <Users className="h-6 w-6 text-gray-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {value}/{total} STUDENTS {label}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+/**
+ * Last Present Section
+ */
+interface LastPresentProps {
+  students: Array<{
+    id: string;
+    fullName: string | null;
+    createdAt: Date;
+  }>;
+}
+
+function LastPresentSection({ students }: LastPresentProps) {
+  return (
+    <Card className="bg-white">
+      <CardHeader>
+        <CardTitle className="text-sm font-semibold uppercase">
+          Last Present
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      <CardContent className="space-y-3">
+        {students.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-gray-500">No recent attendance</p>
+          </div>
+        ) : (
+          students.map((student) => (
+            <div
+              key={student.id}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {student.fullName ?? "Unknown"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatTime(student.createdAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </CardContent>
     </Card>
   );
 }
 
-interface PendingPermissionsTableProps {
+/**
+ * Permission Section
+ */
+interface PermissionSectionProps {
   permissions: Array<{
     id: string;
     kategoriIzin: string;
@@ -100,80 +136,40 @@ interface PendingPermissionsTableProps {
   }>;
 }
 
-function PendingPermissionsTable({
-  permissions,
-}: PendingPermissionsTableProps) {
-  if (permissions.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Perizinan Tertunda</CardTitle>
-          <CardDescription>
-            Daftar perizinan yang menunggu persetujuan
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Tidak ada perizinan yang menunggu persetujuan
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+function PermissionSection({ permissions }: PermissionSectionProps) {
   return (
-    <Card>
+    <Card className="bg-white">
       <CardHeader>
-        <CardTitle>Perizinan Tertunda</CardTitle>
-        <CardDescription>
-          Daftar perizinan yang menunggu persetujuan
-        </CardDescription>
+        <CardTitle className="text-sm font-semibold uppercase">
+          Permission
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama</TableHead>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Tanggal Izin</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {permissions.map((permission) => (
-              <TableRow key={permission.id}>
-                <TableCell className="font-medium">
-                  {permission.userProfile?.fullName ?? "N/A"}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      permission.kategoriIzin === "sakit"
-                        ? "destructive"
-                        : "default"
-                    }
-                  >
-                    {permission.kategoriIzin}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formatDate(permission.tanggal)}</TableCell>
-                <TableCell className="text-right">
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/perizinan/show/${permission.id}`}>
-                      Detail
-                    </Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {permissions.length === 5 && (
-          <div className="mt-4 text-center">
-            <Button asChild variant="info">
-              <Link href="/perizinan">Lihat Semua Perizinan</Link>
-            </Button>
+      <CardContent className="space-y-3">
+        {permissions.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-gray-500">No permissions today</p>
           </div>
+        ) : (
+          permissions.map((permission) => (
+            <div
+              key={permission.id}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {permission.userProfile?.fullName ?? "Unknown"}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {permission.kategoriIzin}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </CardContent>
     </Card>
@@ -184,164 +180,140 @@ function PendingPermissionsTable({
  * Main Dashboard Content Component
  */
 async function DashboardContent() {
-  // Parallel data fetching using RSC
-  const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [stats, perizinanToday, activeLocation, currentSchedule] =
-    await Promise.all([
-      api.biodataSiswa.getStatistics(),
-      api.perizinan.list({
-        approvalStatus: "pending",
-        tanggal: todayStr,
-        limit: 100,
-        offset: 0,
-      }),
-      api.location.get(),
-      api.jadwal.getCurrentDay(),
-    ]);
+  const todayStr = new Date().toISOString().split("T")[0]!;
 
-  // Pending permissions only for today
-  const pendingPermissions = perizinanToday.slice(0, 5);
+  // Fetch data
+  const [stats, recentAbsences, perizinanToday, attendanceStats] = await Promise.all([
+    api.biodataSiswa.getStatistics(),
+    // Get recent absences for "Last Present" section
+    api.absences.list({
+      date: todayStr,
+      limit: 100,
+      offset: 0,
+      sort: "desc",
+    }),
+    // Get permissions for today
+    api.perizinan.list({
+      tanggal: todayStr,
+      limit: 5,
+      offset: 0,
+    }),
+    // Get daily stats
+    api.absences.getAttendanceStats({ days: 1 }),
+  ]);
 
-  const pendingCount = perizinanToday.length;
+  const todayStats = attendanceStats[0] ?? {
+    hadir: 0,
+    terlambat: 0,
+    izin: 0,
+    tidakHadir: 0,
+  };
 
-  // Get current day name
-  const dayOfWeek = new Date().getDay();
-  const hariMap = [
-    "Minggu",
-    "Senin",
-    "Selasa",
-    "Rabu",
-    "Kamis",
-    "Jumat",
-    "Sabtu",
-  ];
-  const currentDayName = hariMap[dayOfWeek];
+  // Calculate statistics
+  const totalStudents = stats.total;
+  const presentCount = todayStats.hadir;
+  const lateCount = todayStats.terlambat;
+  const permissionCount = todayStats.izin;
+  const absentCount = totalStudents - presentCount - permissionCount;
+
+  // Get last present students
+  const lastPresentStudents = recentAbsences
+    .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
+    .slice(0, 5)
+    .map((a) => ({
+      id: a.id,
+      fullName: a.userProfile?.fullName ?? null,
+      createdAt: a.createdAt,
+    }));
+
+  const currentDate = new Date();
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total Siswa"
-          value={stats.total}
-          description="Seluruh data siswa di sistem"
-          icon={<Users className="h-4 w-4" />}
-          variant="default"
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder="Search..."
+              className="pl-10 bg-white"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Calendar className="h-4 w-4" />
+            <span>{formatDate(currentDate)}</span>
+          </div>
+          <Button variant="ghost" size="icon">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <User className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <Link href="/dashboard" className="hover:text-gray-900">
+          Dashboard
+        </Link>
+        <span>&gt;</span>
+        <span className="text-gray-900 font-medium">Analytics</span>
+      </div>
+
+      {/* Page Title and Export Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Daily Analytics</h1>
+        </div>
+        <Button className="gap-2">
+          <Calendar className="h-4 w-4" />
+          {formatDate(currentDate)}
+          <Download className="h-4 w-4" />
+          Export Recap
+        </Button>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="ARE PRESENT"
+          value={presentCount.toString()}
+          total={totalStudents}
+          href="/dashboard/detail/present"
         />
-        <KPICard
-          title="Siswa Aktif"
-          value={stats.activated}
-          description={`${((stats.activated / stats.total) * 100).toFixed(1)}% dari total siswa`}
-          icon={<UserCheck className="h-4 w-4" />}
-          variant="success"
+        <StatCard
+          label="ARE LATE"
+          value={lateCount.toString()}
+          total={totalStudents}
+          href="/dashboard/detail/late"
         />
-        <KPICard
-          title="Perizinan Tertunda"
-          value={pendingCount}
-          description="Menunggu persetujuan"
-          icon={<ClipboardList className="h-4 w-4" />}
-          variant="warning"
+        <StatCard
+          label="ARE ABSENT"
+          value={absentCount.toString()}
+          total={totalStudents}
+          href="/dashboard/detail/absent"
         />
-        <KPICard
-          title="Lokasi Aktif"
-          value={activeLocation?.name ?? "Tidak Ada"}
-          description={
-            activeLocation
-              ? `Radius ${activeLocation.distance}m`
-              : "Belum dikonfigurasi"
-          }
-          icon={<MapPin className="h-4 w-4" />}
-          variant="primary"
+        <StatCard
+          label="ARE PERMITTED"
+          value={permissionCount.toString()}
+          total={totalStudents}
+          href="/dashboard/detail/permitted"
         />
       </div>
 
-      <PendingPermissionsTable permissions={pendingPermissions} />
-
-      {/* Statistics Visualization Section */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <StatistikPieChart />
-
-        {/* Current Schedule Status Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Jadwal Hari Ini
-            </CardTitle>
-            <CardDescription>{currentDayName}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {currentSchedule ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Status Jadwal</span>
-                  </div>
-                  <Badge
-                    variant={currentSchedule.isActive ? "default" : "secondary"}
-                  >
-                    {currentSchedule.isActive ? "Aktif" : "Nonaktif"}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Waktu Masuk</p>
-                    <p className="text-sm font-semibold">
-                      {currentSchedule.mulaiMasuk} -{" "}
-                      {currentSchedule.selesaiMasuk}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      Waktu Pulang
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {currentSchedule.mulaiPulang} -{" "}
-                      {currentSchedule.selesaiPulang}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      Kompensasi Waktu
-                    </span>
-                    <span className="text-sm font-medium">
-                      {currentSchedule.kompensasiWaktu} menit
-                    </span>
-                  </div>
-                </div>
-
-                <Button asChild variant="outline" className="w-full mb-5">
-                  <Link href="/konfigurasi/jadwal">Kelola Jadwal</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Tidak ada jadwal untuk hari ini
-                </p>
-                <Button asChild variant="warning">
-                  <Link href="/konfigurasi/jadwal">Konfigurasi Jadwal</Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Last Present and Permission Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <LastPresentSection students={lastPresentStudents} />
+        <PermissionSection permissions={perizinanToday} />
       </div>
 
-      {/* Bar Charts Section - Kehadiran, Izin, Keterlambatan */}
-      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-        <KehadiranBarChart />
-        <IzinBarChart />
-        <KeterlambatanBarChart />
-      </div>
-
-      {/* Attendance Time Chart - Full Width */}
-      <AttendanceTimeChart />
+      {/* Average Attendance Chart */}
+      <AverageAttendanceChart />
     </div>
   );
 }
@@ -351,13 +323,7 @@ async function DashboardContent() {
  */
 export default async function DashboardPage() {
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Admin</h1>
-        <p className="text-muted-foreground">
-          Ringkasan informasi dan metrik utama sistem
-        </p>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
       <DashboardContent />
     </div>
   );

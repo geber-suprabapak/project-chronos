@@ -317,6 +317,124 @@ export const absencesRouter = createTRPCRouter({
 
       return result;
     }),
+
+  // Detailed list of students by status for a specific date
+  getDetailsByStatus: protectedProcedure
+    .input(
+      z.object({
+        status: z.enum(["present", "late", "absent", "permitted"]),
+        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).default(() => new Date().toISOString().split("T")[0]!),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // 1. Get ALL Active Students first (base set)
+      const allStudents = await ctx.db.query.userProfiles.findMany({
+        orderBy: (table, { asc }) => [asc(table.fullName)],
+      });
+
+      // 2. Fetch Absences for the date
+      const absencesData = await ctx.db.query.absences.findMany({
+        where: (table, { eq }) => eq(table.date, input.date),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      // 3. Fetch Permissions for the date
+      // Filter by utc date helper column or range if needed. Using date string match for simplicity as requested.
+      const perizinanData = await ctx.db.query.perizinan.findMany({
+        where: (table, { eq }) => eq(table.tanggalUtcDate, input.date),
+        with: {
+          userProfile: true,
+        },
+      });
+
+      const approvedPermissions = perizinanData.filter(p => p.approvalStatus === "approved");
+
+      // Helper Sets
+      const presentUserIds = new Set<string>();
+      const lateUserIds = new Set<string>();
+      const permittedUserIds = new Set<string>();
+
+      absencesData.forEach((a) => {
+        if (a.status === "Terlambat") {
+          lateUserIds.add(a.userId);
+          presentUserIds.add(a.userId); // Late is also technically present
+        } else if (a.status === "Hadir" || a.status === "Datang") {
+          presentUserIds.add(a.userId);
+        }
+      });
+
+      approvedPermissions.forEach((p) => {
+        permittedUserIds.add(p.userId);
+      });
+
+      // 4. Filter based on requested status
+      if (input.status === "present") {
+        return allStudents
+          .filter((s) => presentUserIds.has(s.userId))
+          .map((s) => {
+            const absence = absencesData.find((a) => a.userId === s.userId);
+            return {
+              id: s.userId,
+              name: s.fullName,
+              className: s.className,
+              nis: s.nis,
+              status: absence?.status ?? "Hadir",
+              timestamp: absence?.createdAt ?? null,
+            };
+          });
+      }
+
+      if (input.status === "late") {
+        return allStudents
+          .filter((s) => lateUserIds.has(s.userId))
+          .map((s) => {
+            const absence = absencesData.find((a) => a.userId === s.userId);
+            return {
+              id: s.userId,
+              name: s.fullName,
+              className: s.className,
+              nis: s.nis,
+              status: "Terlambat",
+              timestamp: absence?.createdAt ?? null,
+            };
+          });
+      }
+
+      if (input.status === "permitted") {
+        return allStudents
+          .filter((s) => permittedUserIds.has(s.userId))
+          .map((s) => {
+            const perm = approvedPermissions.find((p) => p.userId === s.userId);
+            return {
+              id: s.userId,
+              name: s.fullName,
+              className: s.className,
+              nis: s.nis,
+              status: perm?.kategoriIzin ?? "Izin",
+              timestamp: perm?.createdAt ?? null,
+            };
+          });
+      }
+
+      if (input.status === "absent") {
+        return allStudents
+          .filter((s) => !presentUserIds.has(s.userId) && !permittedUserIds.has(s.userId))
+          .map((s) => {
+            return {
+              id: s.userId,
+              name: s.fullName,
+              className: s.className,
+              nis: s.nis,
+              status: "Alpa",
+              timestamp: null,
+            };
+          });
+      }
+
+      return [];
+    }),
 });
 
 export type AbsencesRouter = typeof absencesRouter;

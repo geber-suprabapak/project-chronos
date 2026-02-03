@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import {
+  BarChart3,
+  UserCheck,
   Users,
-  CalendarDays,
-  GraduationCap,
+  ShieldCheck,
   Settings,
-  Monitor,
-  Mail,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
@@ -22,44 +21,39 @@ import {
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import Image from "next/image";
 
-// Update icons to match each link
+// Updated navigation to match mockup
 const navItems = [
   {
-    title: "Dashboard",
+    title: "Analytics",
     url: "/dashboard",
-    icon: Monitor,
+    icon: BarChart3,
   },
   {
-    title: "Profiles",
-    url: "/profiles",
+    title: "Presence",
+    url: "/absensi",
+    icon: UserCheck,
+  },
+  {
+    title: "Student",
+    url: "/siswa",
     icon: Users,
   },
   {
-    title: "Data Siswa",
-    url: "/siswa",
-    icon: GraduationCap,
-  },
-  {
-    title: "Absensi",
-    url: "/absensi",
-    icon: CalendarDays,
-  },
-  {
-    title: "Perizinan",
+    title: "Permission",
     url: "/perizinan",
-    icon: Mail,
+    icon: ShieldCheck,
   },
   {
-    title: "Konfigurasi",
+    title: "Configuration",
     url: "/konfigurasi/lokasi",
     icon: Settings,
     items: [
       {
-        title: "Lokasi",
+        title: "Location",
         url: "/konfigurasi/lokasi",
       },
       {
-        title: "Jadwal",
+        title: "Schedule",
         url: "/konfigurasi/jadwal",
       },
     ],
