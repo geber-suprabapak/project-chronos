@@ -1,423 +1,246 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { api } from "~/trpc/react";
-import { Card } from "~/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input";
+import { useState } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/components/ui/popover";
-import { Calendar } from "~/components/ui/calendar";
-import {
-  CalendarIcon,
-  CheckCircle2,
-  Clock,
-  FileText,
-  UserX,
-} from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "~/components/ui/breadcrumb";
+import { ArrowLeft } from "lucide-react";
 
-// Helper function to format date
-function formatDate(date: Date | undefined): string {
-  if (!date) return "";
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+// Helper function to extract major from class name (dynamic)
+function extractMajor(className: string): string {
+  // Try to extract the major code after the grade level
+  // Pattern: "X PPLG 1" -> "PPLG", "XI AKL 2" -> "AKL"
+  const match = className.match(/^(?:X|XI|XII)\s+([A-Z]+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+
+  // Fallback: get all uppercase sequences and use the last one
+  const allMatches = className.match(/[A-Z]+/g);
+  if (allMatches && allMatches.length > 0) {
+    return allMatches[allMatches.length - 1] || "Lainnya";
+  }
+
+  return "Lainnya";
 }
 
-// Helper function to sort classes by grade level (X, XI, XII)
-function sortClasses(classes: (string | null)[]): string[] {
-  const validClasses = classes.filter((c): c is string => c !== null);
+// Helper function to extract grade level
+function extractGrade(className: string): string {
+  const match = className.match(/^(X|XI|XII)/);
+  return match ? match[0] : "";
+}
 
-  return validClasses.sort((a, b) => {
-    // Extract grade level (X, XI, XII)
-    const gradeA = a.match(/^(X|XI|XII)/)?.[0] || "";
-    const gradeB = b.match(/^(X|XI|XII)/)?.[0] || "";
+// Helper function to get all unique grades from classes
+function getUniqueGrades(classes: string[]): string[] {
+  const grades = new Set<string>();
+  classes.forEach((className) => {
+    const grade = extractGrade(className);
+    if (grade) grades.add(grade);
+  });
 
-    // Define grade order
-    const gradeOrder: Record<string, number> = { X: 1, XI: 2, XII: 3 };
-
-    // Compare by grade first
-    const gradeComparison =
-      (gradeOrder[gradeA] || 999) - (gradeOrder[gradeB] || 999);
-    if (gradeComparison !== 0) return gradeComparison;
-
-    // If same grade, sort alphabetically
-    return a.localeCompare(b);
+  // Sort grades: X, XI, XII
+  const gradeOrder: Record<string, number> = { X: 1, XI: 2, XII: 3 };
+  return Array.from(grades).sort((a, b) => {
+    return (gradeOrder[a] || 999) - (gradeOrder[b] || 999);
   });
 }
 
 export default function PerkelasPage() {
-  const today = new Date();
-
-  const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+  const [search, setSearch] = useState("");
 
   // Fetch available classes
-  const { data: availableClasses } =
+  const { data: availableClasses, isLoading } =
     api.userProfiles.getUniqueClassNames.useQuery();
 
-  // Sort classes by grade level
-  const sortedClasses = useMemo(() => {
-    if (!availableClasses) return [];
-    return sortClasses(availableClasses);
-  }, [availableClasses]);
+  // Group classes by major and grade (dynamic)
+  const groupedClasses = useMemo(() => {
+    if (!availableClasses) return {};
 
-  // Fetch all students in selected class
-  const { data: students, isLoading: studentsLoading } =
-    api.userProfiles.list.useQuery(
-      { className: selectedClass, limit: 100 },
-      { enabled: !!selectedClass },
-    );
+    const validClasses = availableClasses.filter((c): c is string => c !== null);
+    const groups: Record<string, Record<string, string[]>> = {};
 
-  // Get student userIds for filtering
-  const studentUserIds = useMemo(() => {
-    if (!students?.data) return new Set<string>();
-    return new Set(students.data.map((s) => s.userId));
-  }, [students]);
+    // First pass: collect all classes by major
+    validClasses.forEach((className) => {
+      const major = extractMajor(className);
+      const grade = extractGrade(className);
 
-  // Get userIds array for API filtering
-  const studentUserIdsArray = useMemo(() => {
-    if (!students?.data) return [];
-    return students.data.map((s) => s.userId);
-  }, [students]);
+      if (!groups[major]) {
+        groups[major] = {};
+      }
 
-  // Fetch attendance records for selected date, filtered by class students on server
-  const { data: absences } = api.absences.list.useQuery(
-    {
-      date: dateStr,
-      userIds: studentUserIdsArray,
-      limit: 500, // Reduced limit since we're now filtering on server
-    },
-    { enabled: !!selectedClass && studentUserIdsArray.length > 0 },
-  );
-
-  // Fetch permissions for selected date
-  const { data: permissionsRaw } = api.perizinan.list.useQuery(
-    { date: dateStr, limit: 100 },
-    { enabled: !!selectedClass },
-  );
-
-  // Filter permissions to only include students from selected class
-  const permissions = useMemo(() => {
-    if (!permissionsRaw) return [];
-    return permissionsRaw.filter((p) => studentUserIds.has(p.userId));
-  }, [permissionsRaw, studentUserIds]);
-
-  // Build attendance status map
-  const attendanceMap = useMemo(() => {
-    const map = new Map<string, { status: string; time?: string }>();
-
-    // First, add approved permissions as "Izin"
-    permissions.forEach((permission) => {
-      if (permission.approvalStatus === "approved") {
-        const time = permission.createdAt
-          ? new Date(permission.createdAt).toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-          : undefined;
-        map.set(permission.userId, { status: "Izin", time });
+      if (grade) {
+        if (!groups[major][grade]) {
+          groups[major][grade] = [];
+        }
+        groups[major][grade]!.push(className);
       }
     });
 
-    // Then, add absence records as "Hadir" (overrides Izin if both exist)
-    // If student has any absence record, they are considered "Hadir" regardless of status
-    absences?.forEach((absence) => {
-      const time = absence.createdAt
-        ? new Date(absence.createdAt).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-        : undefined;
-
-      // Check if this is a late arrival
-      const isLate = absence.status === "Terlambat";
-
-      map.set(absence.userId, {
-        status: isLate ? "Terlambat" : "Hadir",
-        time,
+    // Sort classes within each grade
+    Object.keys(groups).forEach((major) => {
+      Object.keys(groups[major]!).forEach((grade) => {
+        groups[major]![grade]!.sort((a, b) => a.localeCompare(b));
       });
     });
 
-    return map;
-  }, [absences, permissions]);
+    return groups;
+  }, [availableClasses]);
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    if (!students?.data)
-      return { hadir: 0, izin: 0, terlambat: 0, belumPresensi: 0, total: 0 };
+  // Get all unique majors and sort them alphabetically
+  const majors = useMemo(() => {
+    return Object.keys(groupedClasses).sort((a, b) => a.localeCompare(b));
+  }, [groupedClasses]);
 
-    let hadir = 0;
-    let izin = 0;
-    let terlambat = 0;
+  // Filter classes by search
+  const filteredGroups = useMemo(() => {
+    if (!search.trim()) return groupedClasses;
 
-    students.data.forEach((student) => {
-      const attendance = attendanceMap.get(student.userId);
-      if (attendance) {
-        if (attendance.status === "Terlambat") {
-          terlambat++;
-          hadir++; // Terlambat counts as present
-        } else if (attendance.status === "Izin") {
-          izin++;
-        } else if (attendance.status === "Hadir") {
-          hadir++;
+    const filtered: Record<string, Record<string, string[]>> = {};
+    const searchLower = search.toLowerCase();
+
+    Object.entries(groupedClasses).forEach(([major, grades]) => {
+      const filteredGrades: Record<string, string[]> = {};
+      let hasMatch = false;
+
+      Object.entries(grades).forEach(([grade, classes]) => {
+        const matchingClasses = classes.filter((c) =>
+          c.toLowerCase().includes(searchLower)
+        );
+
+        if (matchingClasses.length > 0) {
+          filteredGrades[grade] = matchingClasses;
+          hasMatch = true;
         }
+      });
+
+      if (hasMatch) {
+        filtered[major] = filteredGrades;
       }
     });
 
-    const total = students.data.length;
-    const belumPresensi = total - hadir - izin;
-
-    return { hadir, izin, terlambat, belumPresensi, total };
-  }, [students, attendanceMap]);
+    return filtered;
+  }, [groupedClasses, search]);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen space-y-4">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/absensi">Presensi</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Per Kelas</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+      <div className="flex items-center gap-3">
+        <Link href="/absensi">
+          <Button variant="ghost" size="icon" aria-label="Kembali">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
-            Absensi Per Kelas
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Lihat data kehadiran semua siswa dalam kelas
+          <h1 className="text-2xl font-bold text-gray-900">Presensi Per Kelas</h1>
+          <p className="text-sm text-gray-500">
+            Pilih kelas untuk melihat data kehadiran siswa
           </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Class Selection */}
-          <div className="flex flex-col">
-            <Label htmlFor="class-select" className="mb-2 text-sm font-medium">
-              Kelas
-            </Label>
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger id="class-select" className="w-full">
-                <SelectValue placeholder="Pilih kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortedClasses.map((className) => (
-                  <SelectItem key={className} value={className}>
-                    {className}
-                  </SelectItem>
+      {/* Class Grid - Grouped by Major, Rows by Grade */}
+      {isLoading ? (
+        <div className="space-y-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[...Array(6)].map((_, j) => (
+                  <Skeleton key={j} className="h-16" />
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Date Selection */}
-          <div className="flex flex-col">
-            <Label htmlFor="date-select" className="mb-2 text-sm font-medium">
-              Tanggal
-            </Label>
-            <div className="relative flex gap-2">
-              <input
-                id="date-select"
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                value={formatDate(selectedDate)}
-                readOnly
-              />
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0"
-                  >
-                    <CalendarIcon className="size-3.5" />
-                    <span className="sr-only">Pilih tanggal</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                  />
-                </PopoverContent>
-              </Popover>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-      </Card>
-
-      {/* Show content only when class is selected */}
-      {!selectedClass ? (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">
-            Pilih kelas untuk melihat data kehadiran
+      ) : Object.keys(filteredGroups).length === 0 ? (
+        <Card className="p-6 text-center">
+          <p className="text-gray-500 text-sm">
+            {search ? "Kelas tidak ditemukan" : "Tidak ada data kelas"}
           </p>
         </Card>
       ) : (
-        <>
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Hadir
-                  </p>
-                  <p className="text-2xl font-bold">{stats.hadir}</p>
-                </div>
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Izin
-                  </p>
-                  <p className="text-2xl font-bold">{stats.izin}</p>
-                </div>
-                <FileText className="h-8 w-8 text-blue-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Terlambat
-                  </p>
-                  <p className="text-2xl font-bold">{stats.terlambat}</p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-500" />
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Belum Presensi
-                  </p>
-                  <p className="text-2xl font-bold">{stats.belumPresensi}</p>
-                </div>
-                <UserX className="h-8 w-8 text-red-500" />
-              </div>
-            </Card>
-          </div>
+        <div className="space-y-6">
+          {majors.map((major) => {
+            const grades = filteredGroups[major];
+            if (!grades) return null;
 
-          {/* Student List Table */}
-          <Card className="p-2 sm:p-4 overflow-hidden">
-            {studentsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : (
-              <div className="w-full overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-20">No. Absen</TableHead>
-                      <TableHead>NIS</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Waktu
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {students?.data && students.data.length > 0 ? (
-                      students.data
-                        .sort((a, b) => {
-                          const numA = parseInt(a.absenceNumber ?? "999");
-                          const numB = parseInt(b.absenceNumber ?? "999");
-                          return numA - numB;
-                        })
-                        .map((student) => {
-                          const attendance = attendanceMap.get(student.userId);
-                          const status = attendance?.status || "Belum Presensi";
-                          const time = attendance?.time || "-";
+            // Check if this major has any classes
+            const hasClasses = Object.values(grades).some(classes => classes.length > 0);
+            if (!hasClasses) return null;
 
-                          return (
-                            <TableRow
-                              key={student.id}
-                              className="hover:bg-muted/50"
-                            >
-                              <TableCell className="font-medium">
-                                {student.absenceNumber ?? "-"}
-                              </TableCell>
-                              <TableCell>{student.nis ?? "-"}</TableCell>
-                              <TableCell className="font-medium">
-                                {student.fullName ?? "-"}
-                              </TableCell>
-                              <TableCell>
-                                {status === "Hadir" && (
-                                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                    ✅ Hadir
-                                  </span>
-                                )}
-                                {status === "Terlambat" && (
-                                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                                    🟡 Terlambat
-                                  </span>
-                                )}
-                                {status === "Izin" && (
-                                  <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                    📄 Izin
-                                  </span>
-                                )}
-                                {status === "Belum Presensi" && (
-                                  <span className="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                                    ❌ Belum Presensi
-                                  </span>
-                                )}
-                                {status !== "Hadir" &&
-                                  status !== "Terlambat" &&
-                                  status !== "Izin" &&
-                                  status !== "Belum Presensi" && (
-                                    <span>{status}</span>
-                                  )}
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
-                                {time}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="text-center text-muted-foreground"
-                        >
-                          Tidak ada data siswa untuk kelas ini
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+            // Get unique grade levels for this major
+            const gradeKeys = getUniqueGrades(
+              Object.entries(grades).flatMap(([_, classes]) => classes)
+            );
+
+            return (
+              <div key={major} className="space-y-3">
+                {/* Major Header */}
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {major}
+                  </h2>
+                </div>
+
+                {/* Classes Grid - Row by Grade */}
+                <div className="space-y-3">
+                  {gradeKeys.map((gradeKey) => {
+                    const classesInGrade = grades[gradeKey];
+                    if (!classesInGrade || classesInGrade.length === 0) return null;
+
+                    return (
+                      <div key={gradeKey} className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {classesInGrade.map((className) => (
+                          <Link
+                            key={className}
+                            href={`/absensi/perkelas/${encodeURIComponent(className)}`}
+                          >
+                            <Card className="bg-white hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer border-gray-200 h-full">
+                              <CardContent className="p-3 flex items-center justify-center">
+                                <span className="font-semibold text-gray-900 text-center">
+                                  {className}
+                                </span>
+                              </CardContent>
+                            </Card>
+                          </Link>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </Card>
-        </>
+            );
+          })}
+        </div>
       )}
     </div>
   );

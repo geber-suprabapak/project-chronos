@@ -6,24 +6,11 @@ import { AbsenManualDialog } from "~/components/absen-manual-dialog";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
-import { Card } from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Checkbox } from "~/components/ui/checkbox";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
+import { Badge } from "~/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,27 +21,97 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Eye, Trash2 } from "lucide-react";
-import { FilterBar, type FilterBarValue } from "~/components/filter-bar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "~/components/ui/breadcrumb";
+import {
+  Eye,
+  Trash2,
+  Search,
+  Calendar,
+  User,
+  MapPin,
+  Clock,
+  Users,
+  UserCheck,
+  UserX,
+  Timer,
+  ChevronRight,
+} from "lucide-react";
 import { toast } from "sonner";
 
+/**
+ * Helper: Format date to readable Indonesian format
+ */
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const [yStr, mStr, dStr] = dateStr.split("-") as [string, string, string];
+  const date = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+/**
+ * Helper: Format time to HH:MM
+ */
+function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+/**
+ * Statistics Card Component
+ */
+interface StatCardProps {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+}
+
+function StatCard({ label, value, icon, color }: StatCardProps) {
+  return (
+    <Card className="bg-white">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-3">
+          <div className={`rounded-full ${color} p-3`}>
+            {icon}
+          </div>
+          <div className="flex-1">
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            <p className="text-sm text-gray-600 mt-1">{label}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AbsensiPage() {
-  const [date, setDate] = useState<string>(""); // YYYY-MM-DD
-  const [sort, setSort] = useState<"asc" | "desc">("desc"); // newest (desc) by default
+  const todayStr = new Date().toISOString().split("T")[0]!;
+  const [date, setDate] = useState<string>(todayStr);
   const [query, setQuery] = useState<string>("");
   const [status, setStatus] = useState<string>("");
   const [page, setPage] = useState<number>(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState<string>("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-
-  const filter: FilterBarValue = {
-    date: date || undefined,
-    query,
-    status: status || undefined,
-    sort,
-  };
 
   const utils = api.useUtils();
 
@@ -69,16 +126,25 @@ export default function AbsensiPage() {
   } = api.absences.list.useQuery({
     limit,
     offset,
-    sort,
+    sort: "desc",
     date: date || undefined,
     status: status || undefined,
+    query: query || undefined,
   });
 
-  // Delete mutation using tRPC
+  // Fetch ALL absences for today's statistics
+  const { data: todayAbsences, isLoading: statsLoading } =
+    api.absences.list.useQuery({
+      limit: 1000,
+      offset: 0,
+      sort: "desc",
+      date: date || todayStr,
+    });
+
+  // Delete mutation
   const deleteMutation = api.absences.delete.useMutation({
     onSuccess: async () => {
       toast.success("Data absensi berhasil dihapus!");
-      // Refresh the list
       await Promise.all([
         utils.absences.list.invalidate(),
         utils.absences.listRaw.invalidate(),
@@ -88,24 +154,6 @@ export default function AbsensiPage() {
     },
     onError: (error) => {
       toast.error(`Gagal menghapus: ${error.message}`);
-    },
-  });
-
-  // Bulk delete mutation using tRPC
-  const bulkDeleteMutation = api.absences.bulkDelete.useMutation({
-    onSuccess: async (data) => {
-      toast.success(`Berhasil menghapus ${data.deletedCount} data absensi!`);
-      // Refresh the list
-      await Promise.all([
-        utils.absences.list.invalidate(),
-        utils.absences.listRaw.invalidate(),
-      ]);
-      setSelectedIds(new Set());
-      setShowBulkDeleteDialog(false);
-    },
-    onError: (error) => {
-      toast.error(`Gagal menghapus: ${error.message}`);
-      setShowBulkDeleteDialog(false);
     },
   });
 
@@ -119,344 +167,342 @@ export default function AbsensiPage() {
     deleteMutation.mutate({ id: deleteId });
   };
 
-  // Bulk delete handlers
-  const toggleSelectAll = (rows: Array<{ id: string }>) => {
-    if (selectedIds.size === rows.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(rows.map((r) => r.id)));
-    }
+  const filteredData = absences ?? [];
+  const hasMore = filteredData.length === limit;
+
+  // Calculate statistics
+  const stats = {
+    total: todayAbsences?.length ?? 0,
+    hadir: (todayAbsences ?? []).filter(
+      (a) => a.status === "Hadir" || a.status === "Datang"
+    ).length,
+    terlambat: (todayAbsences ?? []).filter((a) => a.status === "Terlambat")
+      .length,
+    pulang: (todayAbsences ?? []).filter((a) => a.status === "Pulang").length,
   };
 
-  const toggleSelect = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedIds(newSet);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.size === 0) return;
-    setShowBulkDeleteDialog(true);
-  };
-
-  const confirmBulkDelete = () => {
-    const idsToDelete = Array.from(selectedIds);
-    if (idsToDelete.length === 0) return;
-
-    bulkDeleteMutation.mutate({ ids: idsToDelete });
-  };
-
-  const loading = absencesLoading;
+  const loading = absencesLoading || statsLoading;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Presensi</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      
+
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
-            Daftar Absensi
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Ringkasan absensi terbaru
+          <h1 className="text-2xl font-bold text-gray-900">Attendance Records</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage and monitor student attendance
           </p>
         </div>
-        <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
-          {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              onClick={handleBulkDelete}
-              disabled={
-                bulkDeleteMutation.isPending || deleteMutation.isPending
-              }
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Hapus ({selectedIds.size})
-            </Button>
-          )}
+        <div className="flex flex-wrap gap-2">
           <AbsenManualDialog />
           <DownloadExcelButton
             href="/api/export/absences"
             filename="absensi.xlsx"
-            disabled={loading || (absences && absences.length === 0)}
+            disabled={loading || filteredData.length === 0}
           />
           <DownloadPdfButton
             tableId="absensi-table"
             filename="absensi.pdf"
             title="Data Absensi"
-            disabled={loading || (absences && absences.length === 0)}
+            disabled={loading || filteredData.length === 0}
           />
         </div>
       </div>
 
-      <Card className="p-2 sm:p-4 overflow-hidden">
-        {loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : absencesError ? (
-          <div className="text-red-600">
-            {absencesError?.message ?? "Terjadi kesalahan saat memuat data."}
-          </div>
-        ) : (
-          <>
-            {/* Reusable filter bar */}
-            <FilterBar
-              value={filter}
-              statuses={["Hadir", "Terlambat", "Pulang", "Alpha"]}
-              onChange={(next) => {
-                setDate(next.date ?? "");
-                setQuery(next.query ?? "");
-                setStatus(next.status ?? "");
-                setSort(next.sort ?? "desc");
-                setPage(1); // Reset to page 1 when filter changes
-              }}
-              className="mb-4"
-            />{" "}
-            {(() => {
-              const rows = (absences ?? []).filter((a) => {
-                const q = query.trim().toLowerCase();
-                if (!q) return true;
-                const hayName =
-                  `${a.userProfile?.fullName ?? ""}`.toLowerCase();
-                return hayName.includes(q);
-              });
-              const rows2 = rows.filter((a) => {
-                if (!status) return true;
-                return (a.status ?? "").toLowerCase() === status.toLowerCase();
-              });
-              const hasMore = rows2.length === limit;
-
-              return (
-                <>
-                  {/* Pagination Info */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                    <span>
-                      Halaman {page} - Menampilkan {rows2.length} data
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!hasMore}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Main UI table */}
-                  <div className="mb-4 w-full overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={
-                                selectedIds.size === rows2.length &&
-                                rows2.length > 0
-                              }
-                              onCheckedChange={() => toggleSelectAll(rows2)}
-                              aria-label="Pilih semua"
-                            />
-                          </TableHead>
-                          <TableHead>Tanggal</TableHead>
-                          <TableHead>Nama</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Lokasi</TableHead>
-                          <TableHead>Aksi</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows2.map((a) => {
-                          const name =
-                            a.userProfile?.fullName ??
-                            a.userProfile?.email ??
-                            a.userId;
-                          const tanggal =
-                            typeof a.date === "string"
-                              ? a.date
-                              : String(a.date);
-                          const lokasi = [a.latitude, a.longitude]
-                            .filter((v) => v != null)
-                            .join(", ");
-                          const displayStatus =
-                            a.status === "Datang" ? "Hadir" : (a.status ?? "-");
-
-                          return (
-                            <TableRow key={`${a.id}`}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={selectedIds.has(a.id)}
-                                  onCheckedChange={() => toggleSelect(a.id)}
-                                  aria-label={`Pilih ${name}`}
-                                />
-                              </TableCell>
-                              <TableCell>{tanggal}</TableCell>
-                              <TableCell>{name}</TableCell>
-                              <TableCell>{displayStatus}</TableCell>
-                              <TableCell>{lokasi || "-"}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          asChild
-                                          variant="outline"
-                                          size="icon"
-                                          aria-label="Detail absensi"
-                                        >
-                                          <Link href={`/absensi/show/${a.id}`}>
-                                            <Eye />
-                                          </Link>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Detail</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="destructive"
-                                          size="icon"
-                                          aria-label="Hapus absensi"
-                                          onClick={() =>
-                                            handleDelete(a.id, name)
-                                          }
-                                          disabled={deleteMutation.isPending}
-                                        >
-                                          <Trash2 />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Hapus</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Hidden table for PDF export with optimized columns */}
-                  <div className="hidden">
-                    <Table id="absensi-table">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Tanggal</TableHead>
-                          <TableHead>Nama</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Lokasi</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows2.map((a) => {
-                          const name =
-                            a.userProfile?.fullName ??
-                            a.userProfile?.email ??
-                            a.userId;
-                          const tanggal =
-                            typeof a.date === "string"
-                              ? a.date
-                              : String(a.date);
-                          const displayStatus =
-                            a.status === "Datang" ? "Hadir" : (a.status ?? "-");
-                          const lokasi = [a.latitude, a.longitude]
-                            .filter((v) => v != null)
-                            .join(", ");
-                          return (
-                            <TableRow key={`${a.id}-pdf`}>
-                              <TableCell>{tanggal}</TableCell>
-                              <TableCell>{name}</TableCell>
-                              <TableCell>{displayStatus}</TableCell>
-                              <TableCell>{lokasi || "-"}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Bottom Pagination */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                    <span>
-                      Halaman {page} - Menampilkan {rows2.length} data
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!hasMore}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </>
-        )}
+      {/* Navigation to Per Kelas */}
+      <Card className="bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 transition-all cursor-pointer">
+        <Link href="/absensi/perkelas">
+          <CardContent className="p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-full">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Lihat Per Kelas</h3>
+                <p className="text-sm text-white/80">
+                  Lihat data presensi berdasarkan kelas
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-6 w-6" />
+          </CardContent>
+        </Link>
       </Card>
 
-      {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog
-        open={showBulkDeleteDialog}
-        onOpenChange={setShowBulkDeleteDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Data Absensi</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus{" "}
-              <strong>{selectedIds.size} data absensi</strong> yang dipilih?
-              <br />
-              Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              disabled={bulkDeleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {bulkDeleteMutation.isPending ? "Menghapus..." : "Hapus Semua"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Statistics Cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Records"
+            value={stats.total}
+            icon={<Users className="h-6 w-6 text-blue-600" />}
+            color="bg-blue-100"
+          />
+          <StatCard
+            label="Present"
+            value={stats.hadir}
+            icon={<UserCheck className="h-6 w-6 text-green-600" />}
+            color="bg-green-100"
+          />
+          <StatCard
+            label="Late"
+            value={stats.terlambat}
+            icon={<Timer className="h-6 w-6 text-yellow-600" />}
+            color="bg-yellow-100"
+          />
+          <StatCard
+            label="Checked Out"
+            value={stats.pulang}
+            icon={<UserX className="h-6 w-6 text-gray-600" />}
+            color="bg-gray-100"
+          />
+        </div>
+      )}
 
-      {/* Single Delete Confirmation Dialog */}
+      {/* Filters */}
+      <Card className="bg-white">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Search by name..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Date Filter */}
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setPage(1);
+              }}
+              className="w-full"
+            />
+
+            {/* Status Filter */}
+            <Select
+              value={status}
+              onValueChange={(value) => {
+                setStatus(value === "all" ? "" : value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Hadir">Hadir</SelectItem>
+                <SelectItem value="Terlambat">Terlambat</SelectItem>
+                <SelectItem value="Pulang">Pulang</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Content Area */}
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold uppercase">
+            Attendance List ({filteredData.length} records)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-0">
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
+          ) : absencesError ? (
+            <div className="py-12 text-center">
+              <p className="text-red-500">
+                {absencesError?.message ?? "Error loading data"}
+              </p>
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-gray-500">No attendance records found</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredData.map((a) => {
+                const name =
+                  a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
+                const tanggal =
+                  typeof a.date === "string" ? a.date : String(a.date);
+                const lokasi = [a.latitude, a.longitude]
+                  .filter((v) => v != null)
+                  .join(", ");
+                const displayStatus =
+                  a.status === "Datang" ? "Hadir" : (a.status ?? "-");
+
+                const statusColor =
+                  displayStatus === "Hadir"
+                    ? "bg-green-100 text-green-800"
+                    : displayStatus === "Terlambat"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : displayStatus === "Pulang"
+                        ? "bg-gray-100 text-gray-800"
+                        : "bg-red-100 text-red-800";
+
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start gap-4 flex-1">
+                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <User className="h-6 w-6 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900">{name}</p>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(tanggal)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatTime(a.createdAt)}
+                          </span>
+                          {lokasi && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {lokasi}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <Badge className={`${statusColor} capitalize`}>
+                        {displayStatus}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="icon"
+                          aria-label="Detail absensi"
+                        >
+                          <Link href={`/absensi/show/${a.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          aria-label="Hapus absensi"
+                          onClick={() => handleDelete(a.id, name)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {!loading && filteredData.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Page {page} - Showing {filteredData.length} records
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasMore}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden table for PDF export */}
+      <div className="hidden">
+        <table id="absensi-table">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Nama</th>
+              <th>Status</th>
+              <th>Lokasi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.map((a) => {
+              const name =
+                a.userProfile?.fullName ?? a.userProfile?.email ?? a.userId;
+              const tanggal =
+                typeof a.date === "string" ? a.date : String(a.date);
+              const displayStatus =
+                a.status === "Datang" ? "Hadir" : (a.status ?? "-");
+              const lokasi = [a.latitude, a.longitude]
+                .filter((v) => v != null)
+                .join(", ");
+              return (
+                <tr key={`${a.id}-pdf`}>
+                  <td>{tanggal}</td>
+                  <td>{name}</td>
+                  <td>{displayStatus}</td>
+                  <td>{lokasi || "-"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}

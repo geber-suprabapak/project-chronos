@@ -126,8 +126,6 @@ export const absencesRouter = createTRPCRouter({
       };
     }),
 
-  // Mengambil daftar absensi dengan opsi filter & pagination.
-  // Return: Array record absensi sesuai filter.
   list: protectedProcedure
     .input(
       z
@@ -144,6 +142,7 @@ export const absencesRouter = createTRPCRouter({
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
             .optional(), // expecting YYYY-MM-DD
           sort: z.enum(["asc", "desc"]).default("asc"),
+          query: z.string().optional(), // Search query for student name
         })
         .optional(),
     )
@@ -184,6 +183,16 @@ export const absencesRouter = createTRPCRouter({
           userProfile: true,
         },
       });
+
+      // Filter by search query if provided (client-side filtering after fetch)
+      // This is done after fetching because we need to search in userProfile.fullName
+      if (input?.query && input.query.trim()) {
+        const searchQuery = input.query.trim().toLowerCase();
+        return rows.filter((row) => {
+          const name = row.userProfile?.fullName?.toLowerCase() ?? "";
+          return name.includes(searchQuery);
+        });
+      }
 
       return rows;
     }),
@@ -324,6 +333,8 @@ export const absencesRouter = createTRPCRouter({
       z.object({
         status: z.enum(["present", "late", "absent", "permitted"]),
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).default(() => new Date().toISOString().split("T")[0]!),
+        limit: z.number().int().min(1).max(500).default(10),
+        offset: z.number().int().min(0).default(0),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -370,8 +381,17 @@ export const absencesRouter = createTRPCRouter({
       });
 
       // 4. Filter based on requested status
+      let filteredStudents: Array<{
+        id: string;
+        name: string | null;
+        className: string | null;
+        nis: string | null;
+        status: string;
+        timestamp: Date | null;
+      }> = [];
+
       if (input.status === "present") {
-        return allStudents
+        filteredStudents = allStudents
           .filter((s) => presentUserIds.has(s.userId))
           .map((s) => {
             const absence = absencesData.find((a) => a.userId === s.userId);
@@ -384,10 +404,8 @@ export const absencesRouter = createTRPCRouter({
               timestamp: absence?.createdAt ?? null,
             };
           });
-      }
-
-      if (input.status === "late") {
-        return allStudents
+      } else if (input.status === "late") {
+        filteredStudents = allStudents
           .filter((s) => lateUserIds.has(s.userId))
           .map((s) => {
             const absence = absencesData.find((a) => a.userId === s.userId);
@@ -400,10 +418,8 @@ export const absencesRouter = createTRPCRouter({
               timestamp: absence?.createdAt ?? null,
             };
           });
-      }
-
-      if (input.status === "permitted") {
-        return allStudents
+      } else if (input.status === "permitted") {
+        filteredStudents = allStudents
           .filter((s) => permittedUserIds.has(s.userId))
           .map((s) => {
             const perm = approvedPermissions.find((p) => p.userId === s.userId);
@@ -416,10 +432,8 @@ export const absencesRouter = createTRPCRouter({
               timestamp: perm?.createdAt ?? null,
             };
           });
-      }
-
-      if (input.status === "absent") {
-        return allStudents
+      } else if (input.status === "absent") {
+        filteredStudents = allStudents
           .filter((s) => !presentUserIds.has(s.userId) && !permittedUserIds.has(s.userId))
           .map((s) => {
             return {
@@ -433,7 +447,16 @@ export const absencesRouter = createTRPCRouter({
           });
       }
 
-      return [];
+      // Apply pagination
+      const total = filteredStudents.length;
+      const paginatedStudents = filteredStudents.slice(input.offset, input.offset + input.limit);
+
+      return {
+        students: paginatedStudents,
+        total,
+        limit: input.limit,
+        offset: input.offset,
+      };
     }),
 });
 

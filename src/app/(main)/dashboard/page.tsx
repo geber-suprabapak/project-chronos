@@ -8,11 +8,11 @@ import {
 } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Badge } from "~/components/ui/badge";
 import {
   Search,
   Bell,
   User,
-  Download,
   Users,
   Calendar,
 } from "lucide-react";
@@ -130,6 +130,8 @@ interface PermissionSectionProps {
     id: string;
     kategoriIzin: string;
     tanggal: Date;
+    approvalStatus: string;
+    createdAt: Date;
     userProfile: {
       fullName: string | null;
     } | null;
@@ -137,6 +139,18 @@ interface PermissionSectionProps {
 }
 
 function PermissionSection({ permissions }: PermissionSectionProps) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+      case "pending":
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
+    }
+  };
+
   return (
     <Card className="bg-white">
       <CardHeader>
@@ -151,24 +165,30 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
           </div>
         ) : (
           permissions.map((permission) => (
-            <div
+            <Link
               key={permission.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              href={`/perizinan/show/${permission.id}`}
+              className="block"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {permission.userProfile?.fullName ?? "Unknown"}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {permission.kategoriIzin}
-                  </p>
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {permission.userProfile?.fullName ?? "Unknown"}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {permission.kategoriIzin}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(permission.approvalStatus)}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))
         )}
       </CardContent>
@@ -192,10 +212,10 @@ async function DashboardContent() {
       offset: 0,
       sort: "desc",
     }),
-    // Get permissions for today
+    // Get permissions for today (all statuses)
     api.perizinan.list({
       tanggal: todayStr,
-      limit: 5,
+      limit: 10,
       offset: 0,
     }),
     // Get daily stats
@@ -265,17 +285,9 @@ async function DashboardContent() {
         <span className="text-gray-900 font-medium">Analytics</span>
       </div>
 
-      {/* Page Title and Export Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daily Analytics</h1>
-        </div>
-        <Button className="gap-2">
-          <Calendar className="h-4 w-4" />
-          {formatDate(currentDate)}
-          <Download className="h-4 w-4" />
-          Export Recap
-        </Button>
+      {/* Page Title */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Daily Analytics</h1>
       </div>
 
       {/* Statistics Cards */}
