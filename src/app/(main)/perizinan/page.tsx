@@ -167,9 +167,9 @@ export default function PerizinanPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Permission Records</h1>
+          <h1 className="text-2xl font-bold text-foreground">Catatan Perizinan</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage and monitor student permission requests
+            Kelola dan pantau permohonan izin siswa
           </p>
         </div>
       </div>
@@ -184,28 +184,28 @@ export default function PerizinanPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total Permissions"
+            label="Total Izin"
             value={stats.total}
-            icon={<FileText className="h-6 w-6 text-blue-600" />}
-            color="bg-blue-100 dark:bg-blue-900/20"
+            icon={<FileText className="h-6 w-6 text-primary" />}
+            color="bg-primary/10"
           />
           <StatCard
-            label="Pending"
+            label="Menunggu"
             value={stats.pending}
-            icon={<Clock className="h-6 w-6 text-yellow-600" />}
-            color="bg-yellow-100 dark:bg-yellow-900/20"
+            icon={<Clock className="h-6 w-6 text-warning" />}
+            color="bg-warning/10"
           />
           <StatCard
-            label="Approved"
+            label="Disetujui"
             value={stats.approved}
-            icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-            color="bg-green-100 dark:bg-green-900/20"
+            icon={<CheckCircle className="h-6 w-6 text-success" />}
+            color="bg-success/10"
           />
           <StatCard
-            label="Rejected"
+            label="Ditolak"
             value={stats.rejected}
-            icon={<XCircle className="h-6 w-6 text-red-600" />}
-            color="bg-red-100 dark:bg-red-900/20"
+            icon={<XCircle className="h-6 w-6 text-destructive" />}
+            color="bg-destructive/10"
           />
         </div>
       )}
@@ -219,7 +219,7 @@ export default function PerizinanPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search by name..."
+                placeholder="Cari nama..."
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -249,13 +249,13 @@ export default function PerizinanPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All Status" />
+                <SelectValue placeholder="Semua Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="pending">Menunggu</SelectItem>
+                <SelectItem value="approved">Disetujui</SelectItem>
+                <SelectItem value="rejected">Ditolak</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -266,7 +266,7 @@ export default function PerizinanPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold uppercase">
-            Permission List ({filteredData.length} records)
+            Daftar Perizinan ({filteredData.length} catatan)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-0">
@@ -278,7 +278,7 @@ export default function PerizinanPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-muted-foreground">No permission records found</p>
+              <p className="text-muted-foreground">Tidak ada data perizinan ditemukan</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -290,10 +290,10 @@ export default function PerizinanPage() {
 
                 const statusColor =
                   item.approvalStatus === "approved"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    ? "bg-success/15 text-success hover:bg-success/25"
                     : item.approvalStatus === "rejected"
-                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+                      ? "bg-destructive/15 text-destructive hover:bg-destructive/25"
+                      : "bg-warning/15 text-warning-foreground hover:bg-warning/25";
 
                 return (
                   <div
@@ -332,7 +332,7 @@ export default function PerizinanPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <Badge className={`${statusColor} capitalize`}>
+                      <Badge className={`${statusColor} capitalize border-0`}>
                         {item.approvalStatus ?? "pending"}
                       </Badge>
                       <Button
@@ -357,7 +357,7 @@ export default function PerizinanPage() {
       {!loading && filteredData.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} - Showing {filteredData.length} records
+            Halaman {page} - Menampilkan {filteredData.length} data
           </p>
           <div className="flex gap-2">
             <Button
@@ -366,7 +366,7 @@ export default function PerizinanPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              Sebelumnya
             </Button>
             <Button
               variant="outline"
@@ -374,7 +374,7 @@ export default function PerizinanPage() {
               disabled={!hasMore}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              Selanjutnya
             </Button>
           </div>
         </div>

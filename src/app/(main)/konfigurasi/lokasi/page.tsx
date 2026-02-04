@@ -712,7 +712,7 @@ export default function ConfigurationPage() {
                           <TableCell>
                             <div className="flex items-center space-x-3">
                               <div
-                                className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300`}
+                                className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-muted text-muted-foreground`}
                               >
                                 #{location.id}
                               </div>
@@ -755,8 +755,8 @@ export default function ConfigurationPage() {
                                 }
                                 className={
                                   location.isActive
-                                    ? "data-[state=checked]:bg-emerald-600"
-                                    : "data-[state=unchecked]:bg-red-600"
+                                    ? "data-[state=checked]:bg-success"
+                                    : "data-[state=unchecked]:bg-destructive/50"
                                 }
                               />
                               <Badge
@@ -935,9 +935,8 @@ export default function ConfigurationPage() {
                             <button
                               key={result.place_id}
                               type="button"
-                              className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${
-                                idx === 0 ? "rounded-t-lg" : ""
-                              } ${idx === searchResults.length - 1 ? "rounded-b-lg" : ""}`}
+                              className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${idx === 0 ? "rounded-t-lg" : ""
+                                } ${idx === searchResults.length - 1 ? "rounded-b-lg" : ""}`}
                               onClick={() => handleSearchResultSelect(result)}
                             >
                               <div className="flex items-start gap-3">

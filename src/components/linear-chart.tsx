@@ -22,7 +22,7 @@ import { useMemo } from "react";
 const chartConfig = {
   jumlah: {
     label: "Jumlah Siswa",
-    color: "hsl(142 76% 36%)", // Green color that's visible in both light and dark mode
+    color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
 
@@ -177,17 +177,17 @@ export function AttendanceTimeChart() {
             <Line
               dataKey="jumlah"
               type="monotone"
-              stroke="hsl(142 76% 36%)"
+              stroke="var(--color-jumlah)"
               strokeWidth={3}
               dot={{
-                fill: "hsl(142 76% 36%)",
+                fill: "var(--color-jumlah)",
                 r: 3,
-                stroke: "hsl(142 76% 36%)",
+                stroke: "var(--color-jumlah)",
                 strokeWidth: 1,
               }}
               activeDot={{
                 r: 5,
-                stroke: "hsl(142 76% 36%)",
+                stroke: "var(--color-jumlah)",
                 strokeWidth: 2,
               }}
             />
@@ -207,7 +207,7 @@ export function AttendanceTimeChart() {
               </span>
               <div className="flex items-center gap-2 justify-end">
                 <span className="text-2xl font-bold">{peakHour.jam}</span>
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <TrendingUp className="h-5 w-5 text-success" />
               </div>
               <span className="text-xs text-muted-foreground">
                 {peakHour.jumlah} siswa

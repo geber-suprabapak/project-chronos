@@ -28,7 +28,7 @@ import { useMemo, useState } from "react";
 const kehadiranChartConfig = {
   hadir: {
     label: "Hadir",
-    color: "hsl(142 76% 36%)", // Hijau
+    color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
@@ -36,11 +36,11 @@ const kehadiranChartConfig = {
 const izinChartConfig = {
   izin: {
     label: "Izin",
-    color: "hsl(262 83% 58%)", // Ungu
+    color: "hsl(var(--chart-3))",
   },
   sakit: {
     label: "Sakit",
-    color: "hsl(0 84% 60%)", // Merah
+    color: "hsl(var(--chart-4))",
   },
 } satisfies ChartConfig;
 
@@ -48,7 +48,7 @@ const izinChartConfig = {
 const keterlambatanChartConfig = {
   terlambat: {
     label: "Terlambat",
-    color: "hsl(47 96% 53%)", // Kuning
+    color: "hsl(var(--chart-5))",
   },
 } satisfies ChartConfig;
 

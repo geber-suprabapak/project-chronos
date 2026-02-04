@@ -2,8 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
-    AreaChart,
-    Area,
+    LineChart,
+    Line,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -23,56 +23,50 @@ export function AverageAttendanceChart() {
     // Map API data to chart format
     const chartData = weeklyData
         ? weeklyData.map((item) => ({
-            day: new Date(item.date).toLocaleDateString("en-US", {
+            day: new Date(item.date).toLocaleDateString("id-ID", {
                 weekday: "short",
             }),
             attendance: item.hadir,
         }))
         : [
-            { day: "Mon", attendance: 850 },
-            { day: "Tue", attendance: 820 },
-            { day: "Wed", attendance: 780 },
-            { day: "Thu", attendance: 900 },
-            { day: "Fri", attendance: 950 },
-            { day: "Sat", attendance: 880 },
-            { day: "Sun", attendance: 750 },
+            { day: "Sen", attendance: 850 },
+            { day: "Sel", attendance: 820 },
+            { day: "Rab", attendance: 780 },
+            { day: "Kam", attendance: 900 },
+            { day: "Jum", attendance: 950 },
+            { day: "Sab", attendance: 880 },
+            { day: "Min", attendance: 750 },
         ];
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="text-base font-semibold">
-                    Average Attendance
+                    Rata-rata Kehadiran
                 </CardTitle>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
                     <div className="h-64 flex items-center justify-center">
-                        <p className="text-sm text-muted-foreground">Loading chart...</p>
+                        <p className="text-sm text-muted-foreground">Memuat grafik...</p>
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart
+                        <LineChart
                             data={chartData}
                             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                         >
-                            <defs>
-                                <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                             <XAxis
                                 dataKey="day"
-                                tick={{ fill: "hsl(var(--foreground))" }}
+                                tick={{ fill: "var(--foreground)" }}
                                 fontSize={12}
                                 tickLine={false}
                                 axisLine={false}
                                 tickMargin={10}
                             />
                             <YAxis
-                                tick={{ fill: "hsl(var(--foreground))" }}
+                                tick={{ fill: "var(--foreground)" }}
                                 fontSize={12}
                                 tickLine={false}
                                 axisLine={false}
@@ -80,27 +74,27 @@ export function AverageAttendanceChart() {
                             />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: "hsl(var(--popover))",
-                                    borderColor: "hsl(var(--border))",
+                                    backgroundColor: "var(--popover)",
+                                    borderColor: "var(--border)",
                                     borderRadius: "6px",
-                                    color: "hsl(var(--popover-foreground))",
+                                    color: "var(--popover-foreground)",
                                 }}
                                 itemStyle={{
-                                    color: "hsl(var(--popover-foreground))",
+                                    color: "var(--popover-foreground)",
                                 }}
                                 labelStyle={{
-                                    color: "hsl(var(--muted-foreground))",
+                                    color: "var(--muted-foreground)",
                                 }}
                             />
-                            <Area
+                            <Line
                                 type="monotone"
                                 dataKey="attendance"
-                                stroke="#3b82f6"
+                                stroke="var(--primary)"
                                 strokeWidth={2}
-                                fillOpacity={1}
-                                fill="url(#colorAttendance)"
+                                dot={false}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
                             />
-                        </AreaChart>
+                        </LineChart>
                     </ResponsiveContainer>
                 )}
             </CardContent>

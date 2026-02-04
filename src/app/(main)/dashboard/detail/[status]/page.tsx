@@ -213,10 +213,10 @@ export default function DashboardDetailPage() {
                                     </div>
                                     <div className="text-right">
                                         <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                            ${status === 'present' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : ''}
-                            ${status === 'late' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : ''}
-                            ${status === 'absent' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : ''}
-                            ${status === 'permitted' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : ''}
+                            ${status === 'present' ? 'bg-success/15 text-success' : ''}
+                            ${status === 'late' ? 'bg-warning/15 text-warning-foreground' : ''}
+                            ${status === 'absent' ? 'bg-destructive/15 text-destructive' : ''}
+                            ${status === 'permitted' ? 'bg-primary/15 text-primary' : ''}
                         `}>
                                             {student.status}
                                         </div>

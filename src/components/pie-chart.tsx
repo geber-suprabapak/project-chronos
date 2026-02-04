@@ -24,19 +24,19 @@ const chartConfigMasuk = {
   },
   sudahAbsenMasuk: {
     label: "Sudah Absen",
-    color: "hsl(142 76% 36%)", // Hijau
+    color: "hsl(var(--success))", // Hijau
   },
   belumAbsenMasuk: {
     label: "Belum Absen",
-    color: "hsl(0 0% 60%)", // Abu-abu
+    color: "hsl(var(--muted))", // Abu-abu
   },
   izin: {
     label: "Izin",
-    color: "hsl(262 83% 58%)", // Ungu
+    color: "hsl(var(--chart-3))", // Ungu
   },
   sakit: {
     label: "Sakit",
-    color: "hsl(0 84% 60%)", // Merah
+    color: "hsl(var(--destructive))", // Merah
   },
 } satisfies ChartConfig;
 
@@ -47,11 +47,11 @@ const chartConfigPulang = {
   },
   sudahAbsenPulang: {
     label: "Sudah Pulang",
-    color: "hsl(221 83% 53%)", // Biru
+    color: "hsl(var(--primary))", // Biru
   },
   belumAbsenPulang: {
     label: "Belum Pulang",
-    color: "hsl(47 96% 53%)", // Kuning
+    color: "hsl(var(--warning))", // Kuning
   },
 } satisfies ChartConfig;
 
@@ -267,7 +267,7 @@ export function StatistikPieChart() {
               {chartDataMasuk.map((entry) => {
                 const config =
                   chartConfigMasuk[
-                    entry.category as keyof typeof chartConfigMasuk
+                  entry.category as keyof typeof chartConfigMasuk
                   ];
                 const percentage =
                   totalMasuk > 0
@@ -339,7 +339,7 @@ export function StatistikPieChart() {
               {chartDataPulang.map((entry) => {
                 const config =
                   chartConfigPulang[
-                    entry.category as keyof typeof chartConfigPulang
+                  entry.category as keyof typeof chartConfigPulang
                   ];
                 const percentage =
                   totalPulang > 0

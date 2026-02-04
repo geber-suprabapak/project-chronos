@@ -60,9 +60,7 @@ function StatCard({ label, value, total, href }: StatCardProps) {
               <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">
-                {value}/{total} STUDENTS {label}
-              </p>
+              {value}/{total} SISWA {label}
             </div>
           </div>
         </CardContent>
@@ -87,13 +85,13 @@ function LastPresentSection({ students }: LastPresentProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-semibold uppercase">
-          Last Present
+          Kehadiran Terakhir
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {students.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">No recent attendance</p>
+            <p className="text-sm text-muted-foreground">Belum ada kehadiran terbaru</p>
           </div>
         ) : (
           students.map((student) => (
@@ -142,12 +140,12 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300">Approved</Badge>;
+        return <Badge className="bg-success/15 text-success hover:bg-success/25 border-0">Disetujui</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">Rejected</Badge>;
+        return <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/25 border-0">Ditolak</Badge>;
       case "pending":
       default:
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</Badge>;
+        return <Badge className="bg-warning/15 text-warning-foreground hover:bg-warning/25 border-0">Menunggu</Badge>;
     }
   };
 
@@ -155,13 +153,13 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-semibold uppercase">
-          Permission
+          Perizinan
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {permissions.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">No permissions today</p>
+            <p className="text-sm text-muted-foreground">Tidak ada izin hari ini</p>
           </div>
         ) : (
           permissions.map((permission) => (
@@ -257,7 +255,7 @@ async function DashboardContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Cari..."
               className="pl-10 bg-background"
             />
           </div>
@@ -282,36 +280,36 @@ async function DashboardContent() {
           Dashboard
         </Link>
         <span>&gt;</span>
-        <span className="text-foreground font-medium">Analytics</span>
+        <span className="text-foreground font-medium">Analitik</span>
       </div>
 
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Daily Analytics</h1>
+        <h1 className="text-2xl font-bold text-foreground">Analitik Harian</h1>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="ARE PRESENT"
+          label="HADIR"
           value={presentCount.toString()}
           total={totalStudents}
           href="/dashboard/detail/present"
         />
         <StatCard
-          label="ARE LATE"
+          label="TERLAMBAT"
           value={lateCount.toString()}
           total={totalStudents}
           href="/dashboard/detail/late"
         />
         <StatCard
-          label="ARE ABSENT"
+          label="TIDAK HADIR"
           value={absentCount.toString()}
           total={totalStudents}
           href="/dashboard/detail/absent"
         />
         <StatCard
-          label="ARE PERMITTED"
+          label="IZIN"
           value={permissionCount.toString()}
           total={totalStudents}
           href="/dashboard/detail/permitted"

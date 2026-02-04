@@ -24,36 +24,36 @@ import Image from "next/image";
 // Updated navigation to match mockup
 const navItems = [
   {
-    title: "Analytics",
+    title: "Analitik",
     url: "/dashboard",
     icon: BarChart3,
   },
   {
-    title: "Presence",
+    title: "Absensi",
     url: "/absensi",
     icon: UserCheck,
   },
   {
-    title: "Student",
+    title: "Siswa",
     url: "/siswa",
     icon: Users,
   },
   {
-    title: "Permission",
+    title: "Perizinan",
     url: "/perizinan",
     icon: ShieldCheck,
   },
   {
-    title: "Configuration",
+    title: "Konfigurasi",
     url: "/konfigurasi/lokasi",
     icon: Settings,
     items: [
       {
-        title: "Location",
+        title: "Lokasi",
         url: "/konfigurasi/lokasi",
       },
       {
-        title: "Schedule",
+        title: "Jadwal",
         url: "/konfigurasi/jadwal",
       },
     ],

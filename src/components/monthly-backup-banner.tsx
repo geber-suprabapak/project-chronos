@@ -52,13 +52,13 @@ export function MonthlyBackupBanner() {
         setVisible(true);
         toast.info("Banner backup dimunculkan kembali.");
       };
-    } catch {}
+    } catch { }
   }, [day, storageKey]);
 
   const markDone = useCallback(() => {
     try {
       localStorage.setItem(storageKey, "done");
-    } catch {}
+    } catch { }
     setVisible(false);
     toast.success("Backup ditandai selesai.");
   }, [storageKey]);
@@ -120,16 +120,16 @@ export function MonthlyBackupBanner() {
 
   return (
     <Card
-      className="fixed top-4 right-4 w-96 z-50 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800 shadow-lg"
+      className="fixed top-4 right-4 w-96 z-50 border-warning bg-warning/10 dark:bg-warning/20 dark:border-warning/50 shadow-lg"
       role="alert"
     >
       <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h3 className="font-medium text-sm text-orange-900 dark:text-orange-100">
+            <h3 className="font-medium text-sm text-warning-foreground">
               Backup Bulanan
             </h3>
-            <p className="text-xs text-orange-700 dark:text-orange-300">
+            <p className="text-xs text-muted-foreground">
               Backup data absensi sekarang
             </p>
           </div>
@@ -154,7 +154,7 @@ export function MonthlyBackupBanner() {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 px-2 text-xs text-orange-600 dark:text-orange-400"
+              className="h-8 px-2 text-xs text-warning hover:text-warning/80"
               onClick={markDone}
             >
               Selesai

@@ -74,9 +74,10 @@ const formatTime = (input: string | Date | null | undefined) => {
 
 const getBadgeVariant = (status: string | null | undefined) => {
   const s = (status ?? "").toLowerCase();
-  if (["approved", "present", "hadir"].includes(s)) return "default" as const;
-  if (["rejected", "absent", "alpha", "izin", "sakit", "late", "terlambat"].includes(s))
-    return "destructive" as const;
+  if (["approved", "present", "hadir"].includes(s)) return "default" as const; // Uses primary color
+  if (["rejected", "absent", "alpha", "late", "terlambat"].includes(s))
+    return "destructive" as const; // Uses destructive color
+  if (["izin", "sakit"].includes(s)) return "secondary" as const; // Uses secondary color
   return "outline" as const;
 };
 
@@ -138,10 +139,10 @@ export default function ShowAbsensiPage() {
         </Button>
         <div>
           <h1 className="text-xl font-bold text-foreground">
-            Attendance Detail
+            Detail Absensi
           </h1>
           <p className="text-sm text-muted-foreground">
-            View attendance record information
+            Lihat informasi catatan absensi
           </p>
         </div>
       </div>
@@ -153,7 +154,7 @@ export default function ShowAbsensiPage() {
             <CardHeader className="pb-3 px-0 sm:px-6 pt-0 sm:pt-6">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                Photo Evidence
+                Bukti Foto
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6 sm:pt-0 flex-1 flex flex-col min-h-[400px]">
@@ -177,7 +178,7 @@ export default function ShowAbsensiPage() {
                 <div className="h-full w-full flex flex-col items-center justify-center border rounded-lg bg-muted/30 text-center p-6">
                   <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">
-                    No photo evidence available
+                    Tidak ada bukti foto tersedia
                   </p>
                 </div>
               )}
@@ -192,7 +193,7 @@ export default function ShowAbsensiPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <User className="h-4 w-4 text-muted-foreground" />
-                Student Profile
+                Profil Siswa
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
@@ -255,13 +256,13 @@ export default function ShowAbsensiPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                Attendance Information
+                Informasi Absensi
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Date & Time
+                  Tanggal & Waktu
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-foreground">
@@ -296,14 +297,14 @@ export default function ShowAbsensiPage() {
 
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">
-                    Location
+                    Lokasi
                   </p>
                   <div className="flex items-center gap-1.5 text-foreground">
                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                     <p className="text-sm">
                       {[absence.latitude, absence.longitude]
                         .filter((v) => v != null)
-                        .join(", ") || "Location not recorded"}
+                        .join(", ") || "Lokasi tidak tercatat"}
                     </p>
                   </div>
                 </div>
@@ -318,7 +319,7 @@ export default function ShowAbsensiPage() {
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>
         <DialogContent className="p-0 max-w-none sm:max-w-none w-[95vw] md:w-[85vw] lg:w-[75vw] xl:w-[65vw] h-[80vh] overflow-hidden bg-background">
           <DialogHeader className="sr-only">
-            <DialogTitle>View Photo Evidence</DialogTitle>
+            <DialogTitle>Lihat Bukti Foto</DialogTitle>
           </DialogHeader>
           <div className="relative w-full h-full bg-muted/50 flex items-center justify-center">
             <Image

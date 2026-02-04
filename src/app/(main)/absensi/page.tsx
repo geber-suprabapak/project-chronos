@@ -202,9 +202,9 @@ export default function AbsensiPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Attendance Records</h1>
+          <h1 className="text-2xl font-bold text-foreground">Catatan Absensi</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage and monitor student attendance
+            Kelola dan pantau kehadiran siswa
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -253,25 +253,25 @@ export default function AbsensiPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total Records"
+            label="Total Catatan"
             value={stats.total}
-            icon={<Users className="h-6 w-6 text-blue-600" />}
-            color="bg-blue-100 dark:bg-blue-900/20"
+            icon={<Users className="h-6 w-6 text-primary" />}
+            color="bg-primary/10"
           />
           <StatCard
-            label="Present"
+            label="Hadir"
             value={stats.hadir}
-            icon={<UserCheck className="h-6 w-6 text-green-600" />}
-            color="bg-green-100 dark:bg-green-900/20"
+            icon={<UserCheck className="h-6 w-6 text-success" />}
+            color="bg-success/10"
           />
           <StatCard
-            label="Late"
+            label="Terlambat"
             value={stats.terlambat}
-            icon={<Timer className="h-6 w-6 text-yellow-600" />}
-            color="bg-yellow-100 dark:bg-yellow-900/20"
+            icon={<Timer className="h-6 w-6 text-warning" />}
+            color="bg-warning/10"
           />
           <StatCard
-            label="Checked Out"
+            label="Sudah Pulang"
             value={stats.pulang}
             icon={<UserX className="h-6 w-6 text-muted-foreground" />}
             color="bg-muted"
@@ -288,7 +288,7 @@ export default function AbsensiPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search by name..."
+                placeholder="Cari nama..."
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -318,10 +318,10 @@ export default function AbsensiPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All Status" />
+                <SelectValue placeholder="Semua Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="all">Semua Status</SelectItem>
                 <SelectItem value="Hadir">Hadir</SelectItem>
                 <SelectItem value="Terlambat">Terlambat</SelectItem>
                 <SelectItem value="Pulang">Pulang</SelectItem>
@@ -335,7 +335,7 @@ export default function AbsensiPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold uppercase">
-            Attendance List ({filteredData.length} records)
+            Daftar Absensi ({filteredData.length} catatan)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-0">
@@ -353,7 +353,7 @@ export default function AbsensiPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-muted-foreground">No attendance records found</p>
+              <p className="text-muted-foreground">Tidak ada data absensi ditemukan</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -370,12 +370,12 @@ export default function AbsensiPage() {
 
                 const statusColor =
                   displayStatus === "Hadir"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    ? "bg-success/15 text-success hover:bg-success/25"
                     : displayStatus === "Terlambat"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                      ? "bg-warning/15 text-warning-foreground hover:bg-warning/25"
                       : displayStatus === "Pulang"
                         ? "bg-muted text-muted-foreground"
-                        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+                        : "bg-destructive/15 text-destructive hover:bg-destructive/25";
 
                 return (
                   <div
@@ -407,7 +407,7 @@ export default function AbsensiPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <Badge className={`${statusColor} capitalize`}>
+                      <Badge className={`${statusColor} capitalize border-0`}>
                         {displayStatus}
                       </Badge>
                       <div className="flex items-center gap-2">
@@ -444,7 +444,7 @@ export default function AbsensiPage() {
       {!loading && filteredData.length > 0 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} - Showing {filteredData.length} records
+            Halaman {page} - Menampilkan {filteredData.length} data
           </p>
           <div className="flex gap-2">
             <Button
@@ -453,7 +453,7 @@ export default function AbsensiPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              Sebelumnya
             </Button>
             <Button
               variant="outline"
@@ -461,7 +461,7 @@ export default function AbsensiPage() {
               disabled={!hasMore}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              Selanjutnya
             </Button>
           </div>
         </div>

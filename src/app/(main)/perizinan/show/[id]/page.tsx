@@ -165,10 +165,10 @@ export default function ShowPerizinanPage() {
         </Button>
         <div>
           <h1 className="text-xl font-bold text-foreground">
-            Permission Request Detail
+            Detail Permohonan Izin
           </h1>
           <p className="text-sm text-muted-foreground">
-            View and manage permission request information
+            Lihat dan kelola informasi permohonan izin
           </p>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function ShowPerizinanPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                Request Information
+                Informasi Permohonan
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0 flex-1 flex flex-col">
@@ -190,7 +190,7 @@ export default function ShowPerizinanPage() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">
-                        Category
+                        Kategori
                       </p>
                       <Badge
                         variant="secondary"
@@ -201,7 +201,7 @@ export default function ShowPerizinanPage() {
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-xs font-medium text-muted-foreground">
-                        Permission Date
+                        Tanggal Izin
                       </p>
                       <div className="flex items-center gap-1.5 text-foreground">
                         <Calendar className="h-3.5 w-3.5" />
@@ -214,10 +214,10 @@ export default function ShowPerizinanPage() {
 
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground">
-                      Description
+                      Deskripsi
                     </p>
                     <p className="text-sm text-foreground leading-relaxed">
-                      {perizinan.deskripsi || "No description provided"}
+                      {perizinan.deskripsi || "Tidak ada deskripsi"}
                     </p>
                   </div>
                 </div>
@@ -230,7 +230,7 @@ export default function ShowPerizinanPage() {
               <div className="space-y-2 flex-1 flex flex-col">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs font-semibold text-foreground">Photo Evidence</p>
+                  <p className="text-xs font-semibold text-foreground">Bukti Foto</p>
                 </div>
                 {perizinan.linkFoto ? (
                   <div
@@ -249,7 +249,7 @@ export default function ShowPerizinanPage() {
                   <div className="p-6 text-center border rounded-lg bg-muted/30 flex-1 flex items-center justify-center">
                     <div>
                       <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-1" />
-                      <p className="text-xs text-muted-foreground">No photo evidence provided</p>
+                      <p className="text-xs text-muted-foreground">Tidak ada bukti foto</p>
                     </div>
                   </div>
                 )}
@@ -265,7 +265,7 @@ export default function ShowPerizinanPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <User className="h-4 w-4 text-muted-foreground" />
-                Student Profile
+                Profil Siswa
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
@@ -301,7 +301,7 @@ export default function ShowPerizinanPage() {
                 )}
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-medium text-muted-foreground">
-                    Class
+                    Kelas
                   </span>
                   <Badge variant="outline" className="text-xs font-medium">
                     {user?.className ?? "-"}
@@ -309,7 +309,7 @@ export default function ShowPerizinanPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-medium text-muted-foreground">
-                    Absence No.
+                    No. Absen
                   </span>
                   <span className="text-xs text-foreground font-medium">
                     {user?.absenceNumber ?? "-"}
@@ -318,7 +318,7 @@ export default function ShowPerizinanPage() {
                 {user?.role && (
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-medium text-muted-foreground">
-                      Role
+                      Peran
                     </span>
                     <span className="text-xs text-foreground font-medium capitalize">
                       {user.role}
@@ -334,7 +334,7 @@ export default function ShowPerizinanPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                Status History
+                Riwayat Status
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -343,7 +343,7 @@ export default function ShowPerizinanPage() {
                   <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground">
-                      Request Created
+                      Permohonan Dibuat
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(perizinan.createdAt)}
@@ -356,7 +356,7 @@ export default function ShowPerizinanPage() {
                     <div className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground">
-                        Approved
+                        Disetujui
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(perizinan.approvedAt)}
@@ -370,7 +370,7 @@ export default function ShowPerizinanPage() {
                     <div className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground">
-                        Rejected
+                        Ditolak
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(perizinan.rejectedAt)}
@@ -384,7 +384,7 @@ export default function ShowPerizinanPage() {
                 <Alert className="border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900/50 py-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                   <AlertTitle className="text-red-900 dark:text-red-300 text-xs">
-                    Rejection Reason
+                    Alasan Penolakan
                   </AlertTitle>
                   <AlertDescription className="text-red-800 dark:text-red-200 text-xs">
                     {perizinan.rejectionReason}
@@ -397,13 +397,13 @@ export default function ShowPerizinanPage() {
           {/* Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Actions</CardTitle>
+              <CardTitle className="text-base">Aksi</CardTitle>
             </CardHeader>
             <CardContent>
               {isActionable ? (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Review and respond to this permission request
+                    Tinjau dan tanggapi permohonan izin ini
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -414,8 +414,8 @@ export default function ShowPerizinanPage() {
                     >
                       <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
                       {updateStatusMutation.isPending
-                        ? "Approving..."
-                        : "Approve"}
+                        ? "Menyetujui..."
+                        : "Setujui"}
                     </Button>
                     <Button
                       variant="destructive"
@@ -425,14 +425,14 @@ export default function ShowPerizinanPage() {
                       size="sm"
                     >
                       <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                      Reject
+                      Tolak
                     </Button>
                   </div>
                 </div>
               ) : perizinan.approvalStatus === "rejected" ? (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    This request was rejected. You can undo the rejection.
+                    Permohonan ini ditolak. Anda dapat membatalkan penolakan.
                   </p>
                   <Button
                     onClick={() => {
@@ -447,13 +447,13 @@ export default function ShowPerizinanPage() {
                     size="sm"
                   >
                     {updateStatusMutation.isPending
-                      ? "Processing..."
-                      : "Undo Rejection"}
+                      ? "Memproses..."
+                      : "Batalkan Penolakan"}
                   </Button>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  No actions available. This request has already been processed.
+                  Tidak ada aksi tersedia. Permohonan ini sudah diproses.
                 </p>
               )}
             </CardContent>
@@ -465,25 +465,25 @@ export default function ShowPerizinanPage() {
       <Dialog open={isRejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Permission Request</DialogTitle>
+            <DialogTitle>Tolak Permohonan Izin</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this permission request.
+              Mohon berikan alasan untuk menolak permohonan izin ini.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="rejection-reason">Rejection Reason</Label>
+            <Label htmlFor="rejection-reason">Alasan Penolakan</Label>
             <Textarea
               id="rejection-reason"
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g., Medical certificate is invalid or incomplete"
+              placeholder="Contoh: Surat dokter tidak sah atau tidak lengkap"
               className="mt-2"
               rows={4}
             />
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">Batal</Button>
             </DialogClose>
             <Button
               variant="destructive"
@@ -491,8 +491,8 @@ export default function ShowPerizinanPage() {
               disabled={updateStatusMutation.isPending}
             >
               {updateStatusMutation.isPending
-                ? "Rejecting..."
-                : "Confirm Rejection"}
+                ? "Menolak..."
+                : "Konfirmasi Penolakan"}
             </Button>
           </DialogFooter>
         </DialogContent>

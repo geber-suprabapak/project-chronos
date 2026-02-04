@@ -183,9 +183,9 @@ export function AbsenManualDialog() {
 
           {/* Siswa Info Alert */}
           {siswaData && (
-            <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-              <CheckCircle2 className="text-green-600" />
-              <AlertDescription className="text-green-700 dark:text-green-400">
+            <Alert className="bg-success/15 border-success/30 text-success">
+              <CheckCircle2 className="text-success" />
+              <AlertDescription className="text-success-foreground/80">
                 <div className="font-semibold">
                   {siswaData.nama ?? "Nama tidak tersedia"}
                 </div>
@@ -198,9 +198,9 @@ export function AbsenManualDialog() {
           )}
 
           {nis.length >= 5 && !isCheckingNis && !siswaData && (
-            <Alert className="bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800">
-              <AlertCircle className="text-red-600" />
-              <AlertDescription className="text-red-700 dark:text-red-400">
+            <Alert className="bg-destructive/15 border-destructive/30 text-destructive">
+              <AlertCircle className="text-destructive" />
+              <AlertDescription className="text-destructive">
                 NIS tidak ditemukan. Cek kembali NIS yang dimasukkan.
               </AlertDescription>
             </Alert>

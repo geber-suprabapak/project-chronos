@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter, Castoro, JetBrains_Mono } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/theme-provider";
@@ -13,16 +13,32 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-const geist = Geist({
+const sans = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
+});
+
+const serif = Castoro({
+  weight: "400",
+  style: "normal",
+  subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geist.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${sans.variable} ${serif.variable} ${mono.variable}`}
+    >
       <head />
       <body>
         <ThemeProvider

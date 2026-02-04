@@ -181,10 +181,10 @@ export default async function SiswaPage({
                             <CardTitle className="text-sm font-medium">
                                 Siswa Laki-laki
                             </CardTitle>
-                            <User className="h-4 w-4 text-blue-600" />
+                            <User className="h-4 w-4 text-primary" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">
+                            <div className="text-2xl font-bold text-primary">
                                 {statistics.laki.toLocaleString()}
                             </div>
                         </CardContent>
@@ -194,10 +194,10 @@ export default async function SiswaPage({
                             <CardTitle className="text-sm font-medium">
                                 Siswa Perempuan
                             </CardTitle>
-                            <User className="h-4 w-4 text-pink-600" />
+                            <User className="h-4 w-4 text-secondary-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-pink-600">
+                            <div className="text-2xl font-bold text-secondary-foreground">
                                 {statistics.perempuan.toLocaleString()}
                             </div>
                         </CardContent>
@@ -207,10 +207,10 @@ export default async function SiswaPage({
                             <CardTitle className="text-sm font-medium">
                                 Sudah Diaktifkan
                             </CardTitle>
-                            <UserCheck className="h-4 w-4 text-green-600" />
+                            <UserCheck className="h-4 w-4 text-success" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-green-600">
+                            <div className="text-2xl font-bold text-success">
                                 {statistics.activated.toLocaleString()}
                             </div>
                         </CardContent>
@@ -244,27 +244,27 @@ export default async function SiswaPage({
                     <div className="flex gap-2">
                         {page <= 1 ? (
                             <Button variant="outline" size="sm" disabled>
-                                Prev
+                                Sebelumnya
                             </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
                                 <Link
                                     href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
                                 >
-                                    Prev
+                                    Sebelumnya
                                 </Link>
                             </Button>
                         )}
                         {!hasMore ? (
                             <Button variant="outline" size="sm" disabled>
-                                Next
+                                Selanjutnya
                             </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
                                 <Link
                                     href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
                                 >
-                                    Next
+                                    Selanjutnya
                                 </Link>
                             </Button>
                         )}
@@ -304,14 +304,14 @@ export default async function SiswaPage({
                                                         {siswa.kelamin === "L" ? (
                                                             <Badge
                                                                 variant="outline"
-                                                                className="text-blue-600 border-blue-600"
+                                                                className="text-primary border-primary"
                                                             >
                                                                 Laki-laki
                                                             </Badge>
                                                         ) : siswa.kelamin === "P" ? (
                                                             <Badge
                                                                 variant="outline"
-                                                                className="text-pink-600 border-pink-600"
+                                                                className="text-secondary-foreground border-secondary-foreground"
                                                             >
                                                                 Perempuan
                                                             </Badge>
@@ -323,7 +323,7 @@ export default async function SiswaPage({
                                                         {siswa.activated ? (
                                                             <Badge
                                                                 variant="default"
-                                                                className="bg-green-600 hover:bg-green-700"
+                                                                className="bg-success hover:bg-success/90 text-success-foreground"
                                                             >
                                                                 Aktif
                                                             </Badge>
@@ -356,27 +356,27 @@ export default async function SiswaPage({
                     <div className="flex gap-2">
                         {page <= 1 ? (
                             <Button variant="outline" size="sm" disabled>
-                                Prev
+                                Sebelumnya
                             </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
                                 <Link
                                     href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
                                 >
-                                    Prev
+                                    Sebelumnya
                                 </Link>
                             </Button>
                         )}
                         {!hasMore ? (
                             <Button variant="outline" size="sm" disabled>
-                                Next
+                                Selanjutnya
                             </Button>
                         ) : (
                             <Button asChild variant="outline" size="sm">
                                 <Link
                                     href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
                                 >
-                                    Next
+                                    Selanjutnya
                                 </Link>
                             </Button>
                         )}
