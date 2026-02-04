@@ -53,14 +53,14 @@ interface StatCardProps {
 function StatCard({ label, value, total, href }: StatCardProps) {
   return (
     <Link href={href} className="block transition-transform hover:scale-[1.02]">
-      <Card className="bg-white hover:shadow-md transition-shadow">
+      <Card className="hover:shadow-md transition-shadow">
         <CardContent className="p-6">
           <div className="flex items-start gap-3">
-            <div className="rounded-full bg-gray-100 p-3">
-              <Users className="h-6 w-6 text-gray-600" />
+            <div className="rounded-full bg-muted p-3">
+              <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-foreground">
                 {value}/{total} STUDENTS {label}
               </p>
             </div>
@@ -84,7 +84,7 @@ interface LastPresentProps {
 
 function LastPresentSection({ students }: LastPresentProps) {
   return (
-    <Card className="bg-white">
+    <Card>
       <CardHeader>
         <CardTitle className="text-sm font-semibold uppercase">
           Last Present
@@ -93,23 +93,23 @@ function LastPresentSection({ students }: LastPresentProps) {
       <CardContent className="space-y-3">
         {students.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-gray-500">No recent attendance</p>
+            <p className="text-sm text-muted-foreground">No recent attendance</p>
           </div>
         ) : (
           students.map((student) => (
             <div
               key={student.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
             >
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="h-5 w-5 text-gray-600" />
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <User className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-foreground">
                     {student.fullName ?? "Unknown"}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {formatTime(student.createdAt)}
                   </p>
                 </div>
@@ -142,17 +142,17 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300">Approved</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">Rejected</Badge>;
       case "pending":
       default:
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</Badge>;
     }
   };
 
   return (
-    <Card className="bg-white">
+    <Card>
       <CardHeader>
         <CardTitle className="text-sm font-semibold uppercase">
           Permission
@@ -161,7 +161,7 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
       <CardContent className="space-y-3">
         {permissions.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-gray-500">No permissions today</p>
+            <p className="text-sm text-muted-foreground">No permissions today</p>
           </div>
         ) : (
           permissions.map((permission) => (
@@ -170,16 +170,16 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
               href={`/perizinan/show/${permission.id}`}
               className="block"
             >
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                 <div className="flex items-center gap-3 flex-1">
-                  <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User className="h-5 w-5 text-gray-600" />
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-foreground">
                       {permission.userProfile?.fullName ?? "Unknown"}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">
+                    <p className="text-xs text-muted-foreground capitalize">
                       {permission.kategoriIzin}
                     </p>
                   </div>
@@ -254,16 +254,16 @@ async function DashboardContent() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search..."
-              className="pl-10 bg-white"
+              className="pl-10 bg-background"
             />
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
             <span>{formatDate(currentDate)}</span>
           </div>
@@ -277,17 +277,17 @@ async function DashboardContent() {
       </div>
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <Link href="/dashboard" className="hover:text-gray-900">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/dashboard" className="hover:text-foreground">
           Dashboard
         </Link>
         <span>&gt;</span>
-        <span className="text-gray-900 font-medium">Analytics</span>
+        <span className="text-foreground font-medium">Analytics</span>
       </div>
 
       {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Daily Analytics</h1>
+        <h1 className="text-2xl font-bold text-foreground">Daily Analytics</h1>
       </div>
 
       {/* Statistics Cards */}
@@ -335,7 +335,7 @@ async function DashboardContent() {
  */
 export default async function DashboardPage() {
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 min-h-screen">
       <DashboardContent />
     </div>
   );

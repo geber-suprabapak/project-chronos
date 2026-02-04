@@ -135,7 +135,7 @@ export default function ShowPerizinanPage() {
   const user = perizinan.userProfile;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-4">
+    <div className="p-4 md:p-6 lg:p-8 space-y-4">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -164,10 +164,10 @@ export default function ShowPerizinanPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-foreground">
             Permission Request Detail
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             View and manage permission request information
           </p>
         </div>
@@ -176,10 +176,10 @@ export default function ShowPerizinanPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Left Column - Photo + Request Info */}
         <div className="lg:col-span-1">
-          <Card className="bg-white h-full flex flex-col">
+          <Card className="h-full flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4 text-gray-600" />
+                <FileText className="h-4 w-4 text-muted-foreground" />
                 Request Information
               </CardTitle>
             </CardHeader>
@@ -189,7 +189,7 @@ export default function ShowPerizinanPage() {
                 <div className="grid gap-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Category
                       </p>
                       <Badge
@@ -200,10 +200,10 @@ export default function ShowPerizinanPage() {
                       </Badge>
                     </div>
                     <div className="space-y-1 text-right">
-                      <p className="text-xs font-medium text-gray-500">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Permission Date
                       </p>
-                      <div className="flex items-center gap-1.5 text-gray-900">
+                      <div className="flex items-center gap-1.5 text-foreground">
                         <Calendar className="h-3.5 w-3.5" />
                         <span className="text-sm font-medium">
                           {formatDate(perizinan.tanggal)}
@@ -213,10 +213,10 @@ export default function ShowPerizinanPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-gray-500">
+                    <p className="text-xs font-medium text-muted-foreground">
                       Description
                     </p>
-                    <p className="text-sm text-gray-900 leading-relaxed">
+                    <p className="text-sm text-foreground leading-relaxed">
                       {perizinan.deskripsi || "No description provided"}
                     </p>
                   </div>
@@ -224,17 +224,17 @@ export default function ShowPerizinanPage() {
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-gray-200" />
+              <div className="h-px bg-border" />
 
               {/* Photo Evidence */}
               <div className="space-y-2 flex-1 flex flex-col">
                 <div className="flex items-center gap-2">
-                  <ImageIcon className="h-3.5 w-3.5 text-gray-600" />
-                  <p className="text-xs font-semibold text-gray-700">Photo Evidence</p>
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">Photo Evidence</p>
                 </div>
                 {perizinan.linkFoto ? (
                   <div
-                    className="relative w-full flex-1 min-h-0 rounded-lg border bg-gray-50 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    className="relative w-full flex-1 min-h-0 rounded-lg border bg-muted/30 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => setPhotoDialogOpen(true)}
                   >
                     <Image
@@ -246,10 +246,10 @@ export default function ShowPerizinanPage() {
                     />
                   </div>
                 ) : (
-                  <div className="p-6 text-center border rounded-lg bg-gray-50 flex-1 flex items-center justify-center">
+                  <div className="p-6 text-center border rounded-lg bg-muted/30 flex-1 flex items-center justify-center">
                     <div>
-                      <ImageIcon className="h-8 w-8 mx-auto text-gray-400 mb-1" />
-                      <p className="text-xs text-gray-500">No photo evidence provided</p>
+                      <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-1" />
+                      <p className="text-xs text-muted-foreground">No photo evidence provided</p>
                     </div>
                   </div>
                 )}
@@ -261,10 +261,10 @@ export default function ShowPerizinanPage() {
         {/* Right Column - Student Profile, Status History, Actions */}
         <div className="lg:col-span-1 space-y-3">
           {/* Student Profile */}
-          <Card className="bg-white">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <User className="h-4 w-4 text-gray-600" />
+                <User className="h-4 w-4 text-muted-foreground" />
                 Student Profile
               </CardTitle>
             </CardHeader>
@@ -272,35 +272,35 @@ export default function ShowPerizinanPage() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
                   <AvatarImage src={user?.avatarUrl ?? undefined} />
-                  <AvatarFallback className="bg-gray-100">
-                    <User className="h-6 w-6 text-gray-500" />
+                  <AvatarFallback className="bg-muted">
+                    <User className="h-6 w-6 text-muted-foreground" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">
+                  <p className="font-semibold text-foreground text-sm truncate">
                     {user?.fullName ?? "N/A"}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {user?.email ?? "N/A"}
                   </p>
                 </div>
               </div>
 
-              <div className="h-px bg-gray-200" />
+              <div className="h-px bg-border" />
 
               <div className="space-y-2">
                 {user?.nis && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-gray-500">
+                    <span className="text-xs font-medium text-muted-foreground">
                       NIS
                     </span>
-                    <span className="text-xs text-gray-900 font-medium">
+                    <span className="text-xs text-foreground font-medium">
                       {user.nis}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Class
                   </span>
                   <Badge variant="outline" className="text-xs font-medium">
@@ -308,19 +308,19 @@ export default function ShowPerizinanPage() {
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Absence No.
                   </span>
-                  <span className="text-xs text-gray-900 font-medium">
+                  <span className="text-xs text-foreground font-medium">
                     {user?.absenceNumber ?? "-"}
                   </span>
                 </div>
                 {user?.role && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-gray-500">
+                    <span className="text-xs font-medium text-muted-foreground">
                       Role
                     </span>
-                    <span className="text-xs text-gray-900 font-medium capitalize">
+                    <span className="text-xs text-foreground font-medium capitalize">
                       {user.role}
                     </span>
                   </div>
@@ -330,10 +330,10 @@ export default function ShowPerizinanPage() {
           </Card>
 
           {/* Status History */}
-          <Card className="bg-white">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Clock className="h-4 w-4 text-gray-600" />
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 Status History
               </CardTitle>
             </CardHeader>
@@ -342,10 +342,10 @@ export default function ShowPerizinanPage() {
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900">
+                    <p className="text-xs font-medium text-foreground">
                       Request Created
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {formatDate(perizinan.createdAt)}
                     </p>
                   </div>
@@ -355,10 +355,10 @@ export default function ShowPerizinanPage() {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-900">
+                      <p className="text-xs font-medium text-foreground">
                         Approved
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(perizinan.approvedAt)}
                       </p>
                     </div>
@@ -369,10 +369,10 @@ export default function ShowPerizinanPage() {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-900">
+                      <p className="text-xs font-medium text-foreground">
                         Rejected
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(perizinan.rejectedAt)}
                       </p>
                     </div>
@@ -381,12 +381,12 @@ export default function ShowPerizinanPage() {
               </div>
 
               {perizinan.rejectionReason && (
-                <Alert className="border-red-200 bg-red-50 py-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-                  <AlertTitle className="text-red-900 text-xs">
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-900/50 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                  <AlertTitle className="text-red-900 dark:text-red-300 text-xs">
                     Rejection Reason
                   </AlertTitle>
-                  <AlertDescription className="text-red-800 text-xs">
+                  <AlertDescription className="text-red-800 dark:text-red-200 text-xs">
                     {perizinan.rejectionReason}
                   </AlertDescription>
                 </Alert>
@@ -395,14 +395,14 @@ export default function ShowPerizinanPage() {
           </Card>
 
           {/* Actions */}
-          <Card className="bg-white">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent>
               {isActionable ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-muted-foreground">
                     Review and respond to this permission request
                   </p>
                   <div className="flex gap-2">
@@ -431,7 +431,7 @@ export default function ShowPerizinanPage() {
                 </div>
               ) : perizinan.approvalStatus === "rejected" ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-muted-foreground">
                     This request was rejected. You can undo the rejection.
                   </p>
                   <Button
@@ -452,7 +452,7 @@ export default function ShowPerizinanPage() {
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   No actions available. This request has already been processed.
                 </p>
               )}
@@ -517,7 +517,7 @@ export default function ShowPerizinanPage() {
 }
 
 const SkeletonLayout = () => (
-  <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-6">
+  <div className="p-4 md:p-6 lg:p-8 space-y-6">
     <Skeleton className="h-6 w-64" />
     <Skeleton className="h-12 w-full" />
     <Skeleton className="h-24 w-full" />

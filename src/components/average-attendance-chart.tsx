@@ -2,8 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
-    LineChart,
-    Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -39,7 +39,7 @@ export function AverageAttendanceChart() {
         ];
 
     return (
-        <Card className="bg-white">
+        <Card>
             <CardHeader>
                 <CardTitle className="text-base font-semibold">
                     Average Attendance
@@ -48,43 +48,59 @@ export function AverageAttendanceChart() {
             <CardContent>
                 {isLoading ? (
                     <div className="h-64 flex items-center justify-center">
-                        <p className="text-sm text-gray-500">Loading chart...</p>
+                        <p className="text-sm text-muted-foreground">Loading chart...</p>
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart
+                        <AreaChart
                             data={chartData}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                         >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <defs>
+                                <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                             <XAxis
                                 dataKey="day"
-                                stroke="#6b7280"
-                                fontSize={12}
-                                tickLine={false}
-                            />
-                            <YAxis
-                                stroke="#6b7280"
+                                tick={{ fill: "hsl(var(--foreground))" }}
                                 fontSize={12}
                                 tickLine={false}
                                 axisLine={false}
+                                tickMargin={10}
+                            />
+                            <YAxis
+                                tick={{ fill: "hsl(var(--foreground))" }}
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value) => `${value}`}
                             />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: "white",
-                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "hsl(var(--popover))",
+                                    borderColor: "hsl(var(--border))",
                                     borderRadius: "6px",
+                                    color: "hsl(var(--popover-foreground))",
+                                }}
+                                itemStyle={{
+                                    color: "hsl(var(--popover-foreground))",
+                                }}
+                                labelStyle={{
+                                    color: "hsl(var(--muted-foreground))",
                                 }}
                             />
-                            <Line
+                            <Area
                                 type="monotone"
                                 dataKey="attendance"
                                 stroke="#3b82f6"
                                 strokeWidth={2}
-                                dot={{ fill: "#3b82f6", r: 4 }}
-                                activeDot={{ r: 6 }}
+                                fillOpacity={1}
+                                fill="url(#colorAttendance)"
                             />
-                        </LineChart>
+                        </AreaChart>
                     </ResponsiveContainer>
                 )}
             </CardContent>

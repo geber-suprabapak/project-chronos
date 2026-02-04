@@ -134,7 +134,7 @@ export default function PerkelasPage() {
   }, [groupedClasses, search]);
 
   return (
-    <div className="p-4 md:p-6 bg-gray-50 min-h-screen space-y-4">
+    <div className="p-4 md:p-6 min-h-screen space-y-4">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -160,8 +160,8 @@ export default function PerkelasPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Presensi Per Kelas</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Presensi Per Kelas</h1>
+          <p className="text-sm text-muted-foreground">
             Pilih kelas untuk melihat data kehadiran siswa
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function PerkelasPage() {
         </div>
       ) : Object.keys(filteredGroups).length === 0 ? (
         <Card className="p-6 text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             {search ? "Kelas tidak ditemukan" : "Tidak ada data kelas"}
           </p>
         </Card>
@@ -206,7 +206,7 @@ export default function PerkelasPage() {
               <div key={major} className="space-y-3">
                 {/* Major Header */}
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-foreground">
                     {major}
                   </h2>
                 </div>
@@ -224,9 +224,9 @@ export default function PerkelasPage() {
                             key={className}
                             href={`/absensi/perkelas/${encodeURIComponent(className)}`}
                           >
-                            <Card className="bg-white hover:bg-gray-50 hover:shadow-md transition-all cursor-pointer border-gray-200 h-full">
+                            <Card className="hover:bg-muted hover:shadow-md transition-all cursor-pointer h-full">
                               <CardContent className="p-3 flex items-center justify-center">
-                                <span className="font-semibold text-gray-900 text-center">
+                                <span className="font-semibold text-foreground text-center">
                                   {className}
                                 </span>
                               </CardContent>

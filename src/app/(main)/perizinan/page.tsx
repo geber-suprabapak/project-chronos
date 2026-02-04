@@ -72,15 +72,15 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, color }: StatCardProps) {
   return (
-    <Card className="bg-white">
+    <Card>
       <CardContent className="p-6">
         <div className="flex items-start gap-3">
           <div className={`rounded-full ${color} p-3`}>
             {icon}
           </div>
           <div className="flex-1">
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            <p className="text-sm text-gray-600 mt-1">{label}</p>
+            <p className="text-2xl font-bold text-foreground">{value}</p>
+            <p className="text-sm text-muted-foreground mt-1">{label}</p>
           </div>
         </div>
       </CardContent>
@@ -124,7 +124,7 @@ export default function PerizinanPage() {
   if (error) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-red-500">Error: {error.message}</p>
+        <p className="text-destructive">Error: {error.message}</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function PerizinanPage() {
   const loading = isLoading || statsLoading;
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -167,8 +167,8 @@ export default function PerizinanPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Permission Records</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Permission Records</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage and monitor student permission requests
           </p>
         </div>
@@ -187,36 +187,36 @@ export default function PerizinanPage() {
             label="Total Permissions"
             value={stats.total}
             icon={<FileText className="h-6 w-6 text-blue-600" />}
-            color="bg-blue-100"
+            color="bg-blue-100 dark:bg-blue-900/20"
           />
           <StatCard
             label="Pending"
             value={stats.pending}
             icon={<Clock className="h-6 w-6 text-yellow-600" />}
-            color="bg-yellow-100"
+            color="bg-yellow-100 dark:bg-yellow-900/20"
           />
           <StatCard
             label="Approved"
             value={stats.approved}
             icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-            color="bg-green-100"
+            color="bg-green-100 dark:bg-green-900/20"
           />
           <StatCard
             label="Rejected"
             value={stats.rejected}
             icon={<XCircle className="h-6 w-6 text-red-600" />}
-            color="bg-red-100"
+            color="bg-red-100 dark:bg-red-900/20"
           />
         </div>
       )}
 
       {/* Filters */}
-      <Card className="bg-white">
+      <Card>
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search by name..."
@@ -263,7 +263,7 @@ export default function PerizinanPage() {
       </Card>
 
       {/* Content Area */}
-      <Card className="bg-white">
+      <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold uppercase">
             Permission List ({filteredData.length} records)
@@ -278,10 +278,10 @@ export default function PerizinanPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-gray-500">No permission records found</p>
+              <p className="text-muted-foreground">No permission records found</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {filteredData.map((item) => {
                 const name =
                   item.userProfile?.fullName ??
@@ -290,23 +290,23 @@ export default function PerizinanPage() {
 
                 const statusColor =
                   item.approvalStatus === "approved"
-                    ? "bg-green-100 text-green-800"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                     : item.approvalStatus === "rejected"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-yellow-100 text-yellow-800";
+                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-start gap-4 flex-1">
-                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <User className="h-6 w-6 text-gray-500" />
+                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <User className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">{name}</p>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                        <p className="font-medium text-foreground">{name}</p>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {formatDate(item.tanggal)}
@@ -325,7 +325,7 @@ export default function PerizinanPage() {
                           </Badge>
                         </div>
                         {item.deskripsi && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-1">
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
                             {item.deskripsi}
                           </p>
                         )}
@@ -356,7 +356,7 @@ export default function PerizinanPage() {
       {/* Pagination */}
       {!loading && filteredData.length > 0 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Page {page} - Showing {filteredData.length} records
           </p>
           <div className="flex gap-2">

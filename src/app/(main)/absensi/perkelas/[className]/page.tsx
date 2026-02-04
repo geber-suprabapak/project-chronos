@@ -65,12 +65,12 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, color }: StatCardProps) {
     return (
-        <Card className="bg-white">
+        <Card>
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-gray-600">{label}</p>
-                        <p className="text-2xl font-bold text-gray-900">{value}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                        <p className="text-2xl font-bold text-foreground">{value}</p>
                     </div>
                     <div className={`rounded-full ${color} p-2`}>{icon}</div>
                 </div>
@@ -209,7 +209,7 @@ export default function ClassDetailPage() {
     const loading = studentsLoading;
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 md:p-6 lg:p-8 space-y-6">
             {/* Breadcrumb */}
             <Breadcrumb>
                 <BreadcrumbList>
@@ -240,8 +240,8 @@ export default function ClassDetailPage() {
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">{className}</h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h1 className="text-2xl font-bold text-foreground">{className}</h1>
+                        <p className="text-sm text-muted-foreground mt-1">
                             Data kehadiran siswa untuk {formatDate(selectedDate)}
                         </p>
                     </div>
@@ -276,39 +276,39 @@ export default function ClassDetailPage() {
                     <StatCard
                         label="Total Siswa"
                         value={stats.total}
-                        icon={<Users className="h-5 w-5 text-blue-600" />}
-                        color="bg-blue-100"
+                        icon={<Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+                        color="bg-blue-100 dark:bg-blue-900/20"
                     />
                     <StatCard
                         label="Hadir"
                         value={stats.hadir}
-                        icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
-                        color="bg-green-100"
+                        icon={<CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />}
+                        color="bg-green-100 dark:bg-green-900/20"
                     />
                     <StatCard
                         label="Terlambat"
                         value={stats.terlambat}
-                        icon={<Clock className="h-5 w-5 text-yellow-600" />}
-                        color="bg-yellow-100"
+                        icon={<Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />}
+                        color="bg-yellow-100 dark:bg-yellow-900/20"
                     />
                     <StatCard
                         label="Izin"
                         value={stats.izin}
-                        icon={<FileText className="h-5 w-5 text-purple-600" />}
-                        color="bg-purple-100"
+                        icon={<FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
+                        color="bg-purple-100 dark:bg-purple-900/20"
                     />
                     <StatCard
                         label="Belum Presensi"
                         value={stats.belumPresensi}
-                        icon={<UserX className="h-5 w-5 text-red-600" />}
-                        color="bg-red-100"
+                        icon={<UserX className="h-5 w-5 text-red-600 dark:text-red-400" />}
+                        color="bg-red-100 dark:bg-red-900/20"
                     />
                 </div>
             )}
 
             {/* Search */}
             <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                     type="search"
                     placeholder="Cari nama atau NIS..."
@@ -319,7 +319,7 @@ export default function ClassDetailPage() {
             </div>
 
             {/* Student List */}
-            <Card className="bg-white">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-sm font-semibold uppercase">
                         Daftar Siswa ({filteredStudents.length} siswa)
@@ -334,10 +334,10 @@ export default function ClassDetailPage() {
                         </div>
                     ) : filteredStudents.length === 0 ? (
                         <div className="py-12 text-center">
-                            <p className="text-gray-500">Tidak ada data siswa</p>
+                            <p className="text-muted-foreground">Tidak ada data siswa</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-border">
                             {filteredStudents
                                 .sort((a, b) => {
                                     const numA = parseInt(a.absenceNumber ?? "999");
@@ -353,12 +353,12 @@ export default function ClassDetailPage() {
 
                                     const statusColor =
                                         status === "Hadir"
-                                            ? "bg-green-100 text-green-800"
+                                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                                             : status === "Terlambat"
-                                                ? "bg-yellow-100 text-yellow-800"
+                                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                                                 : status === "Izin"
-                                                    ? "bg-purple-100 text-purple-800"
-                                                    : "bg-red-100 text-red-800";
+                                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                                                    : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
 
                                     const detailHref = isPermission
                                         ? `/perizinan/show/${recordId}`
@@ -367,20 +367,20 @@ export default function ClassDetailPage() {
                                     return (
                                         <div
                                             key={student.id}
-                                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                                            className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                                         >
                                             <div className="flex items-start gap-4 flex-1">
-                                                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                    <User className="h-5 w-5 text-gray-500" />
+                                                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                                    <User className="h-5 w-5 text-muted-foreground" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-900">
+                                                    <p className="font-medium text-foreground">
                                                         {student.absenceNumber
                                                             ? `${student.absenceNumber}. `
                                                             : ""}
                                                         {student.fullName ?? "-"}
                                                     </p>
-                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
                                                         <span>NIS: {student.nis ?? "-"}</span>
                                                         {time && (
                                                             <span className="flex items-center gap-1">

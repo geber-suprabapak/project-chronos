@@ -109,18 +109,18 @@ export default function DashboardDetailPage() {
     };
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 md:p-6 lg:p-8 min-h-screen space-y-6">
             {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Link href="/dashboard" className="hover:text-gray-900">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Link href="/dashboard" className="hover:text-foreground">
                     Dashboard
                 </Link>
                 <span>&gt;</span>
-                <Link href="/dashboard" className="hover:text-gray-900">
+                <Link href="/dashboard" className="hover:text-foreground">
                     Analytics
                 </Link>
                 <span>&gt;</span>
-                <span className="text-gray-900 font-medium capitalize">{status}</span>
+                <span className="text-foreground font-medium capitalize">{status}</span>
             </div>
 
             {/* Header Section */}
@@ -131,11 +131,11 @@ export default function DashboardDetailPage() {
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     </Link>
-                    <h1 className="text-2xl font-bold text-gray-900 capitalize">
+                    <h1 className="text-2xl font-bold text-foreground capitalize">
                         {titleMap[status] ?? "Detail"}
                     </h1>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>{formatDate(new Date())}</span>
                 </div>
@@ -144,19 +144,19 @@ export default function DashboardDetailPage() {
             {/* Search Bar and Rows Per Page Selector */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                 <div className="relative max-w-md w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
                         placeholder="Search student..."
-                        className="pl-10 bg-white"
+                        className="pl-10"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Rows per page:</span>
+                    <span className="text-sm text-muted-foreground">Rows per page:</span>
                     <Select value={rowsPerPage.toString()} onValueChange={handleRowsPerPageChange}>
-                        <SelectTrigger className="w-[100px] bg-white">
+                        <SelectTrigger className="w-[100px]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -171,7 +171,7 @@ export default function DashboardDetailPage() {
             </div>
 
             {/* Student List */}
-            <Card className="bg-white">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-sm font-semibold uppercase">
                         Total: {data?.total ?? 0} Students
@@ -181,47 +181,47 @@ export default function DashboardDetailPage() {
                 <CardContent className="space-y-0">
                     {isLoading ? (
                         <div className="py-12 text-center">
-                            <p className="text-gray-500">Loading...</p>
+                            <p className="text-muted-foreground">Loading...</p>
                         </div>
                     ) : filteredStudents.length === 0 ? (
                         <div className="py-12 text-center">
-                            <p className="text-gray-500">
+                            <p className="text-muted-foreground">
                                 {searchQuery
                                     ? "No students found matching your search."
                                     : "No students found for this category."}
                             </p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y divide-border">
                             {filteredStudents.map((student) => (
                                 <div
                                     key={student.id}
-                                    className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                                    className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                                            <User className="h-5 w-5 text-gray-500" />
+                                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                            <User className="h-5 w-5 text-muted-foreground" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900">
+                                            <p className="font-medium text-foreground">
                                                 {student.name ?? "Unknown"}
                                             </p>
-                                            <p className="text-sm text-gray-500">
+                                            <p className="text-sm text-muted-foreground">
                                                 {student.nis} • {student.className ?? "No Class"}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                            ${status === 'present' ? 'bg-green-100 text-green-800' : ''}
-                            ${status === 'late' ? 'bg-yellow-100 text-yellow-800' : ''}
-                            ${status === 'absent' ? 'bg-red-100 text-red-800' : ''}
-                            ${status === 'permitted' ? 'bg-blue-100 text-blue-800' : ''}
+                            ${status === 'present' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : ''}
+                            ${status === 'late' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' : ''}
+                            ${status === 'absent' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' : ''}
+                            ${status === 'permitted' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : ''}
                         `}>
                                             {student.status}
                                         </div>
                                         {student.timestamp && (
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-xs text-muted-foreground mt-1">
                                                 {formatTime(student.timestamp)}
                                             </p>
                                         )}
@@ -236,7 +236,7 @@ export default function DashboardDetailPage() {
             {/* Pagination Controls */}
             {!isLoading && data && data.total > 0 && !searchQuery && (
                 <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                         Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
                         {Math.min(currentPage * rowsPerPage, data.total)} of {data.total} students
                     </p>

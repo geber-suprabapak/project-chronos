@@ -93,13 +93,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="flex min-w-0 items-center gap-2 px-2 py-1 overflow-hidden">
-          <Image
-            src="/logo.png"
-            alt="Skanida Apps"
-            width={32}
-            height={32}
-            className="h-8 w-8"
-          />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="Skanida Apps"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
+          </div>
           <span className="font-semibold tracking-tight flex-1 min-w-0 truncate group-data-[collapsible=icon]:hidden">
             Skanida Apps
           </span>

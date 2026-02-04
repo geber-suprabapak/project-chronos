@@ -254,7 +254,7 @@ export default function JadwalPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   <div>
                     <p className="text-sm font-medium">Total Hari</p>
                     <p className="text-2xl font-bold">{stats.total}</p>
@@ -265,7 +265,7 @@ export default function JadwalPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
-                  <Activity className="h-5 w-5 text-green-600" />
+                  <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
                   <div>
                     <p className="text-sm font-medium">Hari Aktif</p>
                     <p className="text-2xl font-bold">{stats.active}</p>
@@ -276,7 +276,7 @@ export default function JadwalPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
-                  <PowerOff className="h-5 w-5 text-orange-600" />
+                  <PowerOff className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   <div>
                     <p className="text-sm font-medium">Hari Libur</p>
                     <p className="text-2xl font-bold">{stats.inactive}</p>
@@ -287,7 +287,7 @@ export default function JadwalPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
-                  <Timer className="h-5 w-5 text-purple-600" />
+                  <Timer className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   <div>
                     <p className="text-sm font-medium">Rata-rata Kompensasi</p>
                     <p className="text-2xl font-bold">
