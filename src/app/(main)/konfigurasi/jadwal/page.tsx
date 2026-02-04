@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -129,6 +129,15 @@ export default function JadwalPage() {
       });
     }
   }, [selectedDayId, schedules]);
+
+  // Scroll to edit form when selected
+  const editFormRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (selectedDayId && editFormRef.current) {
+      editFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedDayId]);
 
   const handleInputChange = useCallback(
     (field: keyof typeof formData, value: string) => {
@@ -417,7 +426,7 @@ export default function JadwalPage() {
 
       {/* Edit Form - Only show when a day is selected */}
       {selectedDayId && (
-        <Card className="w-full">
+        <Card className="w-full" ref={editFormRef}>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Settings className="h-5 w-5" />

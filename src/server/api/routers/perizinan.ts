@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { perizinan } from "~/server/db/schema";
-import { eq, and, gte, lt } from "drizzle-orm";
+import { eq, and, gte, lt, count, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 /**
@@ -65,7 +65,7 @@ export const perizinanRouter = createTRPCRouter({
         where: where,
         limit: input?.limit ?? 20,
         offset: input?.offset ?? 0,
-        orderBy: (perizinan, { asc }) => [asc(perizinan.createdAt)],
+        orderBy: (perizinan, { desc }) => [desc(perizinan.createdAt)],
         with: {
           userProfile: true,
         },
@@ -141,6 +141,73 @@ export const perizinanRouter = createTRPCRouter({
         .returning();
 
       return result[0] ?? null;
+    }),
+  // Get statistics for permission requests
+  getStats: protectedProcedure
+    .input(
+      z
+        .object({
+          tanggal: z
+            .string()
+            .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+            .optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const conditions: SQL[] = [];
+
+      // Add date filter if provided
+      if (input?.tanggal) {
+        const startLocal = new Date(`${input.tanggal}T00:00:00+07:00`);
+        const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
+        conditions.push(gte(perizinan.tanggal, startLocal));
+        conditions.push(lt(perizinan.tanggal, endLocal));
+      }
+
+      // Filter out manual absence entries
+      const manualAbsenceFilter = and(
+        sql`LOWER(${perizinan.deskripsi}) != 'terlambat'`,
+        sql`LOWER(${perizinan.deskripsi}) != 'dipulangkan'`,
+      );
+      if (manualAbsenceFilter) {
+        conditions.push(manualAbsenceFilter);
+      }
+
+      const baseWhere = conditions.length ? and(...conditions) : undefined;
+
+      // Execute separate counts or a single grouped query.
+      const query = ctx.db
+        .select({
+          status: perizinan.approvalStatus,
+          count: count(),
+        })
+        .from(perizinan);
+
+      const queryWithWhere = baseWhere ? query.where(baseWhere) : query;
+
+      const stats = await queryWithWhere.groupBy(perizinan.approvalStatus);
+
+      // Aggregate results
+      let total = 0;
+      let pending = 0;
+      let approved = 0;
+      let rejected = 0;
+
+      for (const stat of stats) {
+        const c = Number(stat.count);
+        total += c;
+        if (stat.status === "approved") approved += c;
+        else if (stat.status === "rejected") rejected += c;
+        else pending += c; // pending or null
+      }
+
+      return {
+        total,
+        pending,
+        approved,
+        rejected,
+      };
     }),
 });
 
