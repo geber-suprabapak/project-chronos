@@ -48,7 +48,7 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.41.0",
     "exceljs": "^4.4.0",
-    "jspdf": "^3.0.2",
+    "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.539.0",
