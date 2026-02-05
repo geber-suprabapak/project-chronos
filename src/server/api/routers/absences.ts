@@ -52,7 +52,7 @@ export const absencesRouter = createTRPCRouter({
       if (!userProfile) {
         throw new Error(
           `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-          `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
+            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
         );
       }
 
@@ -332,10 +332,13 @@ export const absencesRouter = createTRPCRouter({
     .input(
       z.object({
         status: z.enum(["present", "late", "absent", "permitted"]),
-        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/).default(() => new Date().toISOString().split("T")[0]!),
+        date: z
+          .string()
+          .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+          .default(() => new Date().toISOString().split("T")[0]!),
         limit: z.number().int().min(1).max(500).default(10),
         offset: z.number().int().min(0).default(0),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       // 1. Get ALL Active Students first (base set)
@@ -360,7 +363,9 @@ export const absencesRouter = createTRPCRouter({
         },
       });
 
-      const approvedPermissions = perizinanData.filter(p => p.approvalStatus === "approved");
+      const approvedPermissions = perizinanData.filter(
+        (p) => p.approvalStatus === "approved",
+      );
 
       // Helper Sets
       const presentUserIds = new Set<string>();
@@ -434,7 +439,10 @@ export const absencesRouter = createTRPCRouter({
           });
       } else if (input.status === "absent") {
         filteredStudents = allStudents
-          .filter((s) => !presentUserIds.has(s.userId) && !permittedUserIds.has(s.userId))
+          .filter(
+            (s) =>
+              !presentUserIds.has(s.userId) && !permittedUserIds.has(s.userId),
+          )
           .map((s) => {
             return {
               id: s.userId,
@@ -449,7 +457,10 @@ export const absencesRouter = createTRPCRouter({
 
       // Apply pagination
       const total = filteredStudents.length;
-      const paginatedStudents = filteredStudents.slice(input.offset, input.offset + input.limit);
+      const paginatedStudents = filteredStudents.slice(
+        input.offset,
+        input.offset + input.limit,
+      );
 
       return {
         students: paginatedStudents,

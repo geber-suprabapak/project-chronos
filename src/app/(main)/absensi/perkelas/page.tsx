@@ -68,7 +68,9 @@ export default function PerkelasPage() {
   const groupedClasses = useMemo(() => {
     if (!availableClasses) return {};
 
-    const validClasses = availableClasses.filter((c): c is string => c !== null);
+    const validClasses = availableClasses.filter(
+      (c): c is string => c !== null,
+    );
     const groups: Record<string, Record<string, string[]>> = {};
 
     // First pass: collect all classes by major
@@ -116,7 +118,7 @@ export default function PerkelasPage() {
 
       Object.entries(grades).forEach(([grade, classes]) => {
         const matchingClasses = classes.filter((c) =>
-          c.toLowerCase().includes(searchLower)
+          c.toLowerCase().includes(searchLower),
         );
 
         if (matchingClasses.length > 0) {
@@ -160,7 +162,9 @@ export default function PerkelasPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Presensi Per Kelas</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Presensi Per Kelas
+          </h1>
           <p className="text-sm text-muted-foreground">
             Pilih kelas untuk melihat data kehadiran siswa
           </p>
@@ -194,12 +198,14 @@ export default function PerkelasPage() {
             if (!grades) return null;
 
             // Check if this major has any classes
-            const hasClasses = Object.values(grades).some(classes => classes.length > 0);
+            const hasClasses = Object.values(grades).some(
+              (classes) => classes.length > 0,
+            );
             if (!hasClasses) return null;
 
             // Get unique grade levels for this major
             const gradeKeys = getUniqueGrades(
-              Object.entries(grades).flatMap(([_, classes]) => classes)
+              Object.entries(grades).flatMap(([_, classes]) => classes),
             );
 
             return (
@@ -215,10 +221,14 @@ export default function PerkelasPage() {
                 <div className="space-y-3">
                   {gradeKeys.map((gradeKey) => {
                     const classesInGrade = grades[gradeKey];
-                    if (!classesInGrade || classesInGrade.length === 0) return null;
+                    if (!classesInGrade || classesInGrade.length === 0)
+                      return null;
 
                     return (
-                      <div key={gradeKey} className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div
+                        key={gradeKey}
+                        className="grid grid-cols-2 md:grid-cols-3 gap-3"
+                      >
                         {classesInGrade.map((className) => (
                           <Link
                             key={className}

@@ -267,7 +267,7 @@ export function StatistikPieChart() {
               {chartDataMasuk.map((entry) => {
                 const config =
                   chartConfigMasuk[
-                  entry.category as keyof typeof chartConfigMasuk
+                    entry.category as keyof typeof chartConfigMasuk
                   ];
                 const percentage =
                   totalMasuk > 0
@@ -339,7 +339,7 @@ export function StatistikPieChart() {
               {chartDataPulang.map((entry) => {
                 const config =
                   chartConfigPulang[
-                  entry.category as keyof typeof chartConfigPulang
+                    entry.category as keyof typeof chartConfigPulang
                   ];
                 const percentage =
                   totalPulang > 0

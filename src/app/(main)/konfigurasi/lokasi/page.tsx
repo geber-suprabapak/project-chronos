@@ -935,8 +935,9 @@ export default function ConfigurationPage() {
                             <button
                               key={result.place_id}
                               type="button"
-                              className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${idx === 0 ? "rounded-t-lg" : ""
-                                } ${idx === searchResults.length - 1 ? "rounded-b-lg" : ""}`}
+                              className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${
+                                idx === 0 ? "rounded-t-lg" : ""
+                              } ${idx === searchResults.length - 1 ? "rounded-b-lg" : ""}`}
                               onClick={() => handleSearchResultSelect(result)}
                             >
                               <div className="flex items-start gap-3">

@@ -135,7 +135,10 @@ export default function JadwalPage() {
 
   useEffect(() => {
     if (selectedDayId && editFormRef.current) {
-      editFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      editFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   }, [selectedDayId]);
 

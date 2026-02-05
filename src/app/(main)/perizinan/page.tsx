@@ -5,12 +5,7 @@ import { DownloadExcelButton } from "~/components/download-excel-button";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Table,
   TableBody,
@@ -75,9 +70,7 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-start gap-3">
-          <div className={`rounded-full ${color} p-3`}>
-            {icon}
-          </div>
+          <div className={`rounded-full ${color} p-3`}>{icon}</div>
           <div className="flex-1">
             <p className="text-2xl font-bold text-foreground">{value}</p>
             <p className="text-sm text-muted-foreground mt-1">{label}</p>
@@ -119,7 +112,6 @@ export default function PerizinanPage() {
       refetchOnWindowFocus: false,
     },
   );
-
 
   if (error) {
     return (
@@ -167,7 +159,9 @@ export default function PerizinanPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Catatan Perizinan</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Catatan Perizinan
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Kelola dan pantau permohonan izin siswa
           </p>
@@ -278,7 +272,9 @@ export default function PerizinanPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-muted-foreground">Tidak ada data perizinan ditemukan</p>
+              <p className="text-muted-foreground">
+                Tidak ada data perizinan ditemukan
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -335,14 +331,8 @@ export default function PerizinanPage() {
                       <Badge className={`${statusColor} capitalize border-0`}>
                         {item.approvalStatus ?? "pending"}
                       </Badge>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Link href={`/perizinan/show/${item.id}`}>
-                          Detail
-                        </Link>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/perizinan/show/${item.id}`}>Detail</Link>
                       </Button>
                     </div>
                   </div>

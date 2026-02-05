@@ -9,13 +9,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import {
-  Search,
-  Bell,
-  User,
-  Users,
-  Calendar,
-} from "lucide-react";
+import { Search, Bell, User, Users, Calendar } from "lucide-react";
 import Link from "next/link";
 import { AverageAttendanceChart } from "~/components/average-attendance-chart";
 
@@ -91,7 +85,9 @@ function LastPresentSection({ students }: LastPresentProps) {
       <CardContent className="space-y-3">
         {students.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">Belum ada kehadiran terbaru</p>
+            <p className="text-sm text-muted-foreground">
+              Belum ada kehadiran terbaru
+            </p>
           </div>
         ) : (
           students.map((student) => (
@@ -140,12 +136,24 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
-        return <Badge className="bg-success/15 text-success hover:bg-success/25 border-0">Disetujui</Badge>;
+        return (
+          <Badge className="bg-success/15 text-success hover:bg-success/25 border-0">
+            Disetujui
+          </Badge>
+        );
       case "rejected":
-        return <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/25 border-0">Ditolak</Badge>;
+        return (
+          <Badge className="bg-destructive/15 text-destructive hover:bg-destructive/25 border-0">
+            Ditolak
+          </Badge>
+        );
       case "pending":
       default:
-        return <Badge className="bg-warning/15 text-warning-foreground hover:bg-warning/25 border-0">Menunggu</Badge>;
+        return (
+          <Badge className="bg-warning/15 text-warning-foreground hover:bg-warning/25 border-0">
+            Menunggu
+          </Badge>
+        );
     }
   };
 
@@ -159,7 +167,9 @@ function PermissionSection({ permissions }: PermissionSectionProps) {
       <CardContent className="space-y-3">
         {permissions.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-muted-foreground">Tidak ada izin hari ini</p>
+            <p className="text-sm text-muted-foreground">
+              Tidak ada izin hari ini
+            </p>
           </div>
         ) : (
           permissions.map((permission) => (
@@ -201,24 +211,25 @@ async function DashboardContent() {
   const todayStr = new Date().toISOString().split("T")[0]!;
 
   // Fetch data
-  const [stats, recentAbsences, perizinanToday, attendanceStats] = await Promise.all([
-    api.biodataSiswa.getStatistics(),
-    // Get recent absences for "Last Present" section
-    api.absences.list({
-      date: todayStr,
-      limit: 100,
-      offset: 0,
-      sort: "desc",
-    }),
-    // Get permissions for today (all statuses)
-    api.perizinan.list({
-      tanggal: todayStr,
-      limit: 10,
-      offset: 0,
-    }),
-    // Get daily stats
-    api.absences.getAttendanceStats({ days: 1 }),
-  ]);
+  const [stats, recentAbsences, perizinanToday, attendanceStats] =
+    await Promise.all([
+      api.biodataSiswa.getStatistics(),
+      // Get recent absences for "Last Present" section
+      api.absences.list({
+        date: todayStr,
+        limit: 100,
+        offset: 0,
+        sort: "desc",
+      }),
+      // Get permissions for today (all statuses)
+      api.perizinan.list({
+        tanggal: todayStr,
+        limit: 10,
+        offset: 0,
+      }),
+      // Get daily stats
+      api.absences.getAttendanceStats({ days: 1 }),
+    ]);
 
   const todayStats = attendanceStats[0] ?? {
     hadir: 0,
@@ -236,7 +247,12 @@ async function DashboardContent() {
 
   // Get last present students
   const lastPresentStudents = recentAbsences
-    .filter((a) => a.status === "Hadir" || a.status === "Datang" || a.status === "Terlambat")
+    .filter(
+      (a) =>
+        a.status === "Hadir" ||
+        a.status === "Datang" ||
+        a.status === "Terlambat",
+    )
     .slice(0, 5)
     .map((a) => ({
       id: a.id,

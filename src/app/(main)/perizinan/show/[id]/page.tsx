@@ -230,7 +230,9 @@ export default function ShowPerizinanPage() {
               <div className="space-y-2 flex-1 flex flex-col">
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs font-semibold text-foreground">Bukti Foto</p>
+                  <p className="text-xs font-semibold text-foreground">
+                    Bukti Foto
+                  </p>
                 </div>
                 {perizinan.linkFoto ? (
                   <div
@@ -249,7 +251,9 @@ export default function ShowPerizinanPage() {
                   <div className="p-6 text-center border rounded-lg bg-muted/30 flex-1 flex items-center justify-center">
                     <div>
                       <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-1" />
-                      <p className="text-xs text-muted-foreground">Tidak ada bukti foto</p>
+                      <p className="text-xs text-muted-foreground">
+                        Tidak ada bukti foto
+                      </p>
                     </div>
                   </div>
                 )}

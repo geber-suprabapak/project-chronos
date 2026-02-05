@@ -52,13 +52,13 @@ export function MonthlyBackupBanner() {
         setVisible(true);
         toast.info("Banner backup dimunculkan kembali.");
       };
-    } catch { }
+    } catch {}
   }, [day, storageKey]);
 
   const markDone = useCallback(() => {
     try {
       localStorage.setItem(storageKey, "done");
-    } catch { }
+    } catch {}
     setVisible(false);
     toast.success("Backup ditandai selesai.");
   }, [storageKey]);

@@ -91,9 +91,7 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-start gap-3">
-          <div className={`rounded-full ${color} p-3`}>
-            {icon}
-          </div>
+          <div className={`rounded-full ${color} p-3`}>{icon}</div>
           <div className="flex-1">
             <p className="text-2xl font-bold text-foreground">{value}</p>
             <p className="text-sm text-muted-foreground mt-1">{label}</p>
@@ -174,7 +172,7 @@ export default function AbsensiPage() {
   const stats = {
     total: todayAbsences?.length ?? 0,
     hadir: (todayAbsences ?? []).filter(
-      (a) => a.status === "Hadir" || a.status === "Datang"
+      (a) => a.status === "Hadir" || a.status === "Datang",
     ).length,
     terlambat: (todayAbsences ?? []).filter((a) => a.status === "Terlambat")
       .length,
@@ -198,11 +196,12 @@ export default function AbsensiPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Catatan Absensi</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Catatan Absensi
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Kelola dan pantau kehadiran siswa
           </p>
@@ -353,7 +352,9 @@ export default function AbsensiPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-muted-foreground">Tidak ada data absensi ditemukan</p>
+              <p className="text-muted-foreground">
+                Tidak ada data absensi ditemukan
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
