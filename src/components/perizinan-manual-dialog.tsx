@@ -45,7 +45,7 @@ interface StudentResult {
     userId: string;
 }
 
-export function PerizinanManualDialog() {
+export function PerizinanManualDialog({ variant = "button" }: { variant?: "button" | "card" }) {
     const [open, setOpen] = useState(false);
 
     // Search & student selection
@@ -342,10 +342,17 @@ export function PerizinanManualDialog() {
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="warning" size="default">
-                    <ClipboardPlus className="h-4 w-4" />
-                    Perizinan Manual
-                </Button>
+                {variant === "card" ? (
+                    <button className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-card p-6 text-card-foreground shadow-sm hover:bg-accent hover:shadow-md transition-all cursor-pointer aspect-square">
+                        <ClipboardPlus className="h-8 w-8 text-yellow-600" />
+                        <span className="text-sm font-semibold">Izin Manual</span>
+                    </button>
+                ) : (
+                    <Button variant="warning" size="default">
+                        <ClipboardPlus className="h-4 w-4" />
+                        Perizinan Manual
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>

@@ -7,9 +7,9 @@ import { Card, CardContent } from "~/components/ui/card";
 export function DashboardActions() {
     return (
         <Card>
-            <CardContent className="flex flex-wrap gap-3 py-4">
-                <AbsenManualDialog />
-                <PerizinanManualDialog />
+            <CardContent className="grid grid-cols-2 gap-4 p-4">
+                <AbsenManualDialog variant="card" />
+                <PerizinanManualDialog variant="card" />
             </CardContent>
         </Card>
     );

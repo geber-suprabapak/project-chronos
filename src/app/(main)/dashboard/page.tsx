@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
-import { Users, UserCheck, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
+import { ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
 import { StatistikPieChart } from "~/components/pie-chart";
 import { KehadiranBarChart, IzinBarChart, KeterlambatanBarChart } from "~/components/attendance-bar-charts";
 import { DashboardActions } from "~/components/dashboard-actions";
@@ -140,8 +140,7 @@ function PendingPermissionsTable({ permissions }: PendingPermissionsTableProps) 
 async function DashboardContent() {
   // Parallel data fetching using RSC
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [stats, perizinanToday, activeLocation, currentSchedule] = await Promise.all([
-    api.biodataSiswa.getStatistics(),
+  const [perizinanToday, activeLocation, currentSchedule] = await Promise.all([
     api.perizinan.list({ approvalStatus: "pending", tanggal: todayStr, limit: 100, offset: 0 }),
     api.location.get(),
     api.jadwal.getCurrentDay(),
@@ -160,22 +159,11 @@ async function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total Siswa"
-          value={stats.total}
-          description="Seluruh data siswa di sistem"
-          icon={<Users className="h-4 w-4" />}
-          variant="default"
-        />
-        <KPICard
-          title="Siswa Aktif"
-          value={stats.activated}
-          description={`${((stats.activated / stats.total) * 100).toFixed(1)}% dari total siswa`}
-          icon={<UserCheck className="h-4 w-4" />}
-          variant="success"
-        />
+      {/* Top Row: Quick Actions + KPI Cards */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        {/* Quick Actions: Absen Manual & Perizinan Manual */}
+        <DashboardActions />
+
         <KPICard
           title="Perizinan Tertunda"
           value={pendingCount}
@@ -195,9 +183,6 @@ async function DashboardContent() {
           variant="primary"
         />
       </div>
-
-      {/* Quick Actions: Absen Manual & Perizinan Manual */}
-      <DashboardActions />
 
       <PendingPermissionsTable permissions={pendingPermissions} />
 
