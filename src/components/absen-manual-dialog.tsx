@@ -24,7 +24,11 @@ import {
 import { UserPlus, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 
-export function AbsenManualDialog() {
+interface AbsenManualDialogProps {
+  trigger?: React.ReactNode;
+}
+
+export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
   const [open, setOpen] = useState(false);
   const [nis, setNis] = useState("");
   const [siswaData, setSiswaData] = useState<{
@@ -141,10 +145,12 @@ export function AbsenManualDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="success" size="default">
-          <UserPlus />
-          Absen Manual
-        </Button>
+        {trigger ?? (
+          <Button variant="success" size="default">
+            <UserPlus />
+            Absen Manual
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>

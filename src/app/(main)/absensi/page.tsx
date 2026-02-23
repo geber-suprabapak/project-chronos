@@ -2,6 +2,7 @@
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AbsenManualDialog } from "~/components/absen-manual-dialog";
+import { IzinManualDialog } from "~/components/izin-manual-dialog";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -198,6 +199,7 @@ export default function AbsensiPage() {
             </Button>
           )}
           <AbsenManualDialog />
+          <IzinManualDialog />
           <DownloadExcelButton
             href={exportUrl}
             filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.xlsx`}

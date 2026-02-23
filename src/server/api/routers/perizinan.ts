@@ -98,6 +98,64 @@ export const perizinanRouter = createTRPCRouter({
     return filtered;
   }),
 
+  // CREATE MANUAL: Admin input izin manual
+  createManual: protectedProcedure
+    .input(
+      z.object({
+        nis: z.string(),
+        kategoriIzin: z.enum(["sakit", "pergi"]),
+        deskripsi: z.string().optional(),
+        linkFoto: z.string().optional(),
+        tanggal: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get siswa from biodata_siswa by NIS
+      const siswa = await ctx.db.query.biodataSiswa.findFirst({
+        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
+      });
+
+      if (!siswa) {
+        throw new Error(
+          "Siswa dengan NIS tersebut tidak ditemukan di database",
+        );
+      }
+
+      // Get user_profile to find user_id
+      const userProfile = await ctx.db.query.userProfiles.findFirst({
+        where: (table, { eq }) => eq(table.nis, siswa.nis.toString()),
+      });
+
+      if (!userProfile) {
+        throw new Error(
+          `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
+            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa dibuatkan izin.`,
+        );
+      }
+
+      // Create the tanggal as a WIB date (UTC+7)
+      const tanggalDate = new Date(`${input.tanggal}T00:00:00+07:00`);
+
+      const [newPerizinan] = await ctx.db
+        .insert(perizinan)
+        .values({
+          userId: userProfile.userId,
+          tanggal: tanggalDate,
+          kategoriIzin: input.kategoriIzin,
+          deskripsi: input.deskripsi ?? null,
+          linkFoto: input.linkFoto ?? null,
+          approvalStatus: "approved",
+          status: true,
+          approvedBy: ctx.user.id,
+          approvedAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return newPerizinan;
+    }),
+
   // Mengambil satu record perizinan berdasarkan UUID primary key.
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
