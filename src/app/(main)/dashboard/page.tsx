@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Users, UserCheck, ClipboardList, MapPin, Calendar, Clock } from "lucide-react";
 import { StatistikPieChart } from "~/components/pie-chart";
 import { KehadiranBarChart, IzinBarChart, KeterlambatanBarChart } from "~/components/attendance-bar-charts";
-import { AttendanceTimeChart } from "~/components/linear-chart";
+import { DashboardActions } from "~/components/dashboard-actions";
 
 /**
  * Helper: Format date to readable Indonesian format
@@ -196,6 +196,9 @@ async function DashboardContent() {
         />
       </div>
 
+      {/* Quick Actions: Absen Manual & Perizinan Manual */}
+      <DashboardActions />
+
       <PendingPermissionsTable permissions={pendingPermissions} />
 
       {/* Statistics Visualization Section */}
@@ -272,9 +275,6 @@ async function DashboardContent() {
         <IzinBarChart />
         <KeterlambatanBarChart />
       </div>
-
-      {/* Attendance Time Chart - Full Width */}
-      <AttendanceTimeChart />
     </div>
   );
 }

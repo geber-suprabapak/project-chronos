@@ -2,6 +2,7 @@
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AbsenManualDialog } from "~/components/absen-manual-dialog";
+import { PerizinanManualDialog } from "~/components/perizinan-manual-dialog";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -182,6 +183,7 @@ export default function AbsensiPage() {
             </Button>
           )}
           <AbsenManualDialog />
+          <PerizinanManualDialog />
           <DownloadExcelButton href={exportUrl} filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.xlsx`} disabled={loading || (absences && absences.length === 0)} />
           <DownloadPdfButton tableId="absensi-table" filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.pdf`} title={`Data Absensi${selectedClass ? ` Kelas ${selectedClass}` : ""}`} disabled={loading || (absences && absences.length === 0)} />
         </div>

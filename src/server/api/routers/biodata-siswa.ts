@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { and, eq, ilike, sql, or } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { biodataSiswa } from "~/server/db/schema";
+import { biodataSiswa, userProfiles } from "~/server/db/schema";
 
 /**
  * tRPC router untuk tabel `biodata_siswa`.
@@ -169,6 +169,78 @@ export const biodataSiswaRouter = createTRPCRouter({
 
         return classes.map(c => c.kelas).filter(Boolean);
     }),
+
+    // SEARCH STUDENTS: Real-time search by name/NIS with kelas filter
+    // Only returns students who have activated accounts (exist in user_profiles)
+    searchStudents: protectedProcedure
+        .input(
+            z.object({
+                query: z.string().min(1).max(255),
+                kelas: z.string().optional(),
+            }),
+        )
+        .query(async ({ ctx, input }) => {
+            const searchTerm = input.query.trim();
+            if (!searchTerm) return [];
+
+            const conditions = [];
+            const isNumeric = /^\d+$/.test(searchTerm);
+
+            if (isNumeric) {
+                // Search by NIS (cast bigint to text for ILIKE)
+                conditions.push(
+                    sql`CAST(${biodataSiswa.nis} AS TEXT) ILIKE ${`%${searchTerm}%`}`,
+                );
+            } else {
+                // Search by name
+                conditions.push(
+                    or(
+                        ilike(biodataSiswa.nama, `%${searchTerm}%`),
+                        sql`CAST(${biodataSiswa.nis} AS TEXT) ILIKE ${`%${searchTerm}%`}`,
+                    ),
+                );
+            }
+
+            // Optional kelas filter
+            if (input.kelas && input.kelas !== "ALL") {
+                conditions.push(ilike(biodataSiswa.kelas, `%${input.kelas}%`));
+            }
+
+            // Only return activated students who have user accounts
+            conditions.push(eq(biodataSiswa.activated, true));
+
+            const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+
+            // Join with user_profiles to get userId (needed for creating perizinan)
+            const rows = await ctx.db
+                .select({
+                    nis: biodataSiswa.nis,
+                    nama: biodataSiswa.nama,
+                    kelas: biodataSiswa.kelas,
+                    absen: biodataSiswa.absen,
+                    kelamin: biodataSiswa.kelamin,
+                    userId: userProfiles.userId,
+                    fullName: userProfiles.fullName,
+                })
+                .from(biodataSiswa)
+                .innerJoin(
+                    userProfiles,
+                    sql`CAST(${biodataSiswa.nis} AS TEXT) = ${userProfiles.nis}`,
+                )
+                .where(whereCondition)
+                .orderBy(biodataSiswa.nama)
+                .limit(10);
+
+            return rows.map((r) => ({
+                nis: r.nis.toString(),
+                nama: r.nama ?? r.fullName ?? "Unknown",
+                kelas: r.kelas ?? "-",
+                absen: r.absen,
+                kelamin: r.kelamin,
+                userId: r.userId,
+            }));
+        }),
 });
 
 export type BiodataSiswaRouter = typeof biodataSiswaRouter;
+

@@ -136,6 +136,51 @@ export const perizinanRouter = createTRPCRouter({
 
       return result[0] ?? null;
     }),
+
+  // CREATE MANUAL: Admin membuat perizinan secara manual
+  createManual: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().uuid(),
+        kategoriIzin: z.enum(["sakit", "pergi"]),
+        deskripsi: z.string().min(1, "Deskripsi wajib diisi"),
+        linkFoto: z.string().optional(),
+        tanggal: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify user exists
+      const userProfile = await ctx.db.query.userProfiles.findFirst({
+        where: (table, { eq }) => eq(table.userId, input.userId),
+      });
+
+      if (!userProfile) {
+        throw new Error("User tidak ditemukan di database");
+      }
+
+      // Create perizinan record with auto-approval since admin is creating it
+      const tanggalDate = new Date(`${input.tanggal}T00:00:00+07:00`); // WIB timezone
+      const [newPerizinan] = await ctx.db
+        .insert(perizinan)
+        .values({
+          userId: input.userId,
+          tanggal: tanggalDate,
+          kategoriIzin: input.kategoriIzin,
+          deskripsi: input.deskripsi,
+          linkFoto: input.linkFoto ?? null,
+          approvalStatus: "approved",
+          status: true,
+          approvedBy: ctx.user.id,
+          approvedAt: new Date(),
+          tanggalUtcDate: input.tanggal,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return newPerizinan;
+    }),
 });
 
 export type PerizinanRouter = typeof perizinanRouter;
+
