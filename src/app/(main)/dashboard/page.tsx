@@ -18,13 +18,12 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
 import {
-  Users,
-  UserCheck,
   ClipboardList,
   MapPin,
   Calendar,
   Clock,
 } from "lucide-react";
+import { DashboardActionCard } from "~/components/dashboard-action-card";
 import { StatistikPieChart } from "~/components/pie-chart";
 import {
   KehadiranBarChart,
@@ -185,9 +184,8 @@ function PendingPermissionsTable({
 async function DashboardContent() {
   // Parallel data fetching using RSC
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [stats, perizinanToday, activeLocation, currentSchedule] =
+  const [perizinanToday, activeLocation, currentSchedule] =
     await Promise.all([
-      api.biodataSiswa.getStatistics(),
       api.perizinan.list({
         approvalStatus: "pending",
         tanggal: todayStr,
@@ -219,21 +217,8 @@ async function DashboardContent() {
   return (
     <div className="space-y-6">
       {/* KPI Cards Section */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="Total Siswa"
-          value={stats.total}
-          description="Seluruh data siswa di sistem"
-          icon={<Users className="h-4 w-4" />}
-          variant="default"
-        />
-        <KPICard
-          title="Siswa Aktif"
-          value={stats.activated}
-          description={`${((stats.activated / stats.total) * 100).toFixed(1)}% dari total siswa`}
-          icon={<UserCheck className="h-4 w-4" />}
-          variant="success"
-        />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <DashboardActionCard />
         <KPICard
           title="Perizinan Tertunda"
           value={pendingCount}
