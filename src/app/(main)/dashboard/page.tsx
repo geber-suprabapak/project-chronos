@@ -31,7 +31,6 @@ import {
   IzinBarChart,
   KeterlambatanBarChart,
 } from "~/components/attendance-bar-charts";
-import { AttendanceTimeChart } from "~/components/linear-chart";
 
 /**
  * Helper: Format date to readable Indonesian format
@@ -339,9 +338,6 @@ async function DashboardContent() {
         <IzinBarChart />
         <KeterlambatanBarChart />
       </div>
-
-      {/* Attendance Time Chart - Full Width */}
-      <AttendanceTimeChart />
     </div>
   );
 }
