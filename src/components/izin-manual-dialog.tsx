@@ -42,7 +42,11 @@ interface SiswaResult {
   absen: number | null;
 }
 
-export function IzinManualDialog() {
+interface IzinManualDialogProps {
+  trigger?: React.ReactNode;
+}
+
+export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -262,10 +266,12 @@ export function IzinManualDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="warning" size="default">
-          <ClipboardPlus />
-          Izin Manual
-        </Button>
+        {trigger ?? (
+          <Button variant="warning" size="default">
+            <ClipboardPlus />
+            Izin Manual
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] overflow-visible">
         <DialogHeader>
