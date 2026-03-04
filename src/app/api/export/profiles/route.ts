@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Workbook } from "exceljs";
 import { db } from "~/server/db";
 import { userProfiles } from "~/server/db/schema";
+import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 
 // Ensure fresh data on each request
@@ -27,6 +28,9 @@ function formatDate(val: unknown): string | null {
 }
 
 export async function GET() {
+  const access = await requireExportAccess("profiles");
+  if (!access.ok) return access.response;
+
   // Create a new workbook and add metadata
   const wb = new Workbook();
   Object.assign(wb, makeWorkbookMetadata("User Profiles"));

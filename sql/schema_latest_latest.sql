@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     role TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    CONSTRAINT fk_user_profiles_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+    CONSTRAINT fk_user_profiles_user_id FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    CONSTRAINT user_profiles_role_check CHECK (role IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa'))
 );
 
 -- Create unique index for user_id
@@ -243,6 +244,98 @@ COMMENT ON COLUMN location.distance IS 'Maximum allowed distance from location i
 COMMENT ON COLUMN jadwal_absensi.kompensasi_waktu IS 'Time compensation/buffer in minutes';
 
 -- ============================================================================
+-- RBAC Helpers & Access Token Hook
+-- ============================================================================
+
+-- Normalize role values before claim/policy usage
+UPDATE user_profiles
+SET role = 'siswa'
+WHERE role IS NULL
+   OR role NOT IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa');
+
+-- Helper to read app role from JWT claims
+CREATE OR REPLACE FUNCTION app_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    auth.jwt() -> 'app_metadata' ->> 'role',
+    auth.jwt() ->> 'role',
+    'siswa'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION app_has_any_role(roles TEXT[])
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT app_role() = ANY(roles);
+$$;
+
+COMMENT ON FUNCTION app_role IS 'Returns role from JWT claims with fallback to siswa';
+COMMENT ON FUNCTION app_has_any_role IS 'Checks if current JWT role belongs to provided list';
+
+-- Supabase custom access token hook for role claims
+CREATE OR REPLACE FUNCTION custom_access_token_hook(event JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  claims JSONB;
+  resolved_role TEXT;
+BEGIN
+  SELECT COALESCE(up.role, 'siswa')
+    INTO resolved_role
+  FROM user_profiles AS up
+  WHERE up.user_id = (event ->> 'user_id')::UUID
+  LIMIT 1;
+
+  claims := COALESCE(event -> 'claims', '{}'::JSONB);
+
+  claims := jsonb_set(
+    claims,
+    '{app_metadata,role}',
+    to_jsonb(COALESCE(resolved_role, 'siswa')),
+    true
+  );
+
+  claims := jsonb_set(
+    claims,
+    '{app_metadata,roles}',
+    jsonb_build_array(COALESCE(resolved_role, 'siswa')),
+    true
+  );
+
+  event := jsonb_set(event, '{claims}', claims, true);
+  RETURN event;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION custom_access_token_hook(JSONB) TO supabase_auth_admin;
+REVOKE EXECUTE ON FUNCTION custom_access_token_hook(JSONB) FROM anon, authenticated, public;
+GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
+GRANT SELECT ON TABLE user_profiles TO supabase_auth_admin;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public' AND tablename='user_profiles' AND policyname='user_profiles_hook_read_auth_admin'
+  ) THEN
+    CREATE POLICY user_profiles_hook_read_auth_admin ON user_profiles
+      AS PERMISSIVE
+      FOR SELECT
+      TO supabase_auth_admin
+      USING (true);
+  END IF;
+END $$;
+
+COMMENT ON FUNCTION custom_access_token_hook IS 'Injects role and roles claims into access token using user_profiles.role';
+
+-- ============================================================================
 -- Row Level Security (RLS) Policies
 -- ============================================================================
 
@@ -273,6 +366,62 @@ BEGIN
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='user_profiles_update_own'
   ) THEN
     CREATE POLICY user_profiles_update_own ON user_profiles FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- claim-based privileged policies for RBAC
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='absences' AND policyname='absences_privileged_manage'
+  ) THEN
+    CREATE POLICY absences_privileged_manage ON absences
+      FOR ALL
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']))
+      WITH CHECK (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='perizinan' AND policyname='perizinan_privileged_manage'
+  ) THEN
+    CREATE POLICY perizinan_privileged_manage ON perizinan
+      FOR ALL
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']))
+      WITH CHECK (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='user_profiles_privileged_read'
+  ) THEN
+    CREATE POLICY user_profiles_privileged_read ON user_profiles
+      FOR SELECT
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='biodata_siswa' AND policyname='biodata_siswa_privileged_read'
+  ) THEN
+    CREATE POLICY biodata_siswa_privileged_read ON biodata_siswa
+      FOR SELECT
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah','guru','wali_kelas']));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='location' AND policyname='location_admin_manage_by_claim'
+  ) THEN
+    CREATE POLICY location_admin_manage_by_claim ON location
+      FOR ALL
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah']))
+      WITH CHECK (app_has_any_role(ARRAY['admin','kepala_sekolah']));
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jadwal_absensi' AND policyname='jadwal_admin_manage_by_claim'
+  ) THEN
+    CREATE POLICY jadwal_admin_manage_by_claim ON jadwal_absensi
+      FOR ALL
+      USING (app_has_any_role(ARRAY['admin','kepala_sekolah']))
+      WITH CHECK (app_has_any_role(ARRAY['admin','kepala_sekolah']));
   END IF;
 END $$;
 

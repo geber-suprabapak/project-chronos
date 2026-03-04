@@ -4,6 +4,7 @@ import { db } from "~/server/db";
 import { biodataSiswa } from "~/server/db/schema";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 import { sql } from "drizzle-orm";
+import { requireExportAccess } from "~/server/auth/export-guard";
 
 // Ensure fresh data on each request
 export const dynamic = "force-dynamic";
@@ -27,6 +28,9 @@ function formatActivated(activated: boolean): string {
 }
 
 export async function GET() {
+  const access = await requireExportAccess("siswa");
+  if (!access.ok) return access.response;
+
   // Create a new workbook and add metadata
   const wb = new Workbook();
   Object.assign(wb, makeWorkbookMetadata("Data Siswa"));
