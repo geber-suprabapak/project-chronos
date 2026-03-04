@@ -365,7 +365,18 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='user_profiles_update_own'
   ) THEN
-    CREATE POLICY user_profiles_update_own ON user_profiles FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    CREATE POLICY user_profiles_update_own ON user_profiles
+      FOR UPDATE
+      USING (auth.uid() = user_id)
+      WITH CHECK (
+        auth.uid() = user_id
+        AND role = (
+          SELECT up.role
+          FROM user_profiles AS up
+          WHERE up.user_id = auth.uid()
+          LIMIT 1
+        )
+      );
   END IF;
 END $$;
 
@@ -736,7 +747,17 @@ END $$;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_profiles TO anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON TABLE user_profiles TO anon, authenticated;
+GRANT UPDATE (
+  nis,
+  full_name,
+  email,
+  avatar_url,
+  absence_number,
+  class_name,
+  gender,
+  updated_at
+) ON TABLE user_profiles TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE absences TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE perizinan TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE location TO anon, authenticated;
