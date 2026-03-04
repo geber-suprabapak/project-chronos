@@ -1,5 +1,5 @@
 import type { User } from "@supabase/supabase-js";
-import type { db as appDb } from "~/server/db";
+import { db as appDb } from "~/server/db";
 import { extractRoleFromAppMetadata } from "~/lib/jwt";
 
 export const APP_ROLES = [

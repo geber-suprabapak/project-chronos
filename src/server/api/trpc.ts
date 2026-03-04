@@ -98,6 +98,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 
   return next({
     ctx: {
+      ...ctx,
       user,
       userRole,
     },
