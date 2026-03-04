@@ -14,6 +14,24 @@
 
 BEGIN;
 
+-- Harden role helper fallback semantics.
+-- Ignore generic Supabase auth role claims (anon/authenticated) and use siswa default.
+CREATE OR REPLACE FUNCTION public.app_role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    NULLIF(auth.jwt() -> 'app_metadata' ->> 'role', ''),
+    CASE
+      WHEN auth.jwt() ->> 'role' IN ('admin', 'kepala_sekolah', 'guru', 'wali_kelas', 'siswa')
+        THEN auth.jwt() ->> 'role'
+      ELSE NULL
+    END,
+    'siswa'
+  );
+$$;
+
 -- Remove broad UPDATE table privilege for client roles.
 REVOKE UPDATE ON TABLE public.user_profiles FROM anon, authenticated;
 
