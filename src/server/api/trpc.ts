@@ -17,6 +17,7 @@ import {
   hasRequiredRole,
   resolveUserRole,
 } from "~/server/auth/rbac";
+import type { User } from "@supabase/supabase-js";
 
 import { db } from "~/server/db";
 
@@ -37,6 +38,13 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     db,
     ...opts,
   };
+};
+
+export type AuthenticatedContext = Awaited<
+  ReturnType<typeof createTRPCContext>
+> & {
+  user: User;
+  userRole: AppRole;
 };
 
 /**
@@ -112,9 +120,9 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 const requireRole = (allowedRoles: readonly AppRole[]) =>
   protectedProcedure.use(
     t.middleware(async ({ ctx, next }) => {
-      const userRole = (ctx as { userRole?: AppRole }).userRole;
+      const authenticatedCtx = ctx as AuthenticatedContext;
 
-      if (!userRole || !hasRequiredRole(userRole, allowedRoles)) {
+      if (!hasRequiredRole(authenticatedCtx.userRole, allowedRoles)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

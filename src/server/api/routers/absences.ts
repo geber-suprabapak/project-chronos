@@ -116,7 +116,7 @@ export const absencesRouter = createTRPCRouter({
 
   // BULK DELETE: Hapus banyak data absensi sekaligus
   bulkDelete: adminProcedure
-    .input(z.object({ ids: z.array(z.string().uuid()).min(1) }))
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
       // Delete multiple records in one query using OR conditions
       const deletedAbsences = await ctx.db
