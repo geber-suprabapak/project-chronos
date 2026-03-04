@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { and, eq, ilike, sql, or } from "drizzle-orm";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, privilegedProcedure } from "~/server/api/trpc";
 import { biodataSiswa } from "~/server/db/schema";
 
 /**
@@ -9,7 +9,7 @@ import { biodataSiswa } from "~/server/db/schema";
  */
 export const biodataSiswaRouter = createTRPCRouter({
   // GET BY NIS
-  getByNis: protectedProcedure
+  getByNis: privilegedProcedure
     .input(z.object({ nis: z.string() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.biodataSiswa.findFirst({
@@ -26,7 +26,7 @@ export const biodataSiswaRouter = createTRPCRouter({
     }),
 
   // LIST: ambil daftar biodata siswa dengan pagination dan filtering
-  list: protectedProcedure
+  list: privilegedProcedure
     .input(
       z
         .object({
@@ -119,7 +119,7 @@ export const biodataSiswaRouter = createTRPCRouter({
     }),
 
   // STATISTICS: get overview statistics
-  getStatistics: protectedProcedure.query(async ({ ctx }) => {
+  getStatistics: privilegedProcedure.query(async ({ ctx }) => {
     const [totalSiswa, siswaLaki, siswaPerempuan, siswaAktif] =
       await Promise.all([
         // Total siswa
@@ -150,7 +150,7 @@ export const biodataSiswaRouter = createTRPCRouter({
   }),
 
   // LIST RAW: semua data (hati-hati untuk dataset besar)
-  listRaw: protectedProcedure.query(async ({ ctx }) => {
+  listRaw: privilegedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
       .select()
       .from(biodataSiswa)
@@ -159,7 +159,7 @@ export const biodataSiswaRouter = createTRPCRouter({
   }),
 
   // GET UNIQUE CLASSES: untuk filter dropdown
-  getUniqueClasses: protectedProcedure.query(async ({ ctx }) => {
+  getUniqueClasses: privilegedProcedure.query(async ({ ctx }) => {
     const classes = await ctx.db
       .selectDistinct({ kelas: biodataSiswa.kelas })
       .from(biodataSiswa)

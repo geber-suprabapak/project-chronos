@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { eq, sql } from "drizzle-orm";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { jadwalAbsensi } from "~/server/db/schema";
 
 // Valid days enum
@@ -90,7 +94,7 @@ export const jadwalRouter = createTRPCRouter({
   }),
 
   // Update schedule by ID
-  update: protectedProcedure
+  update: adminProcedure
     .input(
       z.object({
         id: z.number().min(1).max(7),
@@ -144,7 +148,7 @@ export const jadwalRouter = createTRPCRouter({
     }),
 
   // Update multiple schedules at once (batch update)
-  updateBatch: protectedProcedure
+  updateBatch: adminProcedure
     .input(
       z.array(
         z.object({
@@ -196,7 +200,7 @@ export const jadwalRouter = createTRPCRouter({
     }),
 
   // Toggle active status
-  toggleActive: protectedProcedure
+  toggleActive: adminProcedure
     .input(z.object({ id: z.number().min(1).max(7) }))
     .mutation(async ({ ctx, input }) => {
       // Get current status
@@ -224,7 +228,7 @@ export const jadwalRouter = createTRPCRouter({
     }),
 
   // Reset all schedules to default
-  reset: protectedProcedure.mutation(async ({ ctx }) => {
+  reset: adminProcedure.mutation(async ({ ctx }) => {
     const defaultSchedules = [
       {
         id: 1,

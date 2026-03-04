@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { and, eq, ilike, sql } from "drizzle-orm";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  privilegedProcedure,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { userProfiles } from "~/server/db/schema";
 
 /**
@@ -17,7 +21,7 @@ export const userProfilesRouter = createTRPCRouter({
   }),
 
   // GET BY ID
-  getById: protectedProcedure
+  getById: privilegedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const row = await ctx.db.query.userProfiles.findFirst({
@@ -26,7 +30,7 @@ export const userProfilesRouter = createTRPCRouter({
       return row ?? null;
     }),
   // LIST: ambil daftar user_profiles dengan pagination sederhana
-  list: protectedProcedure
+  list: privilegedProcedure
     .input(
       z
         .object({
@@ -86,13 +90,13 @@ export const userProfilesRouter = createTRPCRouter({
     }),
 
   // LIST RAW: semua data (hati-hati untuk dataset besar)
-  listRaw: protectedProcedure.query(async ({ ctx }) => {
+  listRaw: privilegedProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.select().from(userProfiles);
     return rows;
   }),
 
   // GET UNIQUE CLASS NAMES: untuk filter dropdown jurusan
-  getUniqueClassNames: protectedProcedure.query(async ({ ctx }) => {
+  getUniqueClassNames: privilegedProcedure.query(async ({ ctx }) => {
     const classNames = await ctx.db
       .selectDistinct({ className: userProfiles.className })
       .from(userProfiles)

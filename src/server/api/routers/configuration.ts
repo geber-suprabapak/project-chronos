@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { eq, sql, desc } from "drizzle-orm";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { location } from "~/server/db/schema";
 
 export const locationRouter = createTRPCRouter({
@@ -51,7 +55,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Create new location
-  create: protectedProcedure
+  create: adminProcedure
     .input(
       z.object({
         id: z.number().min(1),
@@ -79,7 +83,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Update location by ID
-  updateById: protectedProcedure
+  updateById: adminProcedure
     .input(
       z.object({
         id: z.number(),
@@ -108,7 +112,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Toggle location active status
-  toggleActive: protectedProcedure
+  toggleActive: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       // Get current status
@@ -136,7 +140,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Delete location
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const result = await ctx.db
@@ -148,7 +152,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Update single field quickly
-  updateField: protectedProcedure
+  updateField: adminProcedure
     .input(
       z.object({
         id: z.number(),
@@ -172,7 +176,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Upsert location (for primary location management)
-  upsert: protectedProcedure
+  upsert: adminProcedure
     .input(
       z.object({
         name: z.string().min(1).max(255),
@@ -224,7 +228,7 @@ export const locationRouter = createTRPCRouter({
     }),
 
   // Reset to default configuration
-  reset: protectedProcedure.mutation(async ({ ctx }) => {
+  reset: adminProcedure.mutation(async ({ ctx }) => {
     const defaultConfig = {
       id: 1,
       name: "Kantor Pusat",
@@ -247,7 +251,7 @@ export const locationRouter = createTRPCRouter({
   }),
 
   // Bulk operations
-  createMany: protectedProcedure
+  createMany: adminProcedure
     .input(
       z.array(
         z.object({

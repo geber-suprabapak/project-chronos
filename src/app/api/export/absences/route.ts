@@ -4,6 +4,7 @@ import { db } from "~/server/db";
 import { absences, userProfiles } from "~/server/db/schema";
 import { eq, and, ilike, exists, gte, lte } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
+import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 
 // Ensure fresh data on each request
@@ -29,6 +30,9 @@ function formatDate(val: unknown): string | null {
 }
 
 export async function GET(request: NextRequest) {
+  const access = await requireExportAccess("absences");
+  if (!access.ok) return access.response;
+
   // Get filter params from query
   const { searchParams } = new URL(request.url);
   const className = searchParams.get("className");

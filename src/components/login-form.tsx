@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "~/lib/utils";
+import { extractRoleFromAccessToken } from "~/lib/jwt";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -18,39 +19,41 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setIsLoading(true);
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        {
+          email,
+          password,
+        },
+      );
 
-    if (authError) {
-      setLoading(false);
-      setError(authError.message);
-      return;
-    }
+      if (authError) {
+        setError("Invalid credentials.");
+        return;
+      }
 
-    const userMetadata = data.user?.user_metadata;
-    const role = userMetadata?.role as string;
+      // Extract role from access token (authoritative source after custom hook)
+      const role = extractRoleFromAccessToken(
+        data.session?.access_token ?? null,
+      );
 
-    if (role !== "admin") {
-      setLoading(false);
-      await supabase.auth.signOut();
-      setError("Access denied. Admin role required.");
-      return;
-    }
+      if (role !== "admin") {
+        await supabase.auth.signOut();
+        setError("Invalid credentials.");
+        return;
+      }
 
-    setLoading(false);
-    startTransition(() => {
       router.replace("/dashboard");
-    });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -66,19 +69,19 @@ export function LoginForm({
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
                 required
               />
             </div>
             <div className="grid gap-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 required
               />
             </div>
@@ -87,12 +90,8 @@ export function LoginForm({
                 {error}
               </p>
             )}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading || isPending}
-            >
-              {loading ? "Logging in..." : "Login"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
         </CardContent>

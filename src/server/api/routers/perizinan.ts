@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  privilegedProcedure,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { perizinan } from "~/server/db/schema";
 import { eq, and, gte, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -99,7 +103,7 @@ export const perizinanRouter = createTRPCRouter({
   }),
 
   // CREATE MANUAL: Admin input izin manual
-  createManual: protectedProcedure
+  createManual: privilegedProcedure
     .input(
       z.object({
         nis: z.string(),
@@ -170,7 +174,7 @@ export const perizinanRouter = createTRPCRouter({
     }),
 
   // Memperbarui status persetujuan perizinan.
-  updateStatus: protectedProcedure
+  updateStatus: privilegedProcedure
     .input(
       z.object({
         id: z.string().uuid(),

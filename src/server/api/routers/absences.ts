@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  protectedProcedure,
+} from "~/server/api/trpc";
 import { absences, userProfiles } from "~/server/db/schema";
 import { eq, and, or, ilike, exists, gte, lte } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -24,7 +28,7 @@ import type { SQL } from "drizzle-orm";
 // Basic CRUD router for the absences table
 export const absencesRouter = createTRPCRouter({
   // CREATE MANUAL: Admin input absensi manual
-  createManual: protectedProcedure
+  createManual: adminProcedure
     .input(
       z.object({
         nis: z.string(),
@@ -89,7 +93,7 @@ export const absencesRouter = createTRPCRouter({
     }),
 
   // DELETE: Hapus data absensi berdasarkan ID
-  delete: protectedProcedure
+  delete: adminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       // Check if absence exists
@@ -111,8 +115,8 @@ export const absencesRouter = createTRPCRouter({
     }),
 
   // BULK DELETE: Hapus banyak data absensi sekaligus
-  bulkDelete: protectedProcedure
-    .input(z.object({ ids: z.array(z.string().uuid()).min(1) }))
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
       // Delete multiple records in one query using OR conditions
       const deletedAbsences = await ctx.db
@@ -397,7 +401,10 @@ export const absencesRouter = createTRPCRouter({
       // 2. Get absences for this class on this date (filtered in DB)
       const classAbsences = await ctx.db.query.absences.findMany({
         where: (table, { eq, inArray }) =>
-          and(eq(table.date, input.date), inArray(table.userId, studentIdsArray)),
+          and(
+            eq(table.date, input.date),
+            inArray(table.userId, studentIdsArray),
+          ),
         with: {
           userProfile: true,
         },

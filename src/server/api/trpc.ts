@@ -9,7 +9,15 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { createSupabaseServerClient } from "~/lib/supabase/server"; // Asumsi Anda punya helper ini
+import { createSupabaseServerClient } from "~/lib/supabase/server";
+import {
+  ADMIN_ROLES,
+  PRIVILEGED_ROLES,
+  type AppRole,
+  hasRequiredRole,
+  resolveUserRole,
+} from "~/server/auth/rbac";
+import type { User } from "@supabase/supabase-js";
 
 import { db } from "~/server/db";
 
@@ -30,6 +38,13 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
     db,
     ...opts,
   };
+};
+
+export type AuthenticatedContext = Awaited<
+  ReturnType<typeof createTRPCContext>
+> & {
+  user: User;
+  userRole: AppRole;
 };
 
 /**
@@ -75,30 +90,10 @@ export const createCallerFactory = t.createCallerFactory;
 export const createTRPCRouter = t.router;
 
 /**
- * Middleware for timing procedure execution and adding an artificial delay in development.
- *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
+ * Authentication middleware - resolves user role and adds to context
  */
-// const timingMiddleware = t.middleware(async ({ next, path }) => {
-//   const start = Date.now();
-
-//   if (t._config.isDev) {
-//     // artificial delay in dev
-//     const waitMs = Math.floor(Math.random() * 400) + 100;
-//     await new Promise((resolve) => setTimeout(resolve, waitMs));
-//   }
-
-//   const result = await next();
-
-//   const end = Date.now();
-//   console.log(`[TRPC] ${path} took ${end - start}ms to execute`);
-
-//   return result;
-// });
-const isAuthed = t.middleware(async ({ next }) => {
-  // Ambil user session dari Supabase atau sumber lain di context
-  const supabase = createSupabaseServerClient(); // Ini perlu disesuaikan
+const isAuthed = t.middleware(async ({ ctx, next }) => {
+  const supabase = createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -107,20 +102,50 @@ const isAuthed = t.middleware(async ({ next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
+  const userRole = await resolveUserRole(ctx.db, user);
+
   return next({
     ctx: {
-      // Menyertakan user dalam konteks untuk prosedur selanjutnya
+      ...ctx,
       user,
+      userRole,
     },
   });
 });
 
 /**
- * Public (unauthenticated) procedure
- *
- * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
- * guarantee that a user querying is authorized, but you can still access user session data if they
- * are logged in.
+ * Role-based authorization middleware
+ * Assumes isAuthed middleware has run first
  */
-export const publicProcedure = t.procedure; //.use(timingMiddleware);
+const requireRole = (allowedRoles: readonly AppRole[]) =>
+  protectedProcedure.use(
+    t.middleware(async ({ ctx, next }) => {
+      const authenticatedCtx = ctx as AuthenticatedContext;
+
+      if (!hasRequiredRole(authenticatedCtx.userRole, allowedRoles)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      return next();
+    }),
+  );
+
+/**
+ * Public (unauthenticated) procedure
+ */
+export const publicProcedure = t.procedure;
+
+/**
+ * Protected procedure - requires authentication
+ */
 export const protectedProcedure = t.procedure.use(isAuthed);
+
+/**
+ * Admin-only procedure
+ */
+export const adminProcedure = requireRole(ADMIN_ROLES);
+
+/**
+ * Privileged procedure - admin, kepala_sekolah, guru, or wali_kelas
+ */
+export const privilegedProcedure = requireRole(PRIVILEGED_ROLES);
