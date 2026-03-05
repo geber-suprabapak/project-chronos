@@ -16,6 +16,30 @@ import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AutoSearchForm } from "~/components/auto-search-form";
 // Next.js App Router page component with search params
 
+function isTransientNetworkError(error: unknown): boolean {
+  const message =
+    typeof error === "object" && error !== null && "message" in error
+      ? String(error.message)
+      : "";
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : "";
+
+  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|network|fetch failed/i.test(
+    `${code} ${message}`,
+  );
+}
+
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isTransientNetworkError(error)) throw error;
+    return await operation();
+  }
+}
+
 export default async function ProfilesPage({
   searchParams,
 }: {
@@ -85,10 +109,12 @@ export default async function ProfilesPage({
     console.log("Loading profiles with params:", params);
 
     // Fetch data and unique class names in parallel
-    const [res, classNamesRes] = await Promise.all([
-      api.userProfiles.list(params),
-      api.userProfiles.getUniqueClassNames(),
-    ]);
+    const [res, classNamesRes] = await withRetry(() =>
+      Promise.all([
+        api.userProfiles.list(params),
+        api.userProfiles.getUniqueClassNames(),
+      ]),
+    );
 
     if (res) {
       // Pastikan data diproses dengan benar

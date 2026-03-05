@@ -56,24 +56,13 @@ const chartConfigPulang = {
 } satisfies ChartConfig;
 
 export function StatistikPieChart() {
-  // Ambil semua user dan absensi
-  const { data: users, isLoading: loadingUsers } =
-    api.userProfiles.listRaw.useQuery();
-  const { data: absensi, isLoading: loadingAbsensi } =
-    api.absences.listRaw.useQuery();
-
-  // Ambil perizinan hari ini menggunakan endpoint yang sama dengan halaman Perizinan
-  // Gunakan useMemo untuk todayString agar stabil dan tidak re-compute setiap render
+  // Gunakan endpoint agregat agar request ringan dan lebih stabil.
   const todayString = useMemo(
     () => new Date().toISOString().split("T")[0]!,
     [],
   );
-  const { data: perizinanHariIni, isLoading: loadingIzin } =
-    api.perizinan.list.useQuery({
-      tanggal: todayString,
-      limit: 100,
-      offset: 0,
-    });
+  const { data: summary, isLoading: loadingSummary } =
+    api.absences.getTodaySummary.useQuery({ date: todayString });
 
   // Ukuran pie chart tetap
   const outerRadius = 90;
@@ -81,115 +70,49 @@ export function StatistikPieChart() {
 
   // Data untuk chart absen masuk
   const chartDataMasuk = useMemo(() => {
-    if (!users || !absensi || !perizinanHariIni) return [];
-    const userIds = new Set(users.map((u) => u.userId));
-
-    // Filter absensi untuk hari ini saja
-    const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
-      return absenDate === todayString;
-    });
-
-    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
-    const sudahAbsenMasuk = new Set(
-      absensiToday
-        .filter(
-          (a) =>
-            a.status === "Hadir" ||
-            a.status === "Datang" ||
-            a.status === "Terlambat",
-        )
-        .map((a) => a.userId),
-    );
-
-    // Hitung user yang izin atau sakit dari data perizinan (sudah difilter server)
-    const userIzinSakit = new Set(perizinanHariIni.map((p) => p.userId));
-
-    // Belum absen masuk = semua user KECUALI yang sudah absen masuk ATAU yang izin/sakit
-    const belumAbsenMasuk = new Set([...userIds]);
-    sudahAbsenMasuk.forEach((id) => belumAbsenMasuk.delete(id));
-    userIzinSakit.forEach((id) => belumAbsenMasuk.delete(id));
-
-    // Hitung izin (pergi) dan sakit hari ini dari data perizinan yang sudah difilter
-    let izinPergi = 0;
-    let sakit = 0;
-    perizinanHariIni.forEach((p) => {
-      if (p.kategoriIzin === "pergi") izinPergi++;
-      if (p.kategoriIzin === "sakit") sakit++;
-    });
+    if (!summary) return [];
 
     return [
       {
         category: "sudahAbsenMasuk",
-        value: sudahAbsenMasuk.size,
+        value: summary.sudahAbsenMasuk,
         fill: "var(--color-sudahAbsenMasuk)",
       },
       {
         category: "belumAbsenMasuk",
-        value: belumAbsenMasuk.size,
+        value: summary.belumAbsenMasuk,
         fill: "var(--color-belumAbsenMasuk)",
       },
       {
         category: "izin",
-        value: izinPergi,
+        value: summary.izin,
         fill: "var(--color-izin)",
       },
       {
         category: "sakit",
-        value: sakit,
+        value: summary.sakit,
         fill: "var(--color-sakit)",
       },
     ];
-  }, [users, absensi, perizinanHariIni, todayString]);
+  }, [summary]);
 
   // Data untuk chart absen pulang
   const chartDataPulang = useMemo(() => {
-    if (!users || !absensi) return [];
-
-    // Get today's date in YYYY-MM-DD format
-    const today = new Date();
-    const todayString = today.toISOString().split("T")[0]!;
-
-    // Filter absensi untuk hari ini saja
-    const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
-      return absenDate === todayString;
-    });
-
-    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
-    const sudahAbsenMasuk = new Set(
-      absensiToday
-        .filter(
-          (a) =>
-            a.status === "Hadir" ||
-            a.status === "Datang" ||
-            a.status === "Terlambat",
-        )
-        .map((a) => a.userId),
-    );
-
-    // Hitung absensi pulang (status: "Pulang")
-    const sudahAbsenPulang = new Set(
-      absensiToday.filter((a) => a.status === "Pulang").map((a) => a.userId),
-    );
-
-    // Belum absen pulang = user yang sudah absen masuk tapi belum pulang
-    const belumAbsenPulang = new Set([...sudahAbsenMasuk]);
-    sudahAbsenPulang.forEach((id) => belumAbsenPulang.delete(id));
+    if (!summary) return [];
 
     return [
       {
         category: "sudahAbsenPulang",
-        value: sudahAbsenPulang.size,
+        value: summary.sudahAbsenPulang,
         fill: "var(--color-sudahAbsenPulang)",
       },
       {
         category: "belumAbsenPulang",
-        value: belumAbsenPulang.size,
+        value: summary.belumAbsenPulang,
         fill: "var(--color-belumAbsenPulang)",
       },
     ];
-  }, [users, absensi]);
+  }, [summary]);
 
   // Calculate totals
   const totalMasuk = useMemo(() => {
@@ -201,14 +124,7 @@ export function StatistikPieChart() {
   }, [chartDataPulang]);
 
   // Only render chart if all data is loaded and chartData is available
-  if (
-    loadingUsers ||
-    loadingAbsensi ||
-    loadingIzin ||
-    !users ||
-    !absensi ||
-    !perizinanHariIni
-  ) {
+  if (loadingSummary || !summary) {
     return (
       <Card className="flex flex-col">
         <CardHeader className="items-center pb-0">

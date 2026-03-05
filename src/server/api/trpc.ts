@@ -104,6 +104,10 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 
   const userRole = await resolveUserRole(ctx.db, user);
 
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[tRPC Auth] user=${user.id} role=${userRole}`);
+  }
+
   return next({
     ctx: {
       ...ctx,
