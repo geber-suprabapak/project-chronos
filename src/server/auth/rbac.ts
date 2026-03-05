@@ -89,10 +89,23 @@ export async function readRoleFromDb(
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Timeout for DB role lookups (avoid indefinite hangs on slow/unreachable DB)
+const ROLE_DB_TIMEOUT_MS = 5000; // 5 seconds
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs),
+    ),
+  ]);
+}
+
 /**
  * Resolve user role from:  JWT claims → in-memory cache → database.
  * Caches successful DB lookups for 5 min to survive transient DB outages.
  * Retries once on transient DB errors; throws instead of silently defaulting.
+ * Uses timeout to avoid hanging on unreachable DB.
  */
 export async function resolveUserRole(
   db: typeof appDb,
@@ -112,29 +125,56 @@ export async function resolveUserRole(
     return cached;
   }
 
-  // 3. Database lookup (with retry on transient errors)
+  // 3. Database lookup (with timeout + retry on transient errors)
   if (isDev) console.log(`[RBAC] ${user.id} JWT has no role, querying DB…`);
 
   try {
-    const dbRole = await readRoleFromDb(db, user.id);
+    const dbRole = await withTimeout(
+      readRoleFromDb(db, user.id),
+      ROLE_DB_TIMEOUT_MS,
+    );
     if (dbRole) {
       setCachedRole(user.id, dbRole);
       if (isDev) console.log(`[RBAC] ${user.id} role from DB: ${dbRole}`);
       return dbRole;
     }
+    // DB returned null (no profile row found)
+    if (isDev)
+      console.warn(
+        `[RBAC] ${user.id} no role in JWT, cache, or DB profile → defaulting to siswa`,
+      );
+    return "siswa";
   } catch (error) {
-    if (!isTransientDbError(error)) throw error;
+    // Check if transient — retry once
+    if (!isTransientDbError(error) && !(error instanceof Error && /timeout/i.test(error.message))) {
+      console.error(
+        `[RBAC] Non-transient error resolving role for ${user.id}`,
+        error instanceof Error ? error.message : error,
+      );
+      throw error;
+    }
+
     console.warn(
-      `[RBAC] Transient DB error resolving role for ${user.id}, retrying…`,
+      `[RBAC] DB role lookup failed/slow for ${user.id}, retrying…`,
       error instanceof Error ? error.message : error,
     );
+
     try {
-      const dbRole = await readRoleFromDb(db, user.id);
+      const dbRole = await withTimeout(
+        readRoleFromDb(db, user.id),
+        ROLE_DB_TIMEOUT_MS,
+      );
       if (dbRole) {
         setCachedRole(user.id, dbRole);
         if (isDev) console.log(`[RBAC] ${user.id} role from DB (retry): ${dbRole}`);
         return dbRole;
       }
+      // Still no profile row — default
+      if (isDev)
+        console.warn(
+          `[RBAC] ${user.id} no role found after retry → defaulting to siswa`,
+        );
+      return "siswa";
     } catch (retryError) {
       console.error(
         `[RBAC] Role resolution failed after retry for ${user.id}`,
@@ -143,13 +183,6 @@ export async function resolveUserRole(
       throw retryError;
     }
   }
-
-  // 4. No profile row found – genuine default
-  if (isDev)
-    console.warn(
-      `[RBAC] ${user.id} no role in JWT, cache, or DB → defaulting to siswa`,
-    );
-  return "siswa";
 }
 
 /**
