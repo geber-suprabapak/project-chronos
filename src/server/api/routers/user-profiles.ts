@@ -6,21 +6,7 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { userProfiles } from "~/server/db/schema";
-
-function isTransientDbError(error: unknown): boolean {
-  const message =
-    typeof error === "object" && error !== null && "message" in error
-      ? String(error.message)
-      : "";
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
-
-  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|Connection terminated|socket/i.test(
-    `${code} ${message}`,
-  );
-}
+import { isTransientDbError } from "~/server/lib/db-utils";
 
 async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
   try {

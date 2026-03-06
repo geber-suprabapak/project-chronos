@@ -132,7 +132,7 @@ function PendingPermissionsTable({
 async function DashboardContent() {
   // Parallel data fetching using RSC
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [perizinanToday, currentSchedule] = await Promise.all([
+  const [perizinanToday] = await Promise.all([
     api.perizinan.list({
       approvalStatus: "pending",
       tanggal: todayStr,

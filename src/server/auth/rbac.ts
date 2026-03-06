@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { db as appDb } from "~/server/db";
 import { extractRoleFromAppMetadata } from "~/lib/jwt";
+import { isTransientDbError } from "~/server/lib/db-utils";
 
 export const APP_ROLES = [
   "admin",
@@ -31,20 +32,6 @@ export function isAppRole(value: unknown): value is AppRole {
 export function readRoleFromUserClaims(user: User): AppRole | null {
   const role = extractRoleFromAppMetadata(user.app_metadata);
   return role && isAppRole(role) ? role : null;
-}
-
-function isTransientDbError(error: unknown): boolean {
-  const msg =
-    typeof error === "object" && error !== null && "message" in error
-      ? String(error.message)
-      : "";
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
-  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|Connection terminated|socket/i.test(
-    `${code} ${msg}`,
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -93,12 +80,11 @@ const isDev = process.env.NODE_ENV === "development";
 const ROLE_DB_TIMEOUT_MS = 5000; // 5 seconds
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs),
-    ),
-  ]);
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
 /**

@@ -3,15 +3,7 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 import SuperJSON from "superjson";
-
-function isTransientNetworkError(error: unknown): boolean {
-  const message =
-    typeof error === "object" && error !== null && "message" in error
-      ? String(error.message)
-      : "";
-
-  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|network|fetch failed/i.test(message);
-}
+import { isTransientNetworkError } from "~/lib/network-utils";
 
 export const createQueryClient = () =>
   new QueryClient({
