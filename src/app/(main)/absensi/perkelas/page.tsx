@@ -136,10 +136,7 @@ export default function AbsensiPerKelasPage() {
     ? new Date(startDate + "T00:00:00")
     : undefined;
   const endDateValue = endDate ? new Date(endDate + "T00:00:00") : undefined;
-  const loading =
-    absencesLoading ||
-    userLoading ||
-    classNamesLoading;
+  const loading = absencesLoading || userLoading || classNamesLoading;
   const hasMore = absences?.length === limit;
 
   // Helper to format date to YYYY-MM-DD
@@ -169,7 +166,7 @@ export default function AbsensiPerKelasPage() {
       const nis = a.userProfile?.nis ?? "-";
       const className = a.userProfile?.className ?? "-";
       const tanggal = typeof a.date === "string" ? a.date : String(a.date);
-      const displayStatus = a.status === "Datang" ? "Hadir" : a.status ?? "-";
+      const displayStatus = a.status === "Datang" ? "Hadir" : (a.status ?? "-");
       const waktu = a.createdAt
         ? new Date(a.createdAt).toLocaleTimeString("id-ID", {
             hour: "2-digit",

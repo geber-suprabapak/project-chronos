@@ -12,8 +12,8 @@ import { IzinManualDialog } from "~/components/izin-manual-dialog";
 
 export function DashboardActionCard() {
   return (
-    <Card>
-      <CardContent className="flex items-center justify-center gap-4 p-6">
+    <Card className="h-full">
+      <CardContent className="flex h-full items-center justify-center gap-4 p-6">
         {/* Absen Manual tile */}
         <AbsenManualDialog
           trigger={
