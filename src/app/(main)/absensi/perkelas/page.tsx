@@ -339,6 +339,13 @@ export default function AbsensiPerKelasPage() {
               Pilih kelas dari dropdown di atas untuk melihat data absensi
             </p>
           </div>
+        ) : !date ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p className="text-lg">Silakan pilih tanggal terlebih dahulu</p>
+            <p className="text-sm mt-1">
+              Tanggal diperlukan untuk menampilkan data absensi kelas ini
+            </p>
+          </div>
         ) : loading ? (
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
