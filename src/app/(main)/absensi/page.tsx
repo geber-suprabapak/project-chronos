@@ -2,7 +2,6 @@
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AbsenManualDialog } from "~/components/absen-manual-dialog";
-import { IzinManualDialog } from "~/components/izin-manual-dialog";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
@@ -19,7 +18,7 @@ import { Card } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Checkbox } from "~/components/ui/checkbox";
-import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -44,12 +43,10 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Eye, Trash2 } from "lucide-react";
-import { FilterBar, type FilterBarValue } from "~/components/filter-bar";
 import { toast } from "sonner";
 
 export default function AbsensiPage() {
   const [date, setDate] = useState<string>(""); // YYYY-MM-DD
-  const [sort, setSort] = useState<"asc" | "desc">("desc"); // newest (desc) by default
   const [query, setQuery] = useState<string>("");
   const [status, setStatus] = useState<string>("");
   const [selectedClass, setSelectedClass] = useState<string>(""); // Filter kelas
@@ -58,13 +55,6 @@ export default function AbsensiPage() {
   const [deleteName, setDeleteName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
-
-  const filter: FilterBarValue = {
-    date: date || undefined,
-    query,
-    status: status || undefined,
-    sort,
-  };
 
   const utils = api.useUtils();
 
@@ -83,8 +73,9 @@ export default function AbsensiPage() {
   } = api.absences.list.useQuery({
     limit,
     offset,
-    sort,
+    sort: "desc",
     date: date || undefined,
+    query: query.trim() || undefined,
     status: status || undefined,
     className: selectedClass || undefined,
   });
@@ -175,8 +166,8 @@ export default function AbsensiPage() {
   const exportUrl = `/api/export/absences${exportParams.toString() ? `?${exportParams.toString()}` : ""}`;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
+    <div className="flex flex-1 flex-col gap-3 p-2 sm:p-3 md:p-4">
+      <div className="mb-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
             Daftar Absensi
@@ -185,7 +176,7 @@ export default function AbsensiPage() {
             Ringkasan absensi terbaru
           </p>
         </div>
-        <div className="flex flex-row gap-2 w-full sm:w-auto justify-start sm:justify-end">
+        <div className="flex w-full flex-row justify-start gap-2 sm:w-auto sm:justify-end">
           {selectedIds.size > 0 && (
             <Button
               variant="destructive"
@@ -199,7 +190,6 @@ export default function AbsensiPage() {
             </Button>
           )}
           <AbsenManualDialog />
-          <IzinManualDialog />
           <DownloadExcelButton
             href={exportUrl}
             filename={`absensi${selectedClass ? `-${selectedClass}` : ""}.xlsx`}
@@ -214,7 +204,7 @@ export default function AbsensiPage() {
         </div>
       </div>
 
-      <Card className="p-2 sm:p-4 overflow-hidden">
+      <Card className="overflow-hidden p-2 sm:p-3">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-6 w-40" />
@@ -228,103 +218,84 @@ export default function AbsensiPage() {
           </div>
         ) : (
           <>
-            {/* Class filter dropdown */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="flex flex-col w-full sm:w-48">
-                <Label
-                  htmlFor="filter-class"
-                  className="mb-2 text-sm font-medium"
-                >
-                  Filter Kelas
-                </Label>
-                <Select
-                  value={selectedClass || "all"}
-                  onValueChange={(v) => {
-                    setSelectedClass(v === "all" ? "" : v);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger id="filter-class" className="w-full h-9">
-                    <SelectValue placeholder="Semua Kelas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Kelas</SelectItem>
-                    {(classNames ?? []).map((cn) => (
-                      <SelectItem key={cn} value={cn!}>
-                        {cn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+              <Input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search"
+                className="h-9"
+              />
 
-            {/* Reusable filter bar */}
-            <FilterBar
-              value={filter}
-              statuses={["Hadir", "Terlambat", "Pulang", "Alpha"]}
-              onChange={(next) => {
-                setDate(next.date ?? "");
-                setQuery(next.query ?? "");
-                setStatus(next.status ?? "");
-                setSort(next.sort ?? "desc");
-                setPage(1); // Reset to page 1 when filter changes
-              }}
-              className="mb-4"
-            />
+              <Select
+                value={status || "all"}
+                onValueChange={(v) => {
+                  setStatus(v === "all" ? "" : v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Status</SelectItem>
+                  <SelectItem value="Hadir">Hadir</SelectItem>
+                  <SelectItem value="Terlambat">Terlambat</SelectItem>
+                  <SelectItem value="Pulang">Pulang</SelectItem>
+                  <SelectItem value="Alpha">Alpha</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setPage(1);
+                }}
+                className="h-9"
+              />
+
+              <Select
+                value={selectedClass || "all"}
+                onValueChange={(v) => {
+                  setSelectedClass(v === "all" ? "" : v);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="Kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Kelas</SelectItem>
+                  {(classNames ?? []).map((cn) => (
+                    <SelectItem key={cn} value={cn!}>
+                      {cn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {(() => {
-              const rows = (absences ?? []).filter((a) => {
-                const q = query.trim().toLowerCase();
-                if (!q) return true;
-                const hayName =
-                  `${a.userProfile?.fullName ?? ""}`.toLowerCase();
-                return hayName.includes(q);
-              });
-              const rows2 = rows.filter((a) => {
-                if (!status) return true;
-                return (a.status ?? "").toLowerCase() === status.toLowerCase();
-              });
-              const hasMore = rows2.length === limit;
+              const rows = absences ?? [];
+              const hasMore = rows.length === limit;
 
               return (
                 <>
-                  {/* Pagination Info */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                    <span>
-                      Halaman {page} - Menampilkan {rows2.length} data
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!hasMore}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-
                   {/* Main UI table */}
-                  <div className="mb-4 w-full overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
+                  <div className="mb-3 w-full max-w-[calc(100vw-2rem)] overflow-x-auto sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-12">
                             <Checkbox
                               checked={
-                                selectedIds.size === rows2.length &&
-                                rows2.length > 0
+                                selectedIds.size === rows.length &&
+                                rows.length > 0
                               }
-                              onCheckedChange={() => toggleSelectAll(rows2)}
+                              onCheckedChange={() => toggleSelectAll(rows)}
                               aria-label="Pilih semua"
                             />
                           </TableHead>
@@ -336,7 +307,7 @@ export default function AbsensiPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows2.map((a) => {
+                        {rows.map((a) => {
                           const name =
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
@@ -422,7 +393,7 @@ export default function AbsensiPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows2.map((a) => {
+                        {rows.map((a) => {
                           const name =
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
@@ -450,9 +421,9 @@ export default function AbsensiPage() {
                   </div>
 
                   {/* Bottom Pagination */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                  <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
                     <span>
-                      Halaman {page} - Menampilkan {rows2.length} data
+                      Halaman {page} - Menampilkan {rows.length} data
                     </span>
                     <div className="flex gap-2">
                       <Button

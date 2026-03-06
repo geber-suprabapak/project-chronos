@@ -6,6 +6,16 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { userProfiles } from "~/server/db/schema";
+import { isTransientDbError } from "~/server/lib/db-utils";
+
+async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isTransientDbError(error)) throw error;
+    return await operation();
+  }
+}
 
 /**
  * tRPC router untuk tabel `user_profiles` (Supabase).
@@ -61,22 +71,24 @@ export const userProfilesRouter = createTRPCRouter({
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
       // Run data + total count in parallel
-      const [rows, totalResult] = await Promise.all([
-        ctx.db
-          .select()
-          .from(userProfiles)
-          .where(whereCondition)
-          .orderBy(
-            sql`coalesce(${userProfiles.className}, '~~~~') ASC`,
-            sql`coalesce(${userProfiles.fullName}, '~~~~') ASC`,
-          )
-          .limit(limit)
-          .offset(offset),
-        ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(userProfiles)
-          .where(whereCondition),
-      ]);
+      const [rows, totalResult] = await withDbRetry(() =>
+        Promise.all([
+          ctx.db
+            .select()
+            .from(userProfiles)
+            .where(whereCondition)
+            .orderBy(
+              sql`coalesce(${userProfiles.className}, '~~~~') ASC`,
+              sql`coalesce(${userProfiles.fullName}, '~~~~') ASC`,
+            )
+            .limit(limit)
+            .offset(offset),
+          ctx.db
+            .select({ count: sql<number>`count(*)` })
+            .from(userProfiles)
+            .where(whereCondition),
+        ]),
+      );
       const total = Number(totalResult[0]?.count ?? 0);
       return {
         data: rows,
@@ -91,17 +103,19 @@ export const userProfilesRouter = createTRPCRouter({
 
   // LIST RAW: semua data (hati-hati untuk dataset besar)
   listRaw: privilegedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db.select().from(userProfiles);
+    const rows = await withDbRetry(() => ctx.db.select().from(userProfiles));
     return rows;
   }),
 
   // GET UNIQUE CLASS NAMES: untuk filter dropdown jurusan
   getUniqueClassNames: privilegedProcedure.query(async ({ ctx }) => {
-    const classNames = await ctx.db
-      .selectDistinct({ className: userProfiles.className })
-      .from(userProfiles)
-      .where(sql`${userProfiles.className} IS NOT NULL`)
-      .orderBy(userProfiles.className);
+    const classNames = await withDbRetry(() =>
+      ctx.db
+        .selectDistinct({ className: userProfiles.className })
+        .from(userProfiles)
+        .where(sql`${userProfiles.className} IS NOT NULL`)
+        .orderBy(userProfiles.className),
+    );
 
     return classNames.map((c) => c.className).filter(Boolean);
   }),

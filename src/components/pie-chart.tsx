@@ -56,140 +56,63 @@ const chartConfigPulang = {
 } satisfies ChartConfig;
 
 export function StatistikPieChart() {
-  // Ambil semua user dan absensi
-  const { data: users, isLoading: loadingUsers } =
-    api.userProfiles.listRaw.useQuery();
-  const { data: absensi, isLoading: loadingAbsensi } =
-    api.absences.listRaw.useQuery();
-
-  // Ambil perizinan hari ini menggunakan endpoint yang sama dengan halaman Perizinan
-  // Gunakan useMemo untuk todayString agar stabil dan tidak re-compute setiap render
+  // Gunakan endpoint agregat agar request ringan dan lebih stabil.
   const todayString = useMemo(
     () => new Date().toISOString().split("T")[0]!,
     [],
   );
-  const { data: perizinanHariIni, isLoading: loadingIzin } =
-    api.perizinan.list.useQuery({
-      tanggal: todayString,
-      limit: 100,
-      offset: 0,
-    });
+  const { data: summary, isLoading: loadingSummary } =
+    api.absences.getTodaySummary.useQuery({ date: todayString });
 
-  // Ukuran pie chart tetap
-  const outerRadius = 90;
-  const innerRadius = 60;
+  // Compact chart sizing for dashboard top layout.
+  const outerRadius = 68;
+  const innerRadius = 44;
 
   // Data untuk chart absen masuk
   const chartDataMasuk = useMemo(() => {
-    if (!users || !absensi || !perizinanHariIni) return [];
-    const userIds = new Set(users.map((u) => u.userId));
-
-    // Filter absensi untuk hari ini saja
-    const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
-      return absenDate === todayString;
-    });
-
-    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
-    const sudahAbsenMasuk = new Set(
-      absensiToday
-        .filter(
-          (a) =>
-            a.status === "Hadir" ||
-            a.status === "Datang" ||
-            a.status === "Terlambat",
-        )
-        .map((a) => a.userId),
-    );
-
-    // Hitung user yang izin atau sakit dari data perizinan (sudah difilter server)
-    const userIzinSakit = new Set(perizinanHariIni.map((p) => p.userId));
-
-    // Belum absen masuk = semua user KECUALI yang sudah absen masuk ATAU yang izin/sakit
-    const belumAbsenMasuk = new Set([...userIds]);
-    sudahAbsenMasuk.forEach((id) => belumAbsenMasuk.delete(id));
-    userIzinSakit.forEach((id) => belumAbsenMasuk.delete(id));
-
-    // Hitung izin (pergi) dan sakit hari ini dari data perizinan yang sudah difilter
-    let izinPergi = 0;
-    let sakit = 0;
-    perizinanHariIni.forEach((p) => {
-      if (p.kategoriIzin === "pergi") izinPergi++;
-      if (p.kategoriIzin === "sakit") sakit++;
-    });
+    if (!summary) return [];
 
     return [
       {
         category: "sudahAbsenMasuk",
-        value: sudahAbsenMasuk.size,
+        value: summary.sudahAbsenMasuk,
         fill: "var(--color-sudahAbsenMasuk)",
       },
       {
         category: "belumAbsenMasuk",
-        value: belumAbsenMasuk.size,
+        value: summary.belumAbsenMasuk,
         fill: "var(--color-belumAbsenMasuk)",
       },
       {
         category: "izin",
-        value: izinPergi,
+        value: summary.izin,
         fill: "var(--color-izin)",
       },
       {
         category: "sakit",
-        value: sakit,
+        value: summary.sakit,
         fill: "var(--color-sakit)",
       },
     ];
-  }, [users, absensi, perizinanHariIni, todayString]);
+  }, [summary]);
 
   // Data untuk chart absen pulang
   const chartDataPulang = useMemo(() => {
-    if (!users || !absensi) return [];
-
-    // Get today's date in YYYY-MM-DD format
-    const today = new Date();
-    const todayString = today.toISOString().split("T")[0]!;
-
-    // Filter absensi untuk hari ini saja
-    const absensiToday = absensi.filter((a) => {
-      const absenDate = typeof a.date === "string" ? a.date : String(a.date);
-      return absenDate === todayString;
-    });
-
-    // Hitung absensi masuk (status: "Hadir", "Datang", atau "Terlambat")
-    const sudahAbsenMasuk = new Set(
-      absensiToday
-        .filter(
-          (a) =>
-            a.status === "Hadir" ||
-            a.status === "Datang" ||
-            a.status === "Terlambat",
-        )
-        .map((a) => a.userId),
-    );
-
-    // Hitung absensi pulang (status: "Pulang")
-    const sudahAbsenPulang = new Set(
-      absensiToday.filter((a) => a.status === "Pulang").map((a) => a.userId),
-    );
-
-    // Belum absen pulang = user yang sudah absen masuk tapi belum pulang
-    const belumAbsenPulang = new Set([...sudahAbsenMasuk]);
-    sudahAbsenPulang.forEach((id) => belumAbsenPulang.delete(id));
+    if (!summary) return [];
 
     return [
       {
         category: "sudahAbsenPulang",
-        value: sudahAbsenPulang.size,
+        value: summary.sudahAbsenPulang,
         fill: "var(--color-sudahAbsenPulang)",
       },
       {
         category: "belumAbsenPulang",
-        value: belumAbsenPulang.size,
+        value: summary.belumAbsenPulang,
         fill: "var(--color-belumAbsenPulang)",
       },
     ];
-  }, [users, absensi]);
+  }, [summary]);
 
   // Calculate totals
   const totalMasuk = useMemo(() => {
@@ -201,21 +124,14 @@ export function StatistikPieChart() {
   }, [chartDataPulang]);
 
   // Only render chart if all data is loaded and chartData is available
-  if (
-    loadingUsers ||
-    loadingAbsensi ||
-    loadingIzin ||
-    !users ||
-    !absensi ||
-    !perizinanHariIni
-  ) {
+  if (loadingSummary || !summary) {
     return (
-      <Card className="flex flex-col">
-        <CardHeader className="items-center pb-0">
+      <Card className="flex h-full flex-col">
+        <CardHeader className="items-center pb-2">
           <CardTitle>Statistik Kehadiran</CardTitle>
           <CardDescription>Rekap Hari Ini</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-[300px]">
+        <CardContent className="flex items-center justify-center py-8">
           <div className="text-sm text-muted-foreground">Memuat data...</div>
         </CardContent>
       </Card>
@@ -223,24 +139,20 @@ export function StatistikPieChart() {
   }
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
+    <Card className="flex h-full flex-col">
+      <CardHeader className="items-center pb-2">
         <CardTitle>Statistik Kehadiran</CardTitle>
-        <CardDescription>Rekap Hari Ini</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <CardContent className="flex-1 pt-0 pb-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-3">
           {/* Chart Absen Masuk */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Masuk</h3>
-              <p className="text-xs text-muted-foreground">
-                Status kehadiran siswa
-              </p>
             </div>
             <ChartContainer
               config={chartConfigMasuk}
-              className="mx-auto aspect-square max-h-[250px]"
+              className="mx-auto aspect-square max-h-[150px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -259,11 +171,11 @@ export function StatistikPieChart() {
               </PieChart>
             </ChartContainer>
             <div className="text-center">
-              <div className="text-2xl font-bold">{totalMasuk}</div>
+              <div className="text-xl font-bold">{totalMasuk}</div>
               <div className="text-xs text-muted-foreground">Total Siswa</div>
             </div>
             {/* Legend untuk absen masuk */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
               {chartDataMasuk.map((entry) => {
                 const config =
                   chartConfigMasuk[
@@ -279,17 +191,17 @@ export function StatistikPieChart() {
                 return (
                   <div
                     key={entry.category}
-                    className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                    className="flex items-center gap-1.5 rounded-md bg-muted/50 p-1.5 transition-colors hover:bg-muted"
                   >
                     <div
-                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      className="h-2.5 w-2.5 flex-shrink-0 rounded-sm"
                       style={{ backgroundColor: color }}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">
+                      <div className="truncate text-[11px] font-medium">
                         {config.label}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <span className="font-semibold text-foreground">
                           {entry.value}
                         </span>
@@ -303,16 +215,13 @@ export function StatistikPieChart() {
           </div>
 
           {/* Chart Absen Pulang */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="text-center">
               <h3 className="text-sm font-semibold">Absen Pulang</h3>
-              <p className="text-xs text-muted-foreground">
-                Status kepulangan siswa
-              </p>
             </div>
             <ChartContainer
               config={chartConfigPulang}
-              className="mx-auto aspect-square max-h-[250px]"
+              className="mx-auto aspect-square max-h-[150px]"
             >
               <PieChart>
                 <ChartTooltip
@@ -331,11 +240,11 @@ export function StatistikPieChart() {
               </PieChart>
             </ChartContainer>
             <div className="text-center">
-              <div className="text-2xl font-bold">{totalPulang}</div>
+              <div className="text-xl font-bold">{totalPulang}</div>
               <div className="text-xs text-muted-foreground">Total Siswa</div>
             </div>
             {/* Legend untuk absen pulang */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
               {chartDataPulang.map((entry) => {
                 const config =
                   chartConfigPulang[
@@ -351,17 +260,17 @@ export function StatistikPieChart() {
                 return (
                   <div
                     key={entry.category}
-                    className="flex items-center gap-2 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                    className="flex items-center gap-1.5 rounded-md bg-muted/50 p-1.5 transition-colors hover:bg-muted"
                   >
                     <div
-                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      className="h-2.5 w-2.5 flex-shrink-0 rounded-sm"
                       style={{ backgroundColor: color }}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">
+                      <div className="truncate text-[11px] font-medium">
                         {config.label}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <span className="font-semibold text-foreground">
                           {entry.value}
                         </span>

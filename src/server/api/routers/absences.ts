@@ -157,6 +157,7 @@ export const absencesRouter = createTRPCRouter({
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
             .optional(),
           sort: z.enum(["asc", "desc"]).default("asc"),
+          query: z.string().trim().min(1).optional(),
           // Filter by className from user_profiles (untuk fitur Absensi Per Kelas)
           className: z.string().optional(),
         })
@@ -182,6 +183,22 @@ export const absencesRouter = createTRPCRouter({
         }
       }
       if (input?.date) conditions.push(eq(absences.date, input.date));
+
+      if (input?.query) {
+        conditions.push(
+          exists(
+            ctx.db
+              .select({ one: userProfiles.userId })
+              .from(userProfiles)
+              .where(
+                and(
+                  eq(userProfiles.userId, absences.userId),
+                  ilike(userProfiles.fullName, `%${input.query}%`),
+                ),
+              ),
+          ),
+        );
+      }
 
       // Date range filter (startDate - endDate)
       if (input?.startDate)
@@ -354,6 +371,85 @@ export const absencesRouter = createTRPCRouter({
       });
 
       return result;
+    }),
+
+  // Ringkasan dashboard harian untuk menghindari query raw besar di client.
+  getTodaySummary: protectedProcedure
+    .input(
+      z
+        .object({
+          date: z
+            .string()
+            .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+            .optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const date = input?.date ?? new Date().toISOString().split("T")[0]!;
+
+      const [allUsers, absensiToday, perizinanToday] = await Promise.all([
+        ctx.db.query.userProfiles.findMany({
+          columns: { userId: true },
+        }),
+        ctx.db.query.absences.findMany({
+          columns: { userId: true, status: true },
+          where: (table, { eq }) => eq(table.date, date),
+        }),
+        ctx.db.query.perizinan.findMany({
+          columns: { userId: true, kategoriIzin: true },
+          where: (table, { and, eq }) =>
+            and(
+              eq(table.tanggalUtcDate, date),
+              eq(table.approvalStatus, "approved"),
+            ),
+        }),
+      ]);
+
+      const totalUsers = allUsers.length;
+      const masukUserIds = new Set<string>();
+      const pulangUserIds = new Set<string>();
+      const izinUserIds = new Set<string>();
+      let izin = 0;
+      let sakit = 0;
+
+      absensiToday.forEach((row) => {
+        if (
+          row.status === "Hadir" ||
+          row.status === "Datang" ||
+          row.status === "Terlambat"
+        ) {
+          masukUserIds.add(row.userId);
+        }
+        if (row.status === "Pulang") {
+          pulangUserIds.add(row.userId);
+        }
+      });
+
+      perizinanToday.forEach((row) => {
+        izinUserIds.add(row.userId);
+        if (row.kategoriIzin === "pergi") izin += 1;
+        if (row.kategoriIzin === "sakit") sakit += 1;
+      });
+
+      const hadirAtauIzin = new Set<string>([...masukUserIds, ...izinUserIds]);
+      const sudahAbsenPulang = Array.from(masukUserIds).filter((userId) =>
+        pulangUserIds.has(userId),
+      ).length;
+      const belumAbsenPulang = Array.from(masukUserIds).filter(
+        (userId) => !pulangUserIds.has(userId),
+      ).length;
+
+      return {
+        date,
+        totalUsers,
+        sudahAbsenMasuk: masukUserIds.size,
+        belumAbsenMasuk: Math.max(0, totalUsers - hadirAtauIzin.size),
+        sudahAbsenPulang,
+        belumAbsenPulang,
+        izin,
+        sakit,
+      };
     }),
 
   // Ringkasan kehadiran per kelas: siapa yang hadir, tidak hadir, izin, sakit

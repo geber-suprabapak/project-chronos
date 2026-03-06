@@ -14,7 +14,17 @@ import { Separator } from "~/components/ui/separator";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AutoSearchForm } from "~/components/auto-search-form";
+import { isTransientNetworkError } from "~/lib/network-utils";
 // Next.js App Router page component with search params
+
+async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isTransientNetworkError(error)) throw error;
+    return await operation();
+  }
+}
 
 export default async function ProfilesPage({
   searchParams,
@@ -85,10 +95,12 @@ export default async function ProfilesPage({
     console.log("Loading profiles with params:", params);
 
     // Fetch data and unique class names in parallel
-    const [res, classNamesRes] = await Promise.all([
-      api.userProfiles.list(params),
-      api.userProfiles.getUniqueClassNames(),
-    ]);
+    const [res, classNamesRes] = await withRetry(() =>
+      Promise.all([
+        api.userProfiles.list(params),
+        api.userProfiles.getUniqueClassNames(),
+      ]),
+    );
 
     if (res) {
       // Pastikan data diproses dengan benar

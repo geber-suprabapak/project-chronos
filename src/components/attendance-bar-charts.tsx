@@ -63,9 +63,6 @@ export function KehadiranBarChart() {
     api.absences.getAttendanceStats.useQuery({
       days,
     });
-  // Fetch total activated students to scale domain & radius
-  const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
-  const totalActivated = statsSummary?.activated ?? 0;
 
   const chartData = useMemo(() => {
     if (!statsData) return [];
@@ -144,6 +141,11 @@ export function KehadiranBarChart() {
     }
   }, [statsData, timeRange]);
 
+  const maxChartValue = useMemo(() => {
+    if (!chartData.length) return 1;
+    return Math.max(1, ...chartData.map((item) => item.hadir));
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <Card>
@@ -208,7 +210,7 @@ export function KehadiranBarChart() {
             />
             <YAxis
               type="number"
-              domain={[0, Math.max(1, totalActivated)]}
+              domain={[0, maxChartValue]}
               hide
             />
             <ChartTooltip
@@ -246,8 +248,6 @@ export function IzinBarChart() {
     api.absences.getAttendanceStats.useQuery({
       days,
     });
-  const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
-  const totalActivated = statsSummary?.activated ?? 0;
 
   const chartData = useMemo(() => {
     if (!statsData) return [];
@@ -326,6 +326,11 @@ export function IzinBarChart() {
     }
   }, [statsData, timeRange]);
 
+  const maxChartValue = useMemo(() => {
+    if (!chartData.length) return 1;
+    return Math.max(1, ...chartData.map((item) => item.izin));
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <Card>
@@ -390,7 +395,7 @@ export function IzinBarChart() {
             />
             <YAxis
               type="number"
-              domain={[0, Math.max(1, totalActivated)]}
+              domain={[0, maxChartValue]}
               hide
             />
             <ChartTooltip
@@ -430,8 +435,6 @@ export function KeterlambatanBarChart() {
     api.absences.getAttendanceStats.useQuery({
       days,
     });
-  const { data: statsSummary } = api.biodataSiswa.getStatistics.useQuery();
-  const totalActivated = statsSummary?.activated ?? 0;
 
   const chartData = useMemo(() => {
     if (!statsData) return [];
@@ -510,6 +513,11 @@ export function KeterlambatanBarChart() {
     }
   }, [statsData, timeRange]);
 
+  const maxChartValue = useMemo(() => {
+    if (!chartData.length) return 1;
+    return Math.max(1, ...chartData.map((item) => item.terlambat));
+  }, [chartData]);
+
   if (isLoading) {
     return (
       <Card>
@@ -574,7 +582,7 @@ export function KeterlambatanBarChart() {
             />
             <YAxis
               type="number"
-              domain={[0, Math.max(1, totalActivated)]}
+              domain={[0, maxChartValue]}
               hide
             />
             <ChartTooltip

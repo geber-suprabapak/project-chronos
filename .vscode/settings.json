@@ -1,3 +1,6 @@
 {
-  "files.eol": "\r\n"
+  "files.eol": "\r\n",
+  "chat.tools.terminal.autoApprove": {
+    "ForEach-Object": true
+  }
 }
