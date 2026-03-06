@@ -361,7 +361,7 @@ export default function AbsensiPerKelasPage() {
           <>
 
             {/* Loading summary */}
-            {date && summaryLoading && (
+            {summaryLoading && (
               <div className="mb-4 space-y-2">
                 <Skeleton className="h-5 w-48" />
                 <div className="grid grid-cols-3 gap-3">
