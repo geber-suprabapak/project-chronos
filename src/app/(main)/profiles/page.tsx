@@ -14,22 +14,8 @@ import { Separator } from "~/components/ui/separator";
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { AutoSearchForm } from "~/components/auto-search-form";
+import { isTransientNetworkError } from "~/lib/network-utils";
 // Next.js App Router page component with search params
-
-function isTransientNetworkError(error: unknown): boolean {
-  const message =
-    typeof error === "object" && error !== null && "message" in error
-      ? String(error.message)
-      : "";
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
-
-  return /ECONNRESET|ETIMEDOUT|ECONNREFUSED|network|fetch failed/i.test(
-    `${code} ${message}`,
-  );
-}
 
 async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
   try {

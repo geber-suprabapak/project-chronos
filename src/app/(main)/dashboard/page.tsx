@@ -17,7 +17,6 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
-import { Calendar, Clock } from "lucide-react";
 import { DashboardActionCard } from "~/components/dashboard-action-card";
 import { StatistikPieChart } from "~/components/pie-chart";
 
@@ -133,7 +132,7 @@ function PendingPermissionsTable({
 async function DashboardContent() {
   // Parallel data fetching using RSC
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [perizinanToday, currentSchedule] = await Promise.all([
+  const [perizinanToday] = await Promise.all([
     api.perizinan.list({
       approvalStatus: "pending",
       tanggal: todayStr,
