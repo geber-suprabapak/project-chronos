@@ -157,6 +157,7 @@ export const absencesRouter = createTRPCRouter({
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
             .optional(),
           sort: z.enum(["asc", "desc"]).default("asc"),
+          query: z.string().trim().min(1).optional(),
           // Filter by className from user_profiles (untuk fitur Absensi Per Kelas)
           className: z.string().optional(),
         })
@@ -182,6 +183,22 @@ export const absencesRouter = createTRPCRouter({
         }
       }
       if (input?.date) conditions.push(eq(absences.date, input.date));
+
+      if (input?.query) {
+        conditions.push(
+          exists(
+            ctx.db
+              .select({ one: userProfiles.userId })
+              .from(userProfiles)
+              .where(
+                and(
+                  eq(userProfiles.userId, absences.userId),
+                  ilike(userProfiles.fullName, `%${input.query}%`),
+                ),
+              ),
+          ),
+        );
+      }
 
       // Date range filter (startDate - endDate)
       if (input?.startDate)
@@ -416,14 +433,20 @@ export const absencesRouter = createTRPCRouter({
       });
 
       const hadirAtauIzin = new Set<string>([...masukUserIds, ...izinUserIds]);
+      const sudahAbsenPulang = Array.from(masukUserIds).filter((userId) =>
+        pulangUserIds.has(userId),
+      ).length;
+      const belumAbsenPulang = Array.from(masukUserIds).filter(
+        (userId) => !pulangUserIds.has(userId),
+      ).length;
 
       return {
         date,
         totalUsers,
         sudahAbsenMasuk: masukUserIds.size,
         belumAbsenMasuk: Math.max(0, totalUsers - hadirAtauIzin.size),
-        sudahAbsenPulang: pulangUserIds.size,
-        belumAbsenPulang: Math.max(0, masukUserIds.size - pulangUserIds.size),
+        sudahAbsenPulang,
+        belumAbsenPulang,
         izin,
         sakit,
       };
