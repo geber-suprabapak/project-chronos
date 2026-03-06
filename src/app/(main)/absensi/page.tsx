@@ -75,6 +75,7 @@ export default function AbsensiPage() {
     offset,
     sort: "desc",
     date: date || undefined,
+    query: query.trim() || undefined,
     status: status || undefined,
     className: selectedClass || undefined,
   });
@@ -278,18 +279,8 @@ export default function AbsensiPage() {
               </Select>
             </div>
             {(() => {
-              const rows = (absences ?? []).filter((a) => {
-                const q = query.trim().toLowerCase();
-                if (!q) return true;
-                const hayName =
-                  `${a.userProfile?.fullName ?? ""}`.toLowerCase();
-                return hayName.includes(q);
-              });
-              const rows2 = rows.filter((a) => {
-                if (!status) return true;
-                return (a.status ?? "").toLowerCase() === status.toLowerCase();
-              });
-              const hasMore = rows2.length === limit;
+              const rows = absences ?? [];
+              const hasMore = rows.length === limit;
 
               return (
                 <>
@@ -301,10 +292,10 @@ export default function AbsensiPage() {
                           <TableHead className="w-12">
                             <Checkbox
                               checked={
-                                selectedIds.size === rows2.length &&
-                                rows2.length > 0
+                                selectedIds.size === rows.length &&
+                                rows.length > 0
                               }
-                              onCheckedChange={() => toggleSelectAll(rows2)}
+                              onCheckedChange={() => toggleSelectAll(rows)}
                               aria-label="Pilih semua"
                             />
                           </TableHead>
@@ -316,7 +307,7 @@ export default function AbsensiPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows2.map((a) => {
+                        {rows.map((a) => {
                           const name =
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
@@ -402,7 +393,7 @@ export default function AbsensiPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {rows2.map((a) => {
+                        {rows.map((a) => {
                           const name =
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
@@ -432,7 +423,7 @@ export default function AbsensiPage() {
                   {/* Bottom Pagination */}
                   <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
                     <span>
-                      Halaman {page} - Menampilkan {rows2.length} data
+                      Halaman {page} - Menampilkan {rows.length} data
                     </span>
                     <div className="flex gap-2">
                       <Button
