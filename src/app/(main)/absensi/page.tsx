@@ -341,23 +341,6 @@ export default function AbsensiPage() {
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
-                                          asChild
-                                          variant="outline"
-                                          size="icon"
-                                          aria-label="Detail absensi"
-                                        >
-                                          <Link href={`/absensi/show/${a.id}`}>
-                                            <Eye />
-                                          </Link>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Detail</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
                                           variant="destructive"
                                           size="icon"
                                           aria-label="Hapus absensi"

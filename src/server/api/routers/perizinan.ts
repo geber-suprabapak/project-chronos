@@ -69,7 +69,10 @@ export const perizinanRouter = createTRPCRouter({
         where: where,
         limit: input?.limit ?? 20,
         offset: input?.offset ?? 0,
-        orderBy: (perizinan, { asc }) => [asc(perizinan.createdAt)],
+        orderBy: (perizinan, { desc }) => [
+          desc(perizinan.tanggal),
+          desc(perizinan.createdAt),
+        ],
         with: {
           userProfile: true,
         },

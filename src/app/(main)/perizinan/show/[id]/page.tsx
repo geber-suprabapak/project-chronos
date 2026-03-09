@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -20,7 +20,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { Terminal, User, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Terminal, User, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 
@@ -59,21 +59,9 @@ const formatDate = (input: string | Date | null | undefined) => {
   }).format(date);
 };
 
-// Helper to determine badge variant based on status
-const getBadgeVariant = (status: string | null) => {
-  switch (status) {
-    case "approved":
-      return "success" as const; // green
-    case "rejected":
-      return "destructive" as const; // red
-    case "pending":
-    default:
-      return "outline" as const;
-  }
-};
-
 export default function ShowPerizinanPage() {
   const params = useParams();
+  const router = useRouter();
   const id = typeof params.id === "string" ? params.id : "";
 
   const [isRejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -129,215 +117,233 @@ export default function ShowPerizinanPage() {
   const user = perizinan.userProfile;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8">
-      {/* Left Column */}
-      <div className="lg:col-span-2 flex flex-col gap-4 md:gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Detail Permintaan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div className="grid gap-2">
-              <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Kategori
-                </p>
-                <Badge variant="secondary" className="capitalize">
-                  {perizinan.kategoriIzin ?? "-"}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-2 items-center">
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Tanggal Izin
-                </p>
-                <p>{formatDate(perizinan.tanggal)}</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-muted-foreground">
-                Deskripsi
-              </p>
-              <p className="mt-1">{perizinan.deskripsi}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p>
-              <strong>Status Saat Ini:</strong>{" "}
-              <Badge
-                variant={getBadgeVariant(perizinan.approvalStatus)}
-                className="capitalize"
-              >
-                {perizinan.approvalStatus}
-              </Badge>
-            </p>
-            <p>
-              <strong>Dibuat pada:</strong> {formatDate(perizinan.createdAt)}
-            </p>
-            {perizinan.approvalStatus === "approved" && (
-              <p>
-                <strong>Disetujui pada:</strong>{" "}
-                {formatDate(perizinan.approvedAt)}
-              </p>
-            )}
-            {perizinan.approvalStatus === "rejected" && (
-              <p>
-                <strong>Ditolak pada:</strong>{" "}
-                {formatDate(perizinan.rejectedAt)}
-              </p>
-            )}
-            {perizinan.rejectionReason && (
-              <Alert className="mt-4">
-                <Terminal className="h-4 w-4" />
-                <AlertTitle>Alasan Penolakan</AlertTitle>
-                <AlertDescription>{perizinan.rejectionReason}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+    <div className="h-[calc(100dvh-4rem)] overflow-hidden p-3 md:p-4 flex flex-col gap-3 md:gap-4">
+      <div className="flex items-start gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => router.back()}
+          aria-label="Kembali"
+          className="mt-0.5"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Detail Permohonan Izin</h1>
+          <p className="text-sm text-muted-foreground">
+            Lihat dan kelola informasi permohonan izin
+          </p>
+        </div>
       </div>
 
-      {/* Right Column */}
-      <div className="lg:col-span-1 flex flex-col gap-4 md:gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profil Pemohon</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={user?.avatarUrl ?? undefined} />
-                <AvatarFallback>
-                  <User />
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-lg font-semibold">
-                  {user?.fullName ?? "N/A"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {user?.email ?? "N/A"}
-                </p>
-              </div>
-            </div>
-            <div className="h-px bg-border" />
-            <div className="grid gap-2">
-              {user?.nis && (
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">
-                    NIS
-                  </p>
-                  <p className="col-span-2">{user.nis}</p>
-                </div>
-              )}
-              <div className="grid grid-cols-3 items-center gap-2">
-                <p className="col-span-1 text-sm font-semibold text-muted-foreground">
-                  Kelas
-                </p>
-                <p className="col-span-2">{user?.className ?? "-"}</p>
-              </div>
-              <div className="grid grid-cols-3 items-center gap-2">
-                <p className="col-span-1 text-sm font-semibold text-muted-foreground">
-                  No. Absen
-                </p>
-                <p className="col-span-2">{user?.absenceNumber ?? "-"}</p>
-              </div>
-              {user?.role && (
-                <div className="grid grid-cols-3 items-center gap-2">
-                  <p className="col-span-1 text-sm font-semibold text-muted-foreground">
-                    Role
-                  </p>
-                  <p className="col-span-2 capitalize">{user.role}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        {perizinan.linkFoto && (
+      <div className="min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4 items-start">
+        <div className="lg:col-span-3">
           <Card>
-            <CardHeader>
-              <CardTitle>Bukti Foto</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle>Informasi Permohonan</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="relative w-full h-72 rounded-md border bg-slate-50 overflow-hidden">
-                <Image
-                  src={perizinan.linkFoto}
-                  alt="Bukti Perizinan"
-                  fill
-                  style={{ objectFit: "cover" }}
-                />
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Kategori</p>
+                    <Badge variant="secondary" className="mt-1 capitalize">
+                      {perizinan.kategoriIzin ?? "-"}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Deskripsi</p>
+                    <p className="mt-1 text-sm">{perizinan.deskripsi ?? "-"}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tanggal Izin</p>
+                  <p className="mt-1 text-sm">{formatDate(perizinan.tanggal)}</p>
+                </div>
               </div>
-              <Button
-                variant="info"
-                size="sm"
-                onClick={() => setPhotoDialogOpen(true)}
-                className="w-full"
-              >
-                <ImageIcon className="mr-2 h-4 w-4" /> Lihat Ukuran Penuh
-              </Button>
+
+              <div className="h-px bg-border" />
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Bukti Foto</p>
+                {perizinan.linkFoto ? (
+                  <button
+                    type="button"
+                    onClick={() => setPhotoDialogOpen(true)}
+                    className="w-full rounded-md bg-slate-50 p-2"
+                    aria-label="Lihat bukti foto ukuran penuh"
+                  >
+                    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
+                      <Image
+                        src={perizinan.linkFoto}
+                        alt="Permission Evidence"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  </button>
+                ) : (
+                  <div className="w-full rounded-md bg-slate-50 p-2">
+                    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
+                      <div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground">
+                        <ImageIcon className="mb-2 h-5 w-5" />
+                        <span className="text-sm">Tidak ada bukti foto</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
-        )}
-        <Card>
-          <CardHeader>
-            <CardTitle>Panel Aksi</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isActionable ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Setujui atau tolak permintaan ini.
-                </p>
-                <Button
-                  onClick={handleApprove}
-                  disabled={updateStatusMutation.isPending}
-                  size="lg"
-                  variant="success"
-                >
-                  {updateStatusMutation.isPending ? "Approving..." : "Approve"}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setRejectDialogOpen(true)}
-                  disabled={updateStatusMutation.isPending}
-                  size="lg"
-                >
-                  Reject
-                </Button>
+        </div>
+
+        <div className="lg:col-span-2 flex flex-col gap-3 md:gap-4 min-h-0">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Profil Siswa</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={user?.avatarUrl ?? undefined} />
+                  <AvatarFallback>
+                    <User />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold truncate">{user?.fullName ?? "N/A"}</p>
+                  <p className="text-sm text-muted-foreground truncate">{user?.email ?? "N/A"}</p>
+                </div>
               </div>
-            ) : perizinan.approvalStatus === "rejected" ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Permintaan ini ditolak. Anda bisa membatalkan penolakan.
-                </p>
-                <Button
-                  onClick={() => {
-                    updateStatusMutation.mutate({
-                      id,
-                      approvalStatus: "pending",
-                    });
-                  }}
-                  disabled={updateStatusMutation.isPending}
-                  size="lg"
-                  variant="info"
-                >
-                  {updateStatusMutation.isPending
-                    ? "Membatalkan..."
-                    : "Batalkan Penolakan"}
-                </Button>
+              <div className="h-px bg-border" />
+              <div className="grid gap-2 text-sm">
+                {user?.nis && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">NIS</p>
+                    <p className="text-right">{user.nis}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <p className="text-muted-foreground">Kelas</p>
+                  <p className="text-right">{user?.className ?? "-"}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <p className="text-muted-foreground">No. Absen</p>
+                  <p className="text-right">{user?.absenceNumber ?? "-"}</p>
+                </div>
+                {user?.role && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <p className="text-muted-foreground">Peran</p>
+                    <p className="text-right capitalize">{user.role}</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <p>
-                Tindakan tidak dapat dilakukan karena permintaan ini sudah
-                direspon.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Riwayat Status</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2.5">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-500" />
+                <div className="text-sm">
+                  <p className="font-medium">Permohonan Dibuat</p>
+                  <p className="text-muted-foreground">{formatDate(perizinan.createdAt)}</p>
+                </div>
+              </div>
+              {perizinan.approvalStatus === "approved" && (
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-green-500" />
+                  <div className="text-sm">
+                    <p className="font-medium">Disetujui</p>
+                    <p className="text-muted-foreground">{formatDate(perizinan.approvedAt)}</p>
+                  </div>
+                </div>
+              )}
+              {perizinan.approvalStatus === "rejected" && (
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                  <div className="text-sm">
+                    <p className="font-medium">Ditolak</p>
+                    <p className="text-muted-foreground">{formatDate(perizinan.rejectedAt)}</p>
+                  </div>
+                </div>
+              )}
+              {perizinan.approvalStatus === "pending" && (
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
+                  <div className="text-sm">
+                    <p className="font-medium">Menunggu Persetujuan</p>
+                    <p className="text-muted-foreground">Status saat ini: pending</p>
+                  </div>
+                </div>
+              )}
+              {perizinan.rejectionReason && (
+                <Alert className="mt-3">
+                  <Terminal className="h-4 w-4" />
+                  <AlertTitle>Alasan Penolakan</AlertTitle>
+                  <AlertDescription>{perizinan.rejectionReason}</AlertDescription>
+                </Alert>
+              )}
+              <div className="h-px bg-border my-3" />
+              {isActionable ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Setujui atau tolak permintaan ini.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleApprove}
+                      disabled={updateStatusMutation.isPending}
+                      size="lg"
+                      variant="success"
+                      className="w-full"
+                    >
+                      {updateStatusMutation.isPending ? "Approving..." : "Approve"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setRejectDialogOpen(true)}
+                      disabled={updateStatusMutation.isPending}
+                      size="lg"
+                      className="w-full"
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ) : perizinan.approvalStatus === "rejected" ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Permintaan ini ditolak. Anda bisa membatalkan penolakan.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      updateStatusMutation.mutate({
+                        id,
+                        approvalStatus: "pending",
+                      });
+                    }}
+                    disabled={updateStatusMutation.isPending}
+                    size="lg"
+                    variant="info"
+                  >
+                    {updateStatusMutation.isPending
+                      ? "Membatalkan..."
+                      : "Batalkan Penolakan"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Tidak ada aksi tersedia. Permohonan ini sudah diproses.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Dialogs */}
