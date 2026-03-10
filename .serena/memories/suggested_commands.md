@@ -1,0 +1,9 @@
+- Dev: pnpm dev
+- Build: pnpm build
+- Start: pnpm start
+- Preview: pnpm preview
+- Lint: pnpm lint
+- Typecheck: pnpm typecheck
+- Format: pnpm format
+- DB: pnpm db:generate | pnpm db:migrate | pnpm db:push | pnpm db:studio
+- Utility on Windows: Get-ChildItem, Set-Location, rg, git status, git diff

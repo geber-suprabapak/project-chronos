@@ -22,8 +22,21 @@ import { createSupabaseMiddlewareClient } from "~/lib/supabase/middleware";
 // Daftar path yang TIDAK membutuhkan autentikasi (akses bebas)
 const PUBLIC_PATHS = new Set([
   "/login",
+  "/ganti-password",
   "/auth/callback", // potential OAuth callback
 ]);
+
+function readMustChangePasswordFlag(user: {
+  user_metadata?: Record<string, unknown> | null;
+}): boolean {
+  const value = user.user_metadata?.must_change_password;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  return false;
+}
 
 /**
  * Menentukan apakah suatu pathname bersifat publik.
@@ -55,9 +68,31 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = req.nextUrl.pathname;
+  const mustChangePassword = user
+    ? readMustChangePasswordFlag(user)
+    : false;
 
   // Jika user sudah login & membuka /login → kembalikan ke beranda
   if (pathname === "/login" && user) {
+    const url = req.nextUrl.clone();
+    url.pathname = mustChangePassword ? "/ganti-password" : "/";
+    return NextResponse.redirect(url);
+  }
+
+  // Paksa user yang belum ganti password tetap di halaman ganti password.
+  if (
+    user &&
+    mustChangePassword &&
+    pathname !== "/ganti-password" &&
+    !isPublicPath(pathname)
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/ganti-password";
+    return NextResponse.redirect(url);
+  }
+
+  // Jika sudah tidak wajib ganti password, jangan biarkan masuk lagi ke halaman itu.
+  if (user && !mustChangePassword && pathname === "/ganti-password") {
     const url = req.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
