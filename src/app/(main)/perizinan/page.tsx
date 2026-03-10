@@ -112,6 +112,27 @@ export default function PerizinanPage() {
     });
 
   const activeError = isSearchingByName ? rawError : error;
+  const sourceRows = isSearchingByName ? (perizinanRaw ?? []) : (perizinan ?? []);
+  const rows = sourceRows
+    .filter((p) => {
+      if (filter.status && p.approvalStatus !== filter.status) return false;
+
+      if (filter.date) {
+        const rowDate = formatInputDate(p.tanggal);
+        if (rowDate !== filter.date) return false;
+      }
+
+      if (!queryText) return true;
+      const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
+      return name.toLowerCase().includes(queryText);
+    })
+    .sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal));
+  const pagedRows = isSearchingByName ? rows.slice(offset, offset + limit) : rows;
+  const hasMore = isSearchingByName
+    ? offset + limit < rows.length
+    : rows.length === limit;
+  const loadingState = isSearchingByName ? isLoadingRaw : isLoading;
+  const hasVisibleRows = pagedRows.length > 0;
 
   if (activeError) {
     return (
@@ -141,7 +162,7 @@ export default function PerizinanPage() {
               tableId="perizinan-table"
               filename="perizinan.pdf"
               title="Data Perizinan"
-              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+              disabled={loadingState || !hasVisibleRows}
             />
           </div>
         </CardHeader>
@@ -159,41 +180,8 @@ export default function PerizinanPage() {
             showSort={false}
             className="mb-4"
           />
-          {(() => {
-            const sourceRows = isSearchingByName
-              ? (perizinanRaw ?? [])
-              : (perizinan ?? []);
-
-            const rows = sourceRows
-              .filter((p) => {
-                if (filter.status && p.approvalStatus !== filter.status)
-                  return false;
-
-                if (filter.date) {
-                  const rowDate = formatInputDate(p.tanggal);
-                  if (rowDate !== filter.date) return false;
-                }
-
-                if (!queryText) return true;
-                const name =
-                  p.userProfile?.fullName ?? p.userProfile?.email ?? "";
-                return name.toLowerCase().includes(queryText);
-              })
-              .sort(
-                (a, b) =>
-                  getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal),
-              );
-
-            const pagedRows = isSearchingByName
-              ? rows.slice(offset, offset + limit)
-              : rows;
-            const hasMore = isSearchingByName
-              ? offset + limit < rows.length
-              : rows.length === limit;
-            const loadingState = isSearchingByName ? isLoadingRaw : isLoading;
-
-            return (
-              <>
+          {
+            <>
                 {/* Pagination Info */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
                   <span>
@@ -408,9 +396,8 @@ export default function PerizinanPage() {
                     </Button>
                   </div>
                 </div>
-              </>
-            );
-          })()}
+            </>
+          }
         </CardContent>
       </Card>
     </div>
