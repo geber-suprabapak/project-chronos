@@ -113,20 +113,24 @@ export default function PerizinanPage() {
 
   const activeError = isSearchingByName ? rawError : error;
   const sourceRows = isSearchingByName ? (perizinanRaw ?? []) : (perizinan ?? []);
-  const rows = sourceRows
-    .filter((p) => {
-      if (filter.status && p.approvalStatus !== filter.status) return false;
+  
+  const rows = isSearchingByName
+    ? sourceRows
+        .filter((p) => {
+          if (filter.status && p.approvalStatus !== filter.status) return false;
 
-      if (filter.date) {
-        const rowDate = formatInputDate(p.tanggal);
-        if (rowDate !== filter.date) return false;
-      }
+          if (filter.date) {
+            const rowDate = formatInputDate(p.tanggal);
+            if (rowDate !== filter.date) return false;
+          }
 
-      if (!queryText) return true;
-      const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
-      return name.toLowerCase().includes(queryText);
-    })
-    .sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal));
+          if (!queryText) return true;
+          const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
+          return name.toLowerCase().includes(queryText);
+        })
+        .sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal))
+    : sourceRows.sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal));
+  
   const pagedRows = isSearchingByName ? rows.slice(offset, offset + limit) : rows;
   const hasMore = isSearchingByName
     ? offset + limit < rows.length
