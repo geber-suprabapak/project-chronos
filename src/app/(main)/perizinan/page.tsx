@@ -156,7 +156,7 @@ export default function PerizinanPage() {
             <DownloadExcelButton
               href="/api/export/perizinan"
               filename="perizinan.xlsx"
-              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+              disabled={loadingState || !hasVisibleRows}
             />
             <DownloadPdfButton
               tableId="perizinan-table"
