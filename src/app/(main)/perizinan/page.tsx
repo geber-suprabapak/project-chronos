@@ -101,16 +101,22 @@ export default function PerizinanPage() {
     },
   );
 
-  const { data: perizinanRaw, isLoading: isLoadingRaw } =
+  const {
+    data: perizinanRaw,
+    isLoading: isLoadingRaw,
+    error: rawError,
+  } =
     api.perizinan.listRaw.useQuery(undefined, {
       enabled: isSearchingByName,
       refetchOnWindowFocus: false,
     });
 
-  if (error) {
+  const activeError = isSearchingByName ? rawError : error;
+
+  if (activeError) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-red-500">Error: {error.message}</p>
+        <p className="text-red-500">Error: {activeError.message}</p>
       </div>
     );
   }
@@ -163,7 +169,7 @@ export default function PerizinanPage() {
                 if (filter.status && p.approvalStatus !== filter.status)
                   return false;
 
-                if (!isSearchingByName && filter.date) {
+                if (filter.date) {
                   const rowDate = formatInputDate(p.tanggal);
                   if (rowDate !== filter.date) return false;
                 }

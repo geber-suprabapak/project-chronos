@@ -4,6 +4,7 @@ import {
   privilegedProcedure,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
 import { perizinan } from "~/server/db/schema";
 import { eq, and, gte, lt } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
@@ -20,7 +21,7 @@ import type { SQL } from "drizzle-orm";
  *  - Validasi menggunakan Zod termasuk pembatasan kategoriIzin ("sakit" | "pergi").
  *  - Tanggal difilter menggunakan format YYYY-MM-DD (regex sederhana) jika dikirim.
  *  - WHERE clause dibangun dinamis hanya jika ada filter.
- *  - Middleware auth/role belum diterapkan; bisa ditambahkan kemudian jika diperlukan.
+ *  - Endpoint baca dibatasi berdasarkan role: siswa hanya dapat melihat datanya sendiri.
  */
 export const perizinanRouter = createTRPCRouter({
   // Mengambil daftar perizinan dengan opsi filter & pagination.
@@ -47,6 +48,11 @@ export const perizinanRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const conditions: SQL[] = [];
+
+      if (!hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)) {
+        conditions.push(eq(perizinan.userId, ctx.user.id));
+      }
+
       if (input?.userId) conditions.push(eq(perizinan.userId, input.userId));
       if (input?.kategoriIzin)
         conditions.push(eq(perizinan.kategoriIzin, input.kategoriIzin));
@@ -55,7 +61,7 @@ export const perizinanRouter = createTRPCRouter({
       if (typeof input?.status === "boolean")
         conditions.push(eq(perizinan.status, input.status));
       // Filter per hari berdasarkan zona lokal (WIB, UTC+7) dengan rentang [start, end)
-      const dateParam = input?.date || input?.tanggal;
+      const dateParam = input?.date ?? input?.tanggal;
       if (dateParam) {
         const startLocal = new Date(`${dateParam}T00:00:00+07:00`);
         const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
@@ -90,7 +96,12 @@ export const perizinanRouter = createTRPCRouter({
 
   // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
   listRaw: protectedProcedure.query(async ({ ctx }) => {
+    const where = hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)
+      ? undefined
+      : eq(perizinan.userId, ctx.user.id);
+
     const rows = await ctx.db.query.perizinan.findMany({
+      where,
       orderBy: (perizinan, { desc }) => [desc(perizinan.createdAt)],
       with: {
         userProfile: true,
@@ -167,12 +178,20 @@ export const perizinanRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      const where = hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)
+        ? eq(perizinan.id, input.id)
+        : and(
+            eq(perizinan.id, input.id),
+            eq(perizinan.userId, ctx.user.id),
+          );
+
       const row = await ctx.db.query.perizinan.findFirst({
-        where: (table, { eq }) => eq(table.id, input.id),
+        where: where,
         with: {
           userProfile: true,
         },
       });
+
       return row ?? null;
     }),
 
