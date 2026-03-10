@@ -10,6 +10,24 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
+const ALLOWED_ROLES = new Set([
+  "admin",
+  "kepala_sekolah",
+  "guru",
+  "wali_kelas",
+]);
+
+function readMustChangePasswordFlag(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  const value = (metadata as Record<string, unknown>).must_change_password;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  return false;
+}
+
 export function LoginForm({
   className,
   ...props
@@ -44,9 +62,14 @@ export function LoginForm({
         data.session?.access_token ?? null,
       );
 
-      if (role !== "admin") {
+      if (!role || !ALLOWED_ROLES.has(role)) {
         await supabase.auth.signOut();
         setError("Invalid credentials.");
+        return;
+      }
+
+      if (readMustChangePasswordFlag(data.user?.user_metadata)) {
+        router.replace("/ganti-password");
         return;
       }
 

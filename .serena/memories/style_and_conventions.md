@@ -1,0 +1,4 @@
+- Use TypeScript with ESM imports and ~/ alias to src.
+- Prefer protectedProcedure for authenticated server operations.
+- Keep changes minimal and aligned with existing Zod/tRPC/Drizzle patterns.
+- RSC-first data fetching; use client hooks only in client components.

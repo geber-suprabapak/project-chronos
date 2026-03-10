@@ -1,0 +1,3 @@
+- Purpose: school attendance/permission app with Supabase auth and Postgres.
+- Stack: Next.js App Router, React 19, TypeScript, tRPC v11, Drizzle ORM, Supabase SSR.
+- Structure: app routes in src/app, API routers in src/server/api/routers, DB schema in src/server/db, shared UI in src/components.
