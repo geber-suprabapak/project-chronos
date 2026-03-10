@@ -1,0 +1,3 @@
+- After code changes, run targeted validation first; use pnpm lint and/or pnpm typecheck when relevant.
+- For route type issues involving stale .next output, remove .next and rerun typecheck.
+- Do not revert unrelated user changes in dirty worktrees.

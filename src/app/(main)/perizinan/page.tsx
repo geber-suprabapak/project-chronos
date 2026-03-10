@@ -35,6 +35,32 @@ const formatDate = (dateString: string | Date) => {
   }).format(date);
 };
 
+const formatCompactDate = (dateString: string | Date) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("id-ID", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+};
+
+const getDateSortValue = (value: string | Date) => {
+  if (value instanceof Date) return value.getTime();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).getTime();
+  }
+  return new Date(value).getTime();
+};
+
+const formatInputDate = (value: string | Date) => {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // Helper to determine badge variant based on status
 const getBadgeVariant = (status: string | null) => {
   switch (status) {
@@ -49,8 +75,11 @@ const getBadgeVariant = (status: string | null) => {
 };
 
 export default function PerizinanPage() {
-  const [filter, setFilter] = useState<FilterBarValue>({ sort: "desc" });
+  const [filter, setFilter] = useState<FilterBarValue>({});
   const [page, setPage] = useState<number>(1);
+
+  const queryText = (filter.query ?? "").trim().toLowerCase();
+  const isSearchingByName = queryText.length > 0;
 
   const limit = 20;
   const offset = (page - 1) * limit;
@@ -63,18 +92,56 @@ export default function PerizinanPage() {
     {
       limit,
       offset,
-      tanggal: filter.date ?? undefined,
+      tanggal: isSearchingByName ? undefined : (filter.date ?? undefined),
       approvalStatus: filter.status ?? undefined,
     },
     {
+      enabled: !isSearchingByName,
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
     },
   );
 
-  if (error) {
+  const {
+    data: perizinanRaw,
+    isLoading: isLoadingRaw,
+    error: rawError,
+  } =
+    api.perizinan.listRaw.useQuery(undefined, {
+      enabled: isSearchingByName,
+      refetchOnWindowFocus: false,
+    });
+
+  const activeError = isSearchingByName ? rawError : error;
+  const sourceRows = isSearchingByName ? (perizinanRaw ?? []) : (perizinan ?? []);
+  
+  const rows = isSearchingByName
+    ? sourceRows
+        .filter((p) => {
+          if (filter.status && p.approvalStatus !== filter.status) return false;
+
+          if (filter.date) {
+            const rowDate = formatInputDate(p.tanggal);
+            if (rowDate !== filter.date) return false;
+          }
+
+          if (!queryText) return true;
+          const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
+          return name.toLowerCase().includes(queryText);
+        })
+        .sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal))
+    : sourceRows.sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal));
+  
+  const pagedRows = isSearchingByName ? rows.slice(offset, offset + limit) : rows;
+  const hasMore = isSearchingByName
+    ? offset + limit < rows.length
+    : rows.length === limit;
+  const loadingState = isSearchingByName ? isLoadingRaw : isLoading;
+  const hasVisibleRows = pagedRows.length > 0;
+
+  if (activeError) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <p className="text-red-500">Error: {error.message}</p>
+        <p className="text-red-500">Error: {activeError.message}</p>
       </div>
     );
   }
@@ -93,13 +160,13 @@ export default function PerizinanPage() {
             <DownloadExcelButton
               href="/api/export/perizinan"
               filename="perizinan.xlsx"
-              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+              disabled={loadingState || !hasVisibleRows}
             />
             <DownloadPdfButton
               tableId="perizinan-table"
               filename="perizinan.pdf"
               title="Data Perizinan"
-              disabled={isLoading || !(perizinan && perizinan.length > 0)}
+              disabled={loadingState || !hasVisibleRows}
             />
           </div>
         </CardHeader>
@@ -113,29 +180,16 @@ export default function PerizinanPage() {
             statuses={["approved", "rejected", "pending"]}
             labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
             placeholders={{ query: "Nama...", status: "Pilih status" }}
+            fieldOrder={["query", "date", "status"]}
+            showSort={false}
             className="mb-4"
           />
-          {(() => {
-            const q = (filter.query ?? "").trim().toLowerCase();
-            let rows = (perizinan ?? []).filter((p) => {
-              if (!q) return true;
-              const name =
-                p.userProfile?.fullName ?? p.userProfile?.email ?? "";
-              return name.toLowerCase().includes(q);
-            });
-            rows = rows.sort((a, b) => {
-              const da = new Date(a.tanggal).getTime();
-              const db = new Date(b.tanggal).getTime();
-              return (filter.sort ?? "desc") === "desc" ? db - da : da - db;
-            });
-            const hasMore = rows.length === limit;
-
-            return (
-              <>
+          {
+            <>
                 {/* Pagination Info */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
                   <span>
-                    Halaman {page} - Menampilkan {rows.length} data
+                    Halaman {page} - Menampilkan {pagedRows.length} dari {rows.length} data
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -158,22 +212,22 @@ export default function PerizinanPage() {
                 </div>
 
                 {/* Visible table for UI */}
-                <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
-                  <Table>
+                <div className="w-full">
+                  <Table className="w-full table-fixed">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[60px]">No</TableHead>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Kelas</TableHead>
-                        <TableHead>Kategori</TableHead>
+                        <TableHead className="w-[46px]">No</TableHead>
+                        <TableHead className="w-[92px]">Tanggal</TableHead>
+                        <TableHead className="w-[28%]">Nama</TableHead>
+                        <TableHead className="hidden lg:table-cell">Kelas</TableHead>
+                        <TableHead className="hidden lg:table-cell">Kategori</TableHead>
                         <TableHead>Deskripsi</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
+                        <TableHead className="w-[96px]">Status</TableHead>
+                        <TableHead className="w-[74px] text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {isLoading ? (
+                      {loadingState ? (
                         // Skeleton loading state
                         Array.from({ length: 5 }).map((_, i) => (
                           <TableRow key={i}>
@@ -186,10 +240,10 @@ export default function PerizinanPage() {
                             <TableCell>
                               <Skeleton className="h-4 w-40" />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <Skeleton className="h-4 w-20" />
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <Skeleton className="h-4 w-16" />
                             </TableCell>
                             <TableCell>
@@ -203,19 +257,27 @@ export default function PerizinanPage() {
                             </TableCell>
                           </TableRow>
                         ))
-                      ) : rows && rows.length > 0 ? (
-                        rows.map((item, index) => (
+                      ) : pagedRows && pagedRows.length > 0 ? (
+                        pagedRows.map((item, index) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium text-muted-foreground">
                               {offset + index + 1}
                             </TableCell>
-                            <TableCell>{formatDate(item.tanggal)}</TableCell>
-                            <TableCell>
+                            <TableCell>{formatCompactDate(item.tanggal)}</TableCell>
+                            <TableCell
+                              className="truncate"
+                              title={String(
+                                item.userProfile?.fullName ??
+                                  item.userProfile?.email ??
+                                  item.userId ??
+                                  "",
+                              )}
+                            >
                               {item.userProfile?.fullName ??
                                 item.userProfile?.email ??
                                 item.userId}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <Badge
                                 variant="outline"
                                 className="rounded-full px-2.5 py-0.5 font-medium"
@@ -223,7 +285,7 @@ export default function PerizinanPage() {
                                 {item.userProfile?.className ?? "-"}
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden lg:table-cell">
                               <Badge
                                 variant="secondary"
                                 className="rounded-full px-2.5 py-1"
@@ -231,7 +293,12 @@ export default function PerizinanPage() {
                                 {item.kategoriIzin ?? "-"}
                               </Badge>
                             </TableCell>
-                            <TableCell>{item.deskripsi}</TableCell>
+                            <TableCell
+                              className="max-w-[160px] truncate sm:max-w-[220px]"
+                              title={String(item.deskripsi ?? "")}
+                            >
+                              {item.deskripsi}
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={getBadgeVariant(item.approvalStatus)}
@@ -241,11 +308,8 @@ export default function PerizinanPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Link
-                                href={`/perizinan/show/${item.id}`}
-                                passHref
-                              >
-                                <Button variant="outline" size="sm">
+                              <Link href={`/perizinan/show/${item.id}`} passHref>
+                                <Button variant="outline" size="sm" className="px-2">
                                   Detail
                                 </Button>
                               </Link>
@@ -278,8 +342,8 @@ export default function PerizinanPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows && rows.length > 0 ? (
-                        rows.map((item, index) => {
+                      {pagedRows && pagedRows.length > 0 ? (
+                        pagedRows.map((item, index) => {
                           const name =
                             item.userProfile?.fullName ??
                             item.userProfile?.email ??
@@ -315,7 +379,7 @@ export default function PerizinanPage() {
                 {/* Bottom Pagination */}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
                   <span>
-                    Halaman {page} - Menampilkan {rows.length} data
+                    Halaman {page} - Menampilkan {pagedRows.length} dari {rows.length} data
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -336,9 +400,8 @@ export default function PerizinanPage() {
                     </Button>
                   </div>
                 </div>
-              </>
-            );
-          })()}
+            </>
+          }
         </CardContent>
       </Card>
     </div>
