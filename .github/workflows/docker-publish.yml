@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   publish:
-    runs-on: self-hosted
+    runs-on: evernight
 
     steps:
       - name: Checkout
