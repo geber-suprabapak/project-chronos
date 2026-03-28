@@ -1,98 +1,69 @@
 # Docker Deployment Guide
 
-## 🐳 Build & Run Locally
+## GitHub Workflow for GHCR
 
-### Build Docker Image
-```bash
-docker build -t project-chronos .
-```
+Workflow file: `.github/workflows/docker-publish.yml`
 
-### Run Container
-```bash
-docker run -p 3000:3000 \
-  -e DATABASE_URL="your_database_url" \
-  -e NEXT_PUBLIC_SUPABASE_URL="your_supabase_url" \
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_key" \
-  project-chronos
-```
+Trigger:
 
-### Using Docker Compose
-Create a `docker-compose.yml` file:
+- Push ke branch `master`
+- Manual via `workflow_dispatch`
 
-```yaml
-version: '3.8'
+Image yang dipublish:
 
-services:
-  app:
-    image: ghcr.io/geber-suprabapak/project-chronos:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    restart: unless-stopped
-```
+- `ghcr.io/geber-suprabapak/project-chronos:latest`
+- `ghcr.io/geber-suprabapak/project-chronos:sha-<short-commit>`
 
-Then run:
-```bash
-docker-compose up -d
-```
+## Environment Requirements
 
-## 📦 GitHub Container Registry (GHCR)
+### Build-time (Docker build args)
 
-### Pull from GHCR
+Wajib diisi saat build image karena dipakai oleh client bundle Next.js:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Di workflow nilainya diambil dari GitHub repository secrets.
+
+### Runtime (container environment)
+
+Wajib diisi saat container dijalankan:
+
+- `DATABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Catatan: aplikasi memvalidasi env lewat `src/env.js` saat startup server.
+
+## Required GitHub Secrets
+
+Set dua secret ini di repository:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+## Pull and Run
+
+### Pull image
+
 ```bash
 docker pull ghcr.io/geber-suprabapak/project-chronos:latest
 ```
 
-### Available Tags
-- `latest` - Latest build from master branch
-- `master` - Latest from master branch
-- `v1.0.0` - Specific version tag (when using semver tags)
-- `sha-abc123` - Specific commit
+### Run container
 
-### Authentication
-To pull private images:
 ```bash
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+docker run -p 3000:3000 --env-file .env ghcr.io/geber-suprabapak/project-chronos:latest
 ```
 
-## 🚀 GitHub Actions Workflow
+## Local Build (optional)
 
-The workflow automatically:
-1. ✅ Builds multi-platform images (amd64, arm64)
-2. ✅ Pushes to GHCR on push to master
-3. ✅ Creates tags based on git tags/branches
-4. ✅ Uses layer caching for faster builds
+Jika build manual lokal, tetap wajib isi build args untuk `NEXT_PUBLIC_*`:
 
-### Trigger Build
-- **Automatic**: Push to `master` branch or create a tag
-- **Manual**: Go to Actions tab → "Build and Push Docker Image" → Run workflow
-
-### Creating Version Tags
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="your-supabase-url" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key" \
+  --build-arg SKIP_ENV_VALIDATION=1 \
+  -t project-chronos:local .
 ```
-
-This will create images with tags:
-- `ghcr.io/geber-suprabapak/project-chronos:v1.0.0`
-- `ghcr.io/geber-suprabapak/project-chronos:1.0`
-- `ghcr.io/geber-suprabapak/project-chronos:1`
-- `ghcr.io/geber-suprabapak/project-chronos:latest`
-
-## 🔧 Environment Variables
-
-Required environment variables:
-- `DATABASE_URL` - PostgreSQL connection string
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-
-## 📝 Notes
-
-- The image uses Node.js 22 Alpine for minimal size
-- Multi-stage build optimizes final image size
-- Runs as non-root user (nextjs:1001) for security
-- Uses Next.js standalone output for optimal performance
-- Supports both amd64 and arm64 architectures
