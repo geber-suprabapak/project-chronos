@@ -70,13 +70,14 @@ export const jadwalRouter = createTRPCRouter({
       "kamis",
       "jumat",
       "sabtu",
-    ];
+    ] as const;
     const currentHari = hariMap[dayOfWeek];
+    if (!currentHari) return null;
 
     const schedule = await ctx.db
       .select()
       .from(jadwalAbsensi)
-      .where(eq(jadwalAbsensi.hari, currentHari as (typeof HARI_ENUM)[number]))
+      .where(eq(jadwalAbsensi.hari, currentHari))
       .limit(1);
 
     return schedule[0] ?? null;
@@ -133,14 +134,12 @@ export const jadwalRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const updateData: Record<string, unknown> = {
-        ...input.data,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      };
-
       const result = await ctx.db
         .update(jadwalAbsensi)
-        .set(updateData)
+        .set({
+          ...input.data,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        })
         .where(eq(jadwalAbsensi.id, input.id))
         .returning();
 
@@ -180,14 +179,12 @@ export const jadwalRouter = createTRPCRouter({
       const results = [];
 
       for (const item of input) {
-        const updateData: Record<string, unknown> = {
-          ...item.data,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        };
-
         const result = await ctx.db
           .update(jadwalAbsensi)
-          .set(updateData)
+          .set({
+            ...item.data,
+            updatedAt: sql`CURRENT_TIMESTAMP`,
+          })
           .where(eq(jadwalAbsensi.id, item.id))
           .returning();
 

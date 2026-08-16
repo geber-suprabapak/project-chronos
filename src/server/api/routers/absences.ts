@@ -223,7 +223,7 @@ export const absencesRouter = createTRPCRouter({
         );
       }
 
-      const validConds = conditions.filter(Boolean) as SQL[];
+      const validConds = conditions.filter((c): c is SQL => Boolean(c));
       const where = validConds.length ? and(...validConds) : undefined;
 
       const rows = await ctx.db.query.absences.findMany({

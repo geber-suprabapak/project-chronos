@@ -10,7 +10,7 @@ export function downloadTableAsPDF({
   filename?: string;
   title?: string;
 }) {
-  if (typeof window === "undefined" || typeof document === "undefined") {
+  if (!globalThis.window || !globalThis.document) {
     return;
   }
   const doc = new jsPDF();

@@ -97,14 +97,12 @@ export const locationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const updateData: Record<string, unknown> = {
-        ...input.data,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      };
-
       const result = await ctx.db
         .update(location)
-        .set(updateData)
+        .set({
+          ...input.data,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        })
         .where(eq(location.id, input.id))
         .returning();
 
@@ -161,14 +159,12 @@ export const locationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const updateData: Record<string, unknown> = {
-        [input.field]: input.value,
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      };
-
       const result = await ctx.db
         .update(location)
-        .set(updateData)
+        .set({
+          [input.field]: input.value,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        })
         .where(eq(location.id, input.id))
         .returning();
 

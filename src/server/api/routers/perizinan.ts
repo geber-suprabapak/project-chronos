@@ -58,7 +58,7 @@ export const perizinanRouter = createTRPCRouter({
         conditions.push(eq(perizinan.kategoriIzin, input.kategoriIzin));
       if (input?.approvalStatus)
         conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
-      if (typeof input?.status === "boolean")
+      if (input?.status !== undefined)
         conditions.push(eq(perizinan.status, input.status));
       // Filter per hari berdasarkan zona lokal (WIB, UTC+7) dengan rentang [start, end)
       const dateParam = input?.date ?? input?.tanggal;

@@ -13,18 +13,13 @@ export const runtime = "nodejs";
 /**
  * Helper to safely format date values
  */
-function formatDate(val: unknown): string | null {
+function formatDate(
+  val: Date | string | number | null | undefined,
+): string | null {
   if (val == null) return null;
-  if (val instanceof Date) {
-    const t = val.getTime();
-    return Number.isNaN(t) ? null : val.toISOString();
-  }
-  if (typeof val === "string" || typeof val === "number") {
-    const d = new Date(val);
-    const t = d.getTime();
-    return Number.isNaN(t) ? null : d.toISOString();
-  }
-  return null;
+  const d = val instanceof Date ? val : new Date(val);
+  const t = d.getTime();
+  return Number.isNaN(t) ? null : d.toISOString();
 }
 
 export async function GET() {

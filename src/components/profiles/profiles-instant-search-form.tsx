@@ -56,8 +56,10 @@ export function ProfilesInstantSearchForm() {
   // Tutup suggestions saat klik luar
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      if (!target.closest?.("#profiles-search-wrapper")) {
+      if (
+        e.target instanceof HTMLElement &&
+        !e.target.closest?.("#profiles-search-wrapper")
+      ) {
         setOpenSuggest(false);
       }
     }

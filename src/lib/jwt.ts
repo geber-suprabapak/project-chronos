@@ -2,11 +2,20 @@
  * JWT utilities for safe token parsing and claim extraction
  */
 
-type JwtClaims = Record<string, unknown>;
+export type AppMetadataClaims = {
+  readonly role?: string | null;
+  readonly roles?: readonly string[] | null;
+};
 
-type AppMetadataClaims = {
-  role?: unknown;
-  roles?: unknown;
+export type JwtClaims = {
+  readonly sub?: string;
+  readonly email?: string;
+  readonly role?: string;
+  readonly app_metadata?: AppMetadataClaims | null;
+  readonly exp?: number;
+  readonly iat?: number;
+  readonly aud?: string | readonly string[];
+  readonly iss?: string;
 };
 
 /**
@@ -16,7 +25,7 @@ type AppMetadataClaims = {
 export function decodeJwtPayload(
   token: string | null | undefined,
 ): JwtClaims | null {
-  if (!token || typeof token !== "string") return null;
+  if (!token) return null;
 
   try {
     const parts = token.split(".");
@@ -32,6 +41,7 @@ export function decodeJwtPayload(
       .padEnd(payloadPart.length + ((4 - (payloadPart.length % 4)) % 4), "=");
 
     const decoded = atob(base64);
+    // SAFETY: JSON payload of decoded JWT matches JwtClaims structure
     return JSON.parse(decoded) as JwtClaims;
   } catch {
     return null;
@@ -42,18 +52,14 @@ export function decodeJwtPayload(
  * Extract role from app_metadata object.
  */
 export function extractRoleFromAppMetadata(
-  appMetadata: unknown,
+  appMetadata: AppMetadataClaims | null | undefined,
 ): string | null {
-  if (!appMetadata || typeof appMetadata !== "object") return null;
+  if (!appMetadata) return null;
 
-  const appMeta = appMetadata as AppMetadataClaims;
+  if (appMetadata.role) return appMetadata.role;
 
-  if (typeof appMeta.role === "string") return appMeta.role;
-
-  if (Array.isArray(appMeta.roles)) {
-    const role = appMeta.roles.find(
-      (r: unknown): r is string => typeof r === "string",
-    );
+  if (Array.isArray(appMetadata.roles)) {
+    const role = appMetadata.roles.find((r): r is string => Boolean(r));
     if (role) return role;
   }
 

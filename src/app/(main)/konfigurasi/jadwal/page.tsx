@@ -51,6 +51,10 @@ const DAY_MAP = {
 
 type DayKey = keyof typeof DAY_MAP;
 
+function isDayKey(key: string | undefined): key is DayKey {
+  return Boolean(key && Object.prototype.hasOwnProperty.call(DAY_MAP, key));
+}
+
 export default function JadwalPage() {
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
   const editFormRef = useRef<HTMLDivElement>(null);
@@ -349,7 +353,9 @@ export default function JadwalPage() {
                   </TableHeader>
                   <TableBody>
                     {schedules.map((schedule) => {
-                      const dayInfo = DAY_MAP[schedule.hari as DayKey];
+                      const dayInfo = isDayKey(schedule.hari)
+                        ? DAY_MAP[schedule.hari]
+                        : { id: 0, label: schedule.hari, color: "gray" };
                       return (
                         <TableRow key={schedule.id}>
                           <TableCell>
@@ -440,9 +446,14 @@ export default function JadwalPage() {
               <Settings className="h-5 w-5" />
               <span>
                 Edit Jadwal -{" "}
-                {DAY_MAP[
-                  schedules?.find((s) => s.id === selectedDayId)?.hari as DayKey
-                ]?.label ?? ""}
+                {(() => {
+                  const schedule = schedules?.find(
+                    (s) => s.id === selectedDayId,
+                  );
+                  return isDayKey(schedule?.hari)
+                    ? DAY_MAP[schedule.hari].label
+                    : "";
+                })()}
               </span>
             </CardTitle>
             <CardDescription>

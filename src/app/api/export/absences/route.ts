@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
   if (endDate) conditions.push(lte(absences.date, endDate));
 
   // Combine conditions
-  const validConds = conditions.filter(Boolean) as SQL[];
+  const validConds = conditions.filter((c): c is SQL => Boolean(c));
   const whereCondition = validConds.length > 0 ? and(...validConds) : undefined;
 
   // Fetch absences data with filters
@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
 
   // Sort rows by date first, then by class, then by NIS
   const sortedRows = rows.sort((a, b) => {
-    const dateA = typeof a.date === "string" ? a.date : String(a.date);
-    const dateB = typeof b.date === "string" ? b.date : String(b.date);
+    const dateA = String(a.date);
+    const dateB = String(b.date);
     const dateCompare = dateA.localeCompare(dateB);
 
     if (dateCompare !== 0) return dateCompare;
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
   let lastDate = "";
   for (const r of sortedRows) {
     const profile = profileMap.get(r.userId);
-    const currentDate = typeof r.date === "string" ? r.date : String(r.date);
+    const currentDate = String(r.date);
 
     // Add empty row as separator when date changes (except for first row)
     if (lastDate && currentDate !== lastDate) {

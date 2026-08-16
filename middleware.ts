@@ -26,14 +26,22 @@ const PUBLIC_PATHS = new Set([
   "/auth/callback", // potential OAuth callback
 ]);
 
-function readMustChangePasswordFlag(user: {
-  user_metadata?: Record<string, unknown> | null;
-}): boolean {
+type UserWithPasswordMeta = {
+  readonly user_metadata?: {
+    readonly must_change_password?: boolean | string | number | null;
+  } | null;
+};
+
+function readMustChangePasswordFlag(user: UserWithPasswordMeta): boolean {
   const value = user.user_metadata?.must_change_password;
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const normalized = value.toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
+  if (
+    value === true ||
+    value === 1 ||
+    value === "true" ||
+    value === "1" ||
+    value === "yes"
+  ) {
+    return true;
   }
   return false;
 }

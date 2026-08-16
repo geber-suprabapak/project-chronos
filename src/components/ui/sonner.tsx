@@ -9,8 +9,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <SonnerComponent
+      // SAFETY: next-themes string maps to sonner theme type
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // SAFETY: Custom CSS properties object contains CSS variables for toast styling
       style={
         {
           "--normal-bg": "var(--popover)",

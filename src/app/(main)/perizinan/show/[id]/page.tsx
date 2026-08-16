@@ -30,21 +30,21 @@ import Image from "next/image";
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "N/A";
 
-  const isDateOnly =
-    typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
-
-  if (isDateOnly) {
-    const [yStr, mStr, dStr] = input.split("-") as [string, string, string];
-    const y = Number(yStr);
-    const m = Number(mStr);
-    const d = Number(dStr);
-    // Construct as local date (no time), avoiding UTC timezone offset issues
-    const date = new Date(y, m - 1, d);
-    return new Intl.DateTimeFormat("id-ID", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }).format(date);
+  if (!(input instanceof Date)) {
+    const parts = input.split("-");
+    if (parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+      const [yStr = "0", mStr = "1", dStr = "1"] = parts;
+      const y = Number(yStr);
+      const m = Number(mStr);
+      const d = Number(dStr);
+      // Construct as local date (no time), avoiding UTC timezone offset issues
+      const date = new Date(y, m - 1, d);
+      return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(date);
+    }
   }
 
   const date = new Date(input);
@@ -62,7 +62,9 @@ const formatDate = (input: string | Date | null | undefined) => {
 export default function ShowPerizinanPage() {
   const params = useParams();
   const router = useRouter();
-  const id = typeof params.id === "string" ? params.id : "";
+  const id = Array.isArray(params.id)
+    ? (params.id[0] ?? "")
+    : (params.id ?? "");
 
   const [isRejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);

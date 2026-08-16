@@ -199,8 +199,10 @@ export default function ConfigurationPage() {
   // Handle click outside to close search results
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest(".search-container")) {
+      if (
+        event.target instanceof Element &&
+        !event.target.closest(".search-container")
+      ) {
         setShowSearchResults(false);
       }
     };
@@ -266,6 +268,7 @@ export default function ConfigurationPage() {
         urls.map(async (u) => {
           const res = await fetch(u, { signal });
           if (!res.ok) throw new Error(String(res.status));
+          // SAFETY: Nominatim API response format matches expected location search result array
           return res.json() as Promise<
             Array<{
               display_name: string;
@@ -322,7 +325,9 @@ export default function ConfigurationPage() {
       setSearchResults(uniqueResults);
       setShowSearchResults(true);
     } catch (error) {
-      if ((error as Error).name !== "AbortError") {
+      if (error instanceof Error && error.name === "AbortError") {
+        // Search request aborted, do nothing
+      } else {
         console.error("Error searching location:", error);
         toast.error("Gagal mencari lokasi");
         setSearchResults([]);

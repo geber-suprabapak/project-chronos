@@ -67,8 +67,11 @@ export function NavUser({ user, loading }: NavUserProps) {
   if (!user) return null;
 
   // Derive display data (can extend with user_metadata avatar, name etc.)
-  const displayName = (user.user_metadata?.full_name as string) ?? user.email;
-  const avatarUrl = user.user_metadata?.avatar_url as string;
+  // SAFETY: Supabase auth user_metadata full_name is an optional string
+  const fullName = user.user_metadata?.full_name as string | undefined;
+  // SAFETY: Supabase auth user_metadata avatar_url is an optional string URL
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const displayName = fullName ?? user.email ?? "";
 
   return (
     <SidebarMenu>

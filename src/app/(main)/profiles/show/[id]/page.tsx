@@ -21,16 +21,17 @@ import { Button } from "~/components/ui/button";
 // Helper to format date or datetime; handles date-only strings without timezone skew
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "-";
-  const isDateOnly =
-    typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input);
-  if (isDateOnly) {
-    const [yStr, mStr, dStr] = input.split("-") as [string, string, string];
-    const date = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
-    return new Intl.DateTimeFormat("id-ID", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }).format(date);
+  if (!(input instanceof Date)) {
+    const parts = input.split("-");
+    if (parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+      const [yStr = "0", mStr = "1", dStr = "1"] = parts;
+      const date = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
+      return new Intl.DateTimeFormat("id-ID", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(date);
+    }
   }
   const date = new Date(input);
   return new Intl.DateTimeFormat("id-ID", {
@@ -44,7 +45,9 @@ const formatDate = (input: string | Date | null | undefined) => {
 
 export default function ShowProfilePage() {
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : "";
+  const id = Array.isArray(params.id)
+    ? (params.id[0] ?? "")
+    : (params.id ?? "");
 
   const {
     data: profile,
@@ -103,14 +106,8 @@ export default function ShowProfilePage() {
               <Row label="Kelas" value={profile.className ?? "-"} />
               <Row label="No. Absen" value={profile.absenceNumber ?? "-"} />
               <Row label="Role" value={profile.role ?? "-"} />
-              <Row
-                label="Dibuat"
-                value={formatDate(profile.createdAt as unknown as Date)}
-              />
-              <Row
-                label="Diupdate"
-                value={formatDate(profile.updatedAt as unknown as Date)}
-              />
+              <Row label="Dibuat" value={formatDate(profile.createdAt)} />
+              <Row label="Diupdate" value={formatDate(profile.updatedAt)} />
             </div>
           </CardContent>
         </Card>
@@ -144,9 +141,7 @@ export default function ShowProfilePage() {
 
                     return (
                       <TableRow key={String(a.id)}>
-                        <TableCell>
-                          {formatDate(a.date as unknown as string)}
-                        </TableCell>
+                        <TableCell>{formatDate(a.date)}</TableCell>
                         <TableCell>
                           <Badge
                             variant={

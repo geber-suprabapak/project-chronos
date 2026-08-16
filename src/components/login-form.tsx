@@ -17,13 +17,22 @@ const ALLOWED_ROLES = new Set([
   "wali_kelas",
 ]);
 
-function readMustChangePasswordFlag(metadata: unknown): boolean {
-  if (!metadata || typeof metadata !== "object") return false;
-  const value = (metadata as Record<string, unknown>).must_change_password;
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const normalized = value.toLowerCase();
-    return normalized === "true" || normalized === "1" || normalized === "yes";
+type MetadataWithPasswordFlag = {
+  readonly must_change_password?: boolean | string | number | null;
+};
+
+function readMustChangePasswordFlag(
+  metadata: MetadataWithPasswordFlag | null | undefined,
+): boolean {
+  const value = metadata?.must_change_password;
+  if (
+    value === true ||
+    value === 1 ||
+    value === "true" ||
+    value === "1" ||
+    value === "yes"
+  ) {
+    return true;
   }
   return false;
 }

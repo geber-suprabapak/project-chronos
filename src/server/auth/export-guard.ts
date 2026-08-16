@@ -12,12 +12,12 @@ import {
 
 export type ExportResource = "absences" | "perizinan" | "profiles" | "siswa";
 
-const EXPORT_ROLE_MAP: Record<ExportResource, readonly AppRole[]> = {
+const EXPORT_ROLE_MAP = {
   absences: PRIVILEGED_ROLES,
   perizinan: PRIVILEGED_ROLES,
   profiles: ADMIN_ROLES,
   siswa: ADMIN_ROLES,
-};
+} as const satisfies Record<ExportResource, readonly AppRole[]>;
 
 type ExportAccessResult =
   | { ok: true; user: User; role: AppRole }

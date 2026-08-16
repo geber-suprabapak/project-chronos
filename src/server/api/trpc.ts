@@ -58,11 +58,13 @@ const t = initTRPC
   .context<Awaited<ReturnType<typeof createTRPCContext>>>()
   .create({
     transformer: superjson,
-    errorFormatter({ shape, error }) {
+    errorFormatter(opts) {
+      const formattedError = opts["shape"];
+      const error = opts.error;
       return {
-        ...shape,
+        ...formattedError,
         data: {
-          ...shape.data,
+          ...formattedError.data,
           zodError:
             error.cause instanceof ZodError
               ? z.flattenError(error.cause)
@@ -128,6 +130,7 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
 const requireRole = (allowedRoles: readonly AppRole[]) =>
   protectedProcedure.use(
     t.middleware(async ({ ctx, next }) => {
+      // SAFETY: isAuthed middleware has populated user and userRole on ctx
       const authenticatedCtx = ctx as AuthenticatedContext;
 
       if (!hasRequiredRole(authenticatedCtx.userRole, allowedRoles)) {

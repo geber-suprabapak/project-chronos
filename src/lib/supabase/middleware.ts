@@ -36,10 +36,7 @@ export function createSupabaseMiddlewareClient(request: NextRequest) {
     },
   );
 
-  return { supabase, response } as {
-    supabase: SupabaseClient;
-    response: NextResponse;
-  };
+  return { supabase, response };
 }
 
 export type { SupabaseClient };

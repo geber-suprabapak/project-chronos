@@ -95,6 +95,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    // SAFETY: theme key matches the THEMES mapping keys
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color;
@@ -157,15 +158,18 @@ function ChartTooltipContent({
     const [item] = payload;
     const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
-    const value =
-      !labelKey && typeof label === "string"
-        ? config[label as keyof typeof config]?.label || label
-        : itemConfig?.label;
+    const labelStr =
+      !labelKey && label != null && !(label instanceof Object)
+        ? String(label)
+        : null;
+    const value = labelStr
+      ? (labelStr in config ? config[labelStr]?.label : undefined) || label
+      : itemConfig?.label;
 
     if (labelFormatter) {
       return (
         <div className={cn("font-medium", labelClassName)}>
-          {labelFormatter(value, payload as any)}
+          {labelFormatter(value, payload)}
         </div>
       );
     }
@@ -234,6 +238,7 @@ function ChartTooltipContent({
                               "my-0.5": nestLabel && indicator === "dashed",
                             },
                           )}
+                          // SAFETY: Custom CSS properties object contains CSS variables for chart indicator colors
                           style={
                             {
                               "--color-bg": indicatorColor,
@@ -330,43 +335,44 @@ function ChartLegendContent({
   );
 }
 
+type PayloadRecord = {
+  readonly [k: string]:
+    string | number | boolean | null | undefined | PayloadRecord;
+  readonly payload?: PayloadRecord;
+};
+
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: unknown,
+  payload: PayloadRecord | null | undefined,
   key: string,
 ) {
-  if (typeof payload !== "object" || payload === null) {
+  if (!payload || !(payload instanceof Object)) {
     return undefined;
   }
 
   const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined;
+    payload.payload instanceof Object ? payload.payload : undefined;
 
   let configLabelKey: string = key;
 
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string;
+  if (key in payload && payload[key] != null) {
+    const val = payload[key];
+    if (val != null && !(val instanceof Object)) {
+      configLabelKey = String(val);
+    }
   } else if (
     payloadPayload &&
     key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
+    payloadPayload[key] != null
   ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string;
+    const val = payloadPayload[key];
+    if (val != null && !(val instanceof Object)) {
+      configLabelKey = String(val);
+    }
   }
 
-  return configLabelKey in config
-    ? config[configLabelKey]
-    : config[key as keyof typeof config];
+  return configLabelKey in config ? config[configLabelKey] : config[key];
 }
 
 export {

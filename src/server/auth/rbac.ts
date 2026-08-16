@@ -1,6 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { db as appDb } from "~/server/db";
-import { extractRoleFromAppMetadata } from "~/lib/jwt";
+import { extractRoleFromAppMetadata, type AppMetadataClaims } from "~/lib/jwt";
 import { isTransientDbError } from "~/server/lib/db-utils";
 
 export const APP_ROLES = [
@@ -22,15 +22,20 @@ export const PRIVILEGED_ROLES: readonly AppRole[] = [
 
 export const ADMIN_ROLES: readonly AppRole[] = ["admin", "kepala_sekolah"];
 
-export function isAppRole(value: unknown): value is AppRole {
-  return typeof value === "string" && APP_ROLES.includes(value as AppRole);
+const VALID_APP_ROLES: ReadonlySet<string> = new Set<string>(APP_ROLES);
+
+export function isAppRole(value: string | null | undefined): value is AppRole {
+  return value != null && VALID_APP_ROLES.has(value);
 }
 
 /**
  * Read role from user JWT claims (app_metadata)
  */
 export function readRoleFromUserClaims(user: User): AppRole | null {
-  const role = extractRoleFromAppMetadata(user.app_metadata);
+  // SAFETY: Supabase auth user.app_metadata conforms to AppMetadataClaims
+  const role = extractRoleFromAppMetadata(
+    user.app_metadata as AppMetadataClaims,
+  );
   return role && isAppRole(role) ? role : null;
 }
 

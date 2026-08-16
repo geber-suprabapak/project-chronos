@@ -7,6 +7,7 @@ export async function workbookToResponseBuffer(
   wb: Workbook,
 ): Promise<ArrayBuffer> {
   const buffer = await wb.xlsx.writeBuffer();
+  // SAFETY: ExcelJS writeBuffer resolves to an ArrayBuffer
   return buffer as ArrayBuffer;
 }
 

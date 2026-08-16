@@ -177,7 +177,9 @@ export function KehadiranBarChart() {
           </div>
           <Select
             value={timeRange}
-            onValueChange={(value) => setTimeRange(value as "7" | "30")}
+            onValueChange={(value) => {
+              if (value === "7" || value === "30") setTimeRange(value);
+            }}
           >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Pilih periode" />
@@ -358,7 +360,9 @@ export function IzinBarChart() {
           </div>
           <Select
             value={timeRange}
-            onValueChange={(value) => setTimeRange(value as "7" | "30")}
+            onValueChange={(value) => {
+              if (value === "7" || value === "30") setTimeRange(value);
+            }}
           >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Pilih periode" />
@@ -541,7 +545,9 @@ export function KeterlambatanBarChart() {
           </div>
           <Select
             value={timeRange}
-            onValueChange={(value) => setTimeRange(value as "7" | "30")}
+            onValueChange={(value) => {
+              if (value === "7" || value === "30") setTimeRange(value);
+            }}
           >
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Pilih periode" />

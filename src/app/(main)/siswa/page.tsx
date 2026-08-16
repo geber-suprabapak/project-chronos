@@ -17,6 +17,11 @@ import { DownloadExcelButton } from "~/components/download-excel-button";
 import { Users, UserCheck, User } from "lucide-react";
 import { AutoSearchForm } from "~/components/auto-search-form";
 
+function getQueryString(val: string | string[] | undefined): string {
+  if (Array.isArray(val)) return val[0] ?? "";
+  return val ?? "";
+}
+
 export default async function SiswaPage({
   searchParams,
 }: {
@@ -24,44 +29,20 @@ export default async function SiswaPage({
 }) {
   // Process searchParams safely - await the promise in Next.js 15
   const resolvedSearchParams = await searchParams;
-  const params = {
-    nama:
-      typeof resolvedSearchParams?.nama === "string"
-        ? resolvedSearchParams.nama
-        : "",
-    kelas:
-      typeof resolvedSearchParams?.kelas === "string"
-        ? resolvedSearchParams.kelas
-        : "",
-    kelamin:
-      typeof resolvedSearchParams?.kelamin === "string"
-        ? resolvedSearchParams.kelamin
-        : "",
-    activated:
-      typeof resolvedSearchParams?.activated === "string"
-        ? resolvedSearchParams.activated
-        : "",
-    page:
-      typeof resolvedSearchParams?.page === "string"
-        ? resolvedSearchParams.page
-        : "",
-  };
-
-  // Parse parameters
-  const nama = params?.nama ? params.nama.trim() : "";
-  const kelas = params?.kelas ?? "";
+  const nama = getQueryString(resolvedSearchParams?.nama).trim();
+  const kelas = getQueryString(resolvedSearchParams?.kelas);
+  const kelaminParam = getQueryString(resolvedSearchParams?.kelamin);
   const kelamin =
-    params?.kelamin && ["L", "P"].includes(params.kelamin)
-      ? (params.kelamin as "L" | "P")
-      : undefined;
+    kelaminParam === "L" || kelaminParam === "P" ? kelaminParam : undefined;
+  const activatedParam = getQueryString(resolvedSearchParams?.activated);
   const activated =
-    params?.activated === "true"
+    activatedParam === "true"
       ? true
-      : params?.activated === "false"
+      : activatedParam === "false"
         ? false
         : undefined;
-  const pageParam = params?.page ? parseInt(params.page, 10) : 1;
-  const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+  const pageRaw = parseInt(getQueryString(resolvedSearchParams?.page), 10);
+  const page = Number.isNaN(pageRaw) || pageRaw < 1 ? 1 : pageRaw;
   const limit = 50; // Maximum 50 per page as requested
   const offset = (page - 1) * limit;
 

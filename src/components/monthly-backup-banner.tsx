@@ -45,6 +45,7 @@ export function MonthlyBackupBanner() {
 
     // Expose helper for manual reset in console: window.__resetMonthlyBackup()
     try {
+      // SAFETY: Augmenting window with debug helper function for manual reset
       (
         window as typeof window & { __resetMonthlyBackup?: () => void }
       ).__resetMonthlyBackup = () => {

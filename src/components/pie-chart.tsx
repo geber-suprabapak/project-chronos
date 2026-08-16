@@ -177,6 +177,7 @@ export function StatistikPieChart() {
             {/* Legend untuk absen masuk */}
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               {chartDataMasuk.map((entry) => {
+                // SAFETY: entry.category is guaranteed to match chartConfigMasuk keys
                 const config =
                   chartConfigMasuk[
                     entry.category as keyof typeof chartConfigMasuk
@@ -246,6 +247,7 @@ export function StatistikPieChart() {
             {/* Legend untuk absen pulang */}
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               {chartDataPulang.map((entry) => {
+                // SAFETY: entry.category is guaranteed to match chartConfigPulang keys
                 const config =
                   chartConfigPulang[
                     entry.category as keyof typeof chartConfigPulang

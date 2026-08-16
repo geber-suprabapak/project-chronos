@@ -86,10 +86,11 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
+        event.target instanceof Node &&
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
+        !dropdownRef.current.contains(event.target) &&
         inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
+        !inputRef.current.contains(event.target)
       ) {
         setShowDropdown(false);
       }
@@ -153,6 +154,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
+      // SAFETY: FileReader readAsDataURL sets reader.result to a data URL string
       setUploadPreview(reader.result as string);
     };
     reader.readAsDataURL(file);

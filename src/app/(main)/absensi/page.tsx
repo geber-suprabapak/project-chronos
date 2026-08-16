@@ -311,10 +311,7 @@ export default function AbsensiPage() {
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
                             a.userId;
-                          const tanggal =
-                            typeof a.date === "string"
-                              ? a.date
-                              : String(a.date);
+                          const tanggal = String(a.date);
                           const lokasi = [a.latitude, a.longitude]
                             .filter((v) => v != null)
                             .join(", ");
@@ -380,10 +377,7 @@ export default function AbsensiPage() {
                             a.userProfile?.fullName ??
                             a.userProfile?.email ??
                             a.userId;
-                          const tanggal =
-                            typeof a.date === "string"
-                              ? a.date
-                              : String(a.date);
+                          const tanggal = String(a.date);
                           const displayStatus =
                             a.status === "Datang" ? "Hadir" : (a.status ?? "-");
                           const lokasi = [a.latitude, a.longitude]

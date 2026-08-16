@@ -26,6 +26,11 @@ async function withRetry<T>(operation: () => Promise<T>): Promise<T> {
   }
 }
 
+function getQueryString(val: string | string[] | undefined): string {
+  if (Array.isArray(val)) return val[0] ?? "";
+  return val ?? "";
+}
+
 export default async function ProfilesPage({
   searchParams,
 }: {
@@ -33,26 +38,10 @@ export default async function ProfilesPage({
 }) {
   // Process searchParams safely - await the promise in Next.js 15
   const resolvedSearchParams = await searchParams;
-  const params = {
-    name:
-      typeof resolvedSearchParams?.name === "string"
-        ? resolvedSearchParams.name
-        : "",
-    className:
-      typeof resolvedSearchParams?.className === "string"
-        ? resolvedSearchParams.className
-        : "",
-    page:
-      typeof resolvedSearchParams?.page === "string"
-        ? resolvedSearchParams.page
-        : "",
-  };
-
-  // Akses searchParams dengan aman menggunakan params
-  const name = params?.name ? params.name.trim() : "";
-  const className = params?.className ?? "";
-  const pageParam = params?.page ? parseInt(params.page, 10) : 1;
-  const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+  const name = getQueryString(resolvedSearchParams?.name).trim();
+  const className = getQueryString(resolvedSearchParams?.className);
+  const pageRaw = parseInt(getQueryString(resolvedSearchParams?.page), 10);
+  const page = Number.isNaN(pageRaw) || pageRaw < 1 ? 1 : pageRaw;
   const limit = 20; // fixed page size
   const offset = (page - 1) * limit;
   // Fetch on the server for less client JS and faster TTFB
@@ -237,13 +226,9 @@ export default async function ProfilesPage({
                           <TableCell>{r.absenceNumber ?? "-"}</TableCell>
                           <TableCell>{r.role ?? "-"}</TableCell>
                           <TableCell>
-                            <TableCell>
-                              {r.updatedAt
-                                ? new Date(
-                                    r.updatedAt as string,
-                                  ).toLocaleString()
-                                : "-"}
-                            </TableCell>
+                            {r.updatedAt
+                              ? new Date(String(r.updatedAt)).toLocaleString()
+                              : "-"}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">

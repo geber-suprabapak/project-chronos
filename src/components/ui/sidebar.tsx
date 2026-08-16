@@ -75,7 +75,7 @@ function SidebarProvider({
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value;
+      const openState = value instanceof Function ? value(open) : value;
       if (setOpenProp) {
         setOpenProp(openState);
       } else {
@@ -131,6 +131,7 @@ function SidebarProvider({
       <TooltipProvider delayDuration={0}>
         <div
           data-slot="sidebar-wrapper"
+          // SAFETY: Custom CSS properties object contains CSS variables for sidebar width
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH,
@@ -188,6 +189,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          // SAFETY: Custom CSS properties object contains CSS variables for mobile sidebar width
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -526,11 +528,12 @@ function SidebarMenuButton({
     return button;
   }
 
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    };
-  }
+  const tooltipProps: React.ComponentProps<typeof TooltipContent> =
+    tooltip instanceof Object
+      ? tooltip
+      : {
+          children: tooltip,
+        };
 
   return (
     <Tooltip>
@@ -539,7 +542,7 @@ function SidebarMenuButton({
         side="right"
         align="center"
         hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
+        {...tooltipProps}
       />
     </Tooltip>
   );
@@ -627,6 +630,7 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
+        // SAFETY: Custom CSS properties object contains CSS variables for skeleton width
         style={
           {
             "--skeleton-width": width,
