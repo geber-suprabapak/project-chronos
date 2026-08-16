@@ -8,7 +8,7 @@
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { flattenError, ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 import {
   ADMIN_ROLES,
@@ -64,7 +64,7 @@ const t = initTRPC
         data: {
           ...shape.data,
           zodError:
-            error.cause instanceof ZodError ? flattenError(error.cause) : null,
+            error.cause instanceof ZodError ? z.flattenError(error.cause) : null,
         },
       };
     },
