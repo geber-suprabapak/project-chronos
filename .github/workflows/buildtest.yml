@@ -8,41 +8,50 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
+concurrency:
+  group: nextjs-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    runs-on: evernight
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22' # Gunakan versi Node.js yang sesuai
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 10 # Atau versi terbaru yang kamu inginkan
+          version: 10.15.0
           run_install: false
 
-      - name: Cache pnpm store and Next.js cache
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Cache Next.js build cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.pnpm-store
-            ${{ github.workspace }}/.next/cache
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-next-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Next.js build
+      - name: Run quality checks
+        run: pnpm check
+
+      - name: Build application
+        env:
+          SKIP_ENV_VALIDATION: "1"
         run: pnpm run build
