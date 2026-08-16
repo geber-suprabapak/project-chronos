@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export function downloadTableAsPDF({
@@ -10,6 +10,9 @@ export function downloadTableAsPDF({
   filename?: string;
   title?: string;
 }) {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
   const doc = new jsPDF();
   const table = document.getElementById(tableId);
   if (!table) return;

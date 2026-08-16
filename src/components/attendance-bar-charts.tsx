@@ -208,11 +208,7 @@ export function KehadiranBarChart() {
               axisLine={false}
               tickMargin={10}
             />
-            <YAxis
-              type="number"
-              domain={[0, maxChartValue]}
-              hide
-            />
+            <YAxis type="number" domain={[0, maxChartValue]} hide />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
@@ -393,11 +389,7 @@ export function IzinBarChart() {
               axisLine={false}
               tickMargin={10}
             />
-            <YAxis
-              type="number"
-              domain={[0, maxChartValue]}
-              hide
-            />
+            <YAxis type="number" domain={[0, maxChartValue]} hide />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
@@ -580,11 +572,7 @@ export function KeterlambatanBarChart() {
               axisLine={false}
               tickMargin={10}
             />
-            <YAxis
-              type="number"
-              domain={[0, maxChartValue]}
-              hide
-            />
+            <YAxis type="number" domain={[0, maxChartValue]} hide />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}

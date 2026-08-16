@@ -82,9 +82,14 @@ const ROLE_DB_TIMEOUT_MS = 5000; // 5 seconds
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   let timeoutId: NodeJS.Timeout;
   const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs);
+    timeoutId = setTimeout(
+      () => reject(new Error(`Timeout after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
   });
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+  return Promise.race([promise, timeoutPromise]).finally(() =>
+    clearTimeout(timeoutId),
+  );
 }
 
 /**
@@ -132,7 +137,10 @@ export async function resolveUserRole(
     return "siswa";
   } catch (error) {
     // Check if transient — retry once
-    if (!isTransientDbError(error) && !(error instanceof Error && /timeout/i.test(error.message))) {
+    if (
+      !isTransientDbError(error) &&
+      !(error instanceof Error && /timeout/i.test(error.message))
+    ) {
       console.error(
         `[RBAC] Non-transient error resolving role for ${user.id}`,
         error instanceof Error ? error.message : error,
@@ -152,7 +160,8 @@ export async function resolveUserRole(
       );
       if (dbRole) {
         setCachedRole(user.id, dbRole);
-        if (isDev) console.log(`[RBAC] ${user.id} role from DB (retry): ${dbRole}`);
+        if (isDev)
+          console.log(`[RBAC] ${user.id} role from DB (retry): ${dbRole}`);
         return dbRole;
       }
       // Still no profile row — default

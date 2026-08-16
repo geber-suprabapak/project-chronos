@@ -14,6 +14,18 @@ export function createSupabaseServerClient(): SupabaseClient {
           const store = await cookies();
           return store.getAll().map((c) => ({ name: c.name, value: c.value }));
         },
+        async setAll(cookiesToSet) {
+          try {
+            const store = await cookies();
+            cookiesToSet.forEach(({ name, value, options }) => {
+              store.set(name, value, options);
+            });
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
       },
     },
   );

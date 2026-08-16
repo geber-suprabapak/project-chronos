@@ -130,7 +130,9 @@ export default function ShowPerizinanPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Detail Permohonan Izin</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Detail Permohonan Izin
+          </h1>
           <p className="text-sm text-muted-foreground">
             Lihat dan kelola informasi permohonan izin
           </p>
@@ -147,19 +149,27 @@ export default function ShowPerizinanPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Kategori</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Kategori
+                    </p>
                     <Badge variant="secondary" className="mt-1 capitalize">
                       {perizinan.kategoriIzin ?? "-"}
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Deskripsi</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Deskripsi
+                    </p>
                     <p className="mt-1 text-sm">{perizinan.deskripsi ?? "-"}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Tanggal Izin</p>
-                  <p className="mt-1 text-sm">{formatDate(perizinan.tanggal)}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Tanggal Izin
+                  </p>
+                  <p className="mt-1 text-sm">
+                    {formatDate(perizinan.tanggal)}
+                  </p>
                 </div>
               </div>
 
@@ -212,8 +222,12 @@ export default function ShowPerizinanPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="text-base font-semibold truncate">{user?.fullName ?? "N/A"}</p>
-                  <p className="text-sm text-muted-foreground truncate">{user?.email ?? "N/A"}</p>
+                  <p className="text-base font-semibold truncate">
+                    {user?.fullName ?? "N/A"}
+                  </p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {user?.email ?? "N/A"}
+                  </p>
                 </div>
               </div>
               <div className="h-px bg-border" />
@@ -251,7 +265,9 @@ export default function ShowPerizinanPage() {
                 <span className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-500" />
                 <div className="text-sm">
                   <p className="font-medium">Permohonan Dibuat</p>
-                  <p className="text-muted-foreground">{formatDate(perizinan.createdAt)}</p>
+                  <p className="text-muted-foreground">
+                    {formatDate(perizinan.createdAt)}
+                  </p>
                 </div>
               </div>
               {perizinan.approvalStatus === "approved" && (
@@ -259,7 +275,9 @@ export default function ShowPerizinanPage() {
                   <span className="mt-1 h-2.5 w-2.5 rounded-full bg-green-500" />
                   <div className="text-sm">
                     <p className="font-medium">Disetujui</p>
-                    <p className="text-muted-foreground">{formatDate(perizinan.approvedAt)}</p>
+                    <p className="text-muted-foreground">
+                      {formatDate(perizinan.approvedAt)}
+                    </p>
                   </div>
                 </div>
               )}
@@ -268,7 +286,9 @@ export default function ShowPerizinanPage() {
                   <span className="mt-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   <div className="text-sm">
                     <p className="font-medium">Ditolak</p>
-                    <p className="text-muted-foreground">{formatDate(perizinan.rejectedAt)}</p>
+                    <p className="text-muted-foreground">
+                      {formatDate(perizinan.rejectedAt)}
+                    </p>
                   </div>
                 </div>
               )}
@@ -277,7 +297,9 @@ export default function ShowPerizinanPage() {
                   <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
                   <div className="text-sm">
                     <p className="font-medium">Menunggu Persetujuan</p>
-                    <p className="text-muted-foreground">Status saat ini: pending</p>
+                    <p className="text-muted-foreground">
+                      Status saat ini: pending
+                    </p>
                   </div>
                 </div>
               )}
@@ -285,7 +307,9 @@ export default function ShowPerizinanPage() {
                 <Alert className="mt-3">
                   <Terminal className="h-4 w-4" />
                   <AlertTitle>Alasan Penolakan</AlertTitle>
-                  <AlertDescription>{perizinan.rejectionReason}</AlertDescription>
+                  <AlertDescription>
+                    {perizinan.rejectionReason}
+                  </AlertDescription>
                 </Alert>
               )}
               <div className="h-px bg-border my-3" />
@@ -302,7 +326,9 @@ export default function ShowPerizinanPage() {
                       variant="success"
                       className="w-full"
                     >
-                      {updateStatusMutation.isPending ? "Approving..." : "Approve"}
+                      {updateStatusMutation.isPending
+                        ? "Approving..."
+                        : "Approve"}
                     </Button>
                     <Button
                       variant="destructive"

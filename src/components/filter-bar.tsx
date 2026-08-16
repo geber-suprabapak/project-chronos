@@ -100,7 +100,9 @@ export function FilterBar({
                     id="filter-q"
                     placeholder={placeholders?.query ?? "Nama..."}
                     value={value.query ?? ""}
-                    onChange={(e) => onChange({ ...value, query: e.target.value })}
+                    onChange={(e) =>
+                      onChange({ ...value, query: e.target.value })
+                    }
                     className="w-full"
                   />
                   {value.date && (
@@ -112,7 +114,9 @@ export function FilterBar({
                             variant="outline"
                             size="icon"
                             aria-label="Reset tanggal"
-                            onClick={() => onChange({ ...value, date: undefined })}
+                            onClick={() =>
+                              onChange({ ...value, date: undefined })
+                            }
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
@@ -167,7 +171,8 @@ export function FilterBar({
                         mode="single"
                         selected={dateValue}
                         onSelect={(d) => {
-                          if (!d) return onChange({ ...value, date: undefined });
+                          if (!d)
+                            return onChange({ ...value, date: undefined });
                           const y = d.getFullYear();
                           const m = String(d.getMonth() + 1).padStart(2, "0");
                           const da = String(d.getDate()).padStart(2, "0");
@@ -184,7 +189,10 @@ export function FilterBar({
           if (field === "status" && statuses.length > 0) {
             return (
               <div key="status" className="flex flex-col w-full">
-                <Label htmlFor="filter-status" className="mb-2 text-sm font-medium">
+                <Label
+                  htmlFor="filter-status"
+                  className="mb-2 text-sm font-medium"
+                >
                   {labels?.status ?? "Status"}
                 </Label>
                 <Select

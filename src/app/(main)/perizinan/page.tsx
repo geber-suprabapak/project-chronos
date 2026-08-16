@@ -105,15 +105,16 @@ export default function PerizinanPage() {
     data: perizinanRaw,
     isLoading: isLoadingRaw,
     error: rawError,
-  } =
-    api.perizinan.listRaw.useQuery(undefined, {
-      enabled: isSearchingByName,
-      refetchOnWindowFocus: false,
-    });
+  } = api.perizinan.listRaw.useQuery(undefined, {
+    enabled: isSearchingByName,
+    refetchOnWindowFocus: false,
+  });
 
   const activeError = isSearchingByName ? rawError : error;
-  const sourceRows = isSearchingByName ? (perizinanRaw ?? []) : (perizinan ?? []);
-  
+  const sourceRows = isSearchingByName
+    ? (perizinanRaw ?? [])
+    : (perizinan ?? []);
+
   const rows = isSearchingByName
     ? sourceRows
         .filter((p) => {
@@ -128,10 +129,16 @@ export default function PerizinanPage() {
           const name = p.userProfile?.fullName ?? p.userProfile?.email ?? "";
           return name.toLowerCase().includes(queryText);
         })
-        .sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal))
-    : sourceRows.sort((a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal));
-  
-  const pagedRows = isSearchingByName ? rows.slice(offset, offset + limit) : rows;
+        .sort(
+          (a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal),
+        )
+    : sourceRows.sort(
+        (a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal),
+      );
+
+  const pagedRows = isSearchingByName
+    ? rows.slice(offset, offset + limit)
+    : rows;
   const hasMore = isSearchingByName
     ? offset + limit < rows.length
     : rows.length === limit;
@@ -186,220 +193,234 @@ export default function PerizinanPage() {
           />
           {
             <>
-                {/* Pagination Info */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                  <span>
-                    Halaman {page} - Menampilkan {pagedRows.length} dari {rows.length} data
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!hasMore}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
+              {/* Pagination Info */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                <span>
+                  Halaman {page} - Menampilkan {pagedRows.length} dari{" "}
+                  {rows.length} data
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasMore}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
                 </div>
+              </div>
 
-                {/* Visible table for UI */}
-                <div className="w-full">
-                  <Table className="w-full table-fixed">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[46px]">No</TableHead>
-                        <TableHead className="w-[92px]">Tanggal</TableHead>
-                        <TableHead className="w-[28%]">Nama</TableHead>
-                        <TableHead className="hidden lg:table-cell">Kelas</TableHead>
-                        <TableHead className="hidden lg:table-cell">Kategori</TableHead>
-                        <TableHead>Deskripsi</TableHead>
-                        <TableHead className="w-[96px]">Status</TableHead>
-                        <TableHead className="w-[74px] text-right">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loadingState ? (
-                        // Skeleton loading state
-                        Array.from({ length: 5 }).map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell>
-                              <Skeleton className="h-4 w-8" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-24" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-40" />
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              <Skeleton className="h-4 w-20" />
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              <Skeleton className="h-4 w-16" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-full" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-6 w-20" />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Skeleton className="h-8 w-16 ml-auto" />
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : pagedRows && pagedRows.length > 0 ? (
-                        pagedRows.map((item, index) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium text-muted-foreground">
-                              {offset + index + 1}
-                            </TableCell>
-                            <TableCell>{formatCompactDate(item.tanggal)}</TableCell>
-                            <TableCell
-                              className="truncate"
-                              title={String(
-                                item.userProfile?.fullName ??
-                                  item.userProfile?.email ??
-                                  item.userId ??
-                                  "",
-                              )}
-                            >
-                              {item.userProfile?.fullName ??
+              {/* Visible table for UI */}
+              <div className="w-full">
+                <Table className="w-full table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[46px]">No</TableHead>
+                      <TableHead className="w-[92px]">Tanggal</TableHead>
+                      <TableHead className="w-[28%]">Nama</TableHead>
+                      <TableHead className="hidden lg:table-cell">
+                        Kelas
+                      </TableHead>
+                      <TableHead className="hidden lg:table-cell">
+                        Kategori
+                      </TableHead>
+                      <TableHead>Deskripsi</TableHead>
+                      <TableHead className="w-[96px]">Status</TableHead>
+                      <TableHead className="w-[74px] text-right">
+                        Aksi
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingState ? (
+                      // Skeleton loading state
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Skeleton className="h-4 w-8" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-24" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-40" />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Skeleton className="h-4 w-20" />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Skeleton className="h-4 w-16" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-20" />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Skeleton className="h-8 w-16 ml-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : pagedRows && pagedRows.length > 0 ? (
+                      pagedRows.map((item, index) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium text-muted-foreground">
+                            {offset + index + 1}
+                          </TableCell>
+                          <TableCell>
+                            {formatCompactDate(item.tanggal)}
+                          </TableCell>
+                          <TableCell
+                            className="truncate"
+                            title={String(
+                              item.userProfile?.fullName ??
                                 item.userProfile?.email ??
-                                item.userId}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              <Badge
-                                variant="outline"
-                                className="rounded-full px-2.5 py-0.5 font-medium"
-                              >
-                                {item.userProfile?.className ?? "-"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              <Badge
-                                variant="secondary"
-                                className="rounded-full px-2.5 py-1"
-                              >
-                                {item.kategoriIzin ?? "-"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell
-                              className="max-w-[160px] truncate sm:max-w-[220px]"
-                              title={String(item.deskripsi ?? "")}
+                                item.userId ??
+                                "",
+                            )}
+                          >
+                            {item.userProfile?.fullName ??
+                              item.userProfile?.email ??
+                              item.userId}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Badge
+                              variant="outline"
+                              className="rounded-full px-2.5 py-0.5 font-medium"
                             >
-                              {item.deskripsi}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={getBadgeVariant(item.approvalStatus)}
-                                className="rounded-full px-2.5 py-1 capitalize"
+                              {item.userProfile?.className ?? "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <Badge
+                              variant="secondary"
+                              className="rounded-full px-2.5 py-1"
+                            >
+                              {item.kategoriIzin ?? "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell
+                            className="max-w-[160px] truncate sm:max-w-[220px]"
+                            title={String(item.deskripsi ?? "")}
+                          >
+                            {item.deskripsi}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={getBadgeVariant(item.approvalStatus)}
+                              className="rounded-full px-2.5 py-1 capitalize"
+                            >
+                              {item.approvalStatus ?? "pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Link href={`/perizinan/show/${item.id}`} passHref>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="px-2"
                               >
-                                {item.approvalStatus ?? "pending"}
-                              </Badge>
+                                Detail
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center">
+                          Tidak ada data perizinan.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Hidden table for PDF export with optimized columns */}
+              <div className="hidden">
+                <Table id="perizinan-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>No</TableHead>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Nama</TableHead>
+                      <TableHead>Kelas</TableHead>
+                      <TableHead>Kategori</TableHead>
+                      <TableHead>Deskripsi</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedRows && pagedRows.length > 0 ? (
+                      pagedRows.map((item, index) => {
+                        const name =
+                          item.userProfile?.fullName ??
+                          item.userProfile?.email ??
+                          item.userId;
+
+                        return (
+                          <TableRow key={`${item.id}-pdf`}>
+                            <TableCell>{offset + index + 1}</TableCell>
+                            <TableCell>{formatDate(item.tanggal)}</TableCell>
+                            <TableCell>{name}</TableCell>
+                            <TableCell>
+                              {item.userProfile?.className ?? "-"}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <Link href={`/perizinan/show/${item.id}`} passHref>
-                                <Button variant="outline" size="sm" className="px-2">
-                                  Detail
-                                </Button>
-                              </Link>
+                            <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
+                            <TableCell>{item.deskripsi}</TableCell>
+                            <TableCell>
+                              {item.approvalStatus ?? "pending"}
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center">
-                            Tidak ada data perizinan.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Hidden table for PDF export with optimized columns */}
-                <div className="hidden">
-                  <Table id="perizinan-table">
-                    <TableHeader>
+                        );
+                      })
+                    ) : (
                       <TableRow>
-                        <TableHead>No</TableHead>
-                        <TableHead>Tanggal</TableHead>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>Kelas</TableHead>
-                        <TableHead>Kategori</TableHead>
-                        <TableHead>Deskripsi</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableCell colSpan={7} className="text-center">
+                          Tidak ada data perizinan.
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pagedRows && pagedRows.length > 0 ? (
-                        pagedRows.map((item, index) => {
-                          const name =
-                            item.userProfile?.fullName ??
-                            item.userProfile?.email ??
-                            item.userId;
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
-                          return (
-                            <TableRow key={`${item.id}-pdf`}>
-                              <TableCell>{offset + index + 1}</TableCell>
-                              <TableCell>{formatDate(item.tanggal)}</TableCell>
-                              <TableCell>{name}</TableCell>
-                              <TableCell>
-                                {item.userProfile?.className ?? "-"}
-                              </TableCell>
-                              <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
-                              <TableCell>{item.deskripsi}</TableCell>
-                              <TableCell>
-                                {item.approvalStatus ?? "pending"}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center">
-                            Tidak ada data perizinan.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+              {/* Bottom Pagination */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
+                <span>
+                  Halaman {page} - Menampilkan {pagedRows.length} dari{" "}
+                  {rows.length} data
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasMore}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
                 </div>
-
-                {/* Bottom Pagination */}
-                <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
-                  <span>
-                    Halaman {page} - Menampilkan {pagedRows.length} dari {rows.length} data
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!hasMore}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+              </div>
             </>
           }
         </CardContent>

@@ -72,16 +72,15 @@ export default function AbsensiPerKelasPage() {
     data: attendanceSummary,
     isLoading: summaryLoading,
     error: summaryError,
-  } =
-    api.absences.getClassAttendanceSummary.useQuery(
-      {
-        className: selectedClass,
-        date,
-      },
-      {
-        enabled: !!selectedClass && !!date,
-      },
-    );
+  } = api.absences.getClassAttendanceSummary.useQuery(
+    {
+      className: selectedClass,
+      date,
+    },
+    {
+      enabled: !!selectedClass && !!date,
+    },
+  );
 
   const rows = useMemo(() => {
     if (!attendanceSummary) return [];
@@ -93,7 +92,10 @@ export default function AbsensiPerKelasPage() {
       absenceNumber: string | null;
     };
 
-    const statusByUserId = new Map<string, "Hadir" | "Izin" | "Belum Presensi">();
+    const statusByUserId = new Map<
+      string,
+      "Hadir" | "Izin" | "Belum Presensi"
+    >();
     const studentByUserId = new Map<string, StudentLite>();
 
     const upsertStudent = (
@@ -110,7 +112,10 @@ export default function AbsensiPerKelasPage() {
         }
 
         // Prioritas status untuk menghindari konflik data: Izin > Hadir > Belum Presensi.
-        if (status === "Izin" || (status === "Hadir" && prev === "Belum Presensi")) {
+        if (
+          status === "Izin" ||
+          (status === "Hadir" && prev === "Belum Presensi")
+        ) {
           statusByUserId.set(s.userId, status);
         }
       }
@@ -226,9 +231,7 @@ export default function AbsensiPerKelasPage() {
             href={exportUrl}
             filename={`absensi-${selectedClass ? selectedClass : "semua"}${date ? `-${date}` : ""}.xlsx`}
             disabled={
-              loading === true ||
-              !selectedClass ||
-              filteredRows.length === 0
+              loading === true || !selectedClass || filteredRows.length === 0
             }
           />
           <DownloadPdfButton
@@ -236,9 +239,7 @@ export default function AbsensiPerKelasPage() {
             filename={`absensi-${selectedClass ? selectedClass : "semua"}${date ? `-${date}` : ""}.pdf`}
             title={`Data Absensi Kelas ${selectedClass ?? ""}${date ? ` (${date})` : ""}`}
             disabled={
-              loading === true ||
-              !selectedClass ||
-              filteredRows.length === 0
+              loading === true || !selectedClass || filteredRows.length === 0
             }
           />
         </div>
@@ -359,7 +360,6 @@ export default function AbsensiPerKelasPage() {
           </div>
         ) : (
           <>
-
             {/* Loading summary */}
             {summaryLoading && (
               <div className="mb-4 space-y-2">
@@ -386,7 +386,8 @@ export default function AbsensiPerKelasPage() {
                         {date && attendanceSummary && (
                           <span className="font-serif text-[12px] font-semibold tracking-tight">
                             <span className="text-green-600">
-                              H:{rows.filter((r) => r.status === "Hadir").length}
+                              H:
+                              {rows.filter((r) => r.status === "Hadir").length}
                             </span>
                             <span className="text-amber-600">
                               {" | I:"}
@@ -394,7 +395,11 @@ export default function AbsensiPerKelasPage() {
                             </span>
                             <span className="text-red-600">
                               {" | BP:"}
-                              {rows.filter((r) => r.status === "Belum Presensi").length}
+                              {
+                                rows.filter(
+                                  (r) => r.status === "Belum Presensi",
+                                ).length
+                              }
                             </span>
                           </span>
                         )}
@@ -417,7 +422,9 @@ export default function AbsensiPerKelasPage() {
                   ) : (
                     pagedRows.map((row) => (
                       <TableRow key={row.userId}>
-                        <TableCell className="font-mono">{row.absenceNumber ?? "-"}</TableCell>
+                        <TableCell className="font-mono">
+                          {row.absenceNumber ?? "-"}
+                        </TableCell>
                         <TableCell>{row.fullName ?? "-"}</TableCell>
                         <TableCell>{row.nis ?? "-"}</TableCell>
                         <TableCell>{row.className || "-"}</TableCell>
@@ -468,7 +475,8 @@ export default function AbsensiPerKelasPage() {
 
             <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
               <span>
-                Menampilkan {pagedRows.length} dari {filteredRows.length} data siswa
+                Menampilkan {pagedRows.length} dari {filteredRows.length} data
+                siswa
                 {searchQuery && ` (filter: "${searchQuery}")`}
               </span>
               <div className="flex gap-2">
