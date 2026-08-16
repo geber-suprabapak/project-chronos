@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "~/env.js";
 
 export function createSupabaseMiddlewareClient(request: NextRequest) {
-  const response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -16,17 +21,20 @@ export function createSupabaseMiddlewareClient(request: NextRequest) {
             .map((c) => ({ name: c.name, value: c.value }));
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach((c) => {
-            response.cookies.set({
-              name: c.name,
-              value: c.value,
-              ...c.options,
-            });
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          response = NextResponse.next({
+            request,
           });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
         },
       },
     },
   );
+
   return { supabase, response } as {
     supabase: SupabaseClient;
     response: NextResponse;
