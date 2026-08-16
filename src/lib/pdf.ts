@@ -13,6 +13,7 @@ export function downloadTableAsPDF({
   if (typeof window === "undefined" || typeof document === "undefined") {
     return;
   }
+  const doc = new jsPDF();
   const table = document.getElementById(tableId);
   if (!table) return;
   // Extract headers, remove last column (Actions)
