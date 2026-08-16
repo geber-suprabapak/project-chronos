@@ -64,7 +64,9 @@ const t = initTRPC
         data: {
           ...shape.data,
           zodError:
-            error.cause instanceof ZodError ? z.flattenError(error.cause) : null,
+            error.cause instanceof ZodError
+              ? z.flattenError(error.cause)
+              : null,
         },
       };
     },

@@ -68,9 +68,7 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = req.nextUrl.pathname;
-  const mustChangePassword = user
-    ? readMustChangePasswordFlag(user)
-    : false;
+  const mustChangePassword = user ? readMustChangePasswordFlag(user) : false;
 
   // Jika user sudah login & membuka /login → kembalikan ke beranda
   if (pathname === "/login" && user) {

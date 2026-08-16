@@ -180,10 +180,7 @@ export const perizinanRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const where = hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)
         ? eq(perizinan.id, input.id)
-        : and(
-            eq(perizinan.id, input.id),
-            eq(perizinan.userId, ctx.user.id),
-          );
+        : and(eq(perizinan.id, input.id), eq(perizinan.userId, ctx.user.id));
 
       const row = await ctx.db.query.perizinan.findFirst({
         where: where,

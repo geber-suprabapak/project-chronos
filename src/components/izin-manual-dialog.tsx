@@ -209,9 +209,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
       kelas: siswa.kelas,
       absen: siswa.absen,
     });
-    setSearchQuery(
-      `${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis.toString()}`,
-    );
+    setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis.toString()}`);
     setShowDropdown(false);
   };
 
@@ -344,8 +342,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                         </div>
                         <div className="text-xs text-muted-foreground">
                           NIS: {siswa.nis.toString()} • Kelas{" "}
-                          {siswa.kelas ?? "-"} • No. Absen{" "}
-                          {siswa.absen ?? "-"}
+                          {siswa.kelas ?? "-"} • No. Absen {siswa.absen ?? "-"}
                         </div>
                       </button>
                     ))
@@ -373,9 +370,8 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                   {selectedSiswa.nama ?? "Nama tidak tersedia"}
                 </div>
                 <div className="text-sm">
-                  NIS: {selectedSiswa.nis} • Kelas{" "}
-                  {selectedSiswa.kelas ?? "-"} • Absen #
-                  {selectedSiswa.absen ?? "-"}
+                  NIS: {selectedSiswa.nis} • Kelas {selectedSiswa.kelas ?? "-"}{" "}
+                  • Absen #{selectedSiswa.absen ?? "-"}
                 </div>
               </AlertDescription>
             </Alert>
@@ -494,7 +490,6 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                     </div>
                   </div>
                 )}
-
               </div>
 
               {/* Submit Buttons */}
