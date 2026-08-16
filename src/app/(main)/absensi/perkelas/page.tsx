@@ -25,16 +25,6 @@ import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { RotateCcw } from "lucide-react";
 
-// Helper function to format date in a readable format
-function formatDate(date: Date | undefined): string {
-  if (!date) return "";
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 export default function AbsensiPerKelasPage() {
   // Filter states
   const [selectedClass, setSelectedClass] = useState<string>("");

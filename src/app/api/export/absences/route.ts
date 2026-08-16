@@ -12,23 +12,6 @@ export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
 export const runtime = "nodejs";
 
-/**
- * Helper to safely format date values
- */
-function formatDate(val: unknown): string | null {
-  if (val == null) return null;
-  if (val instanceof Date) {
-    const t = val.getTime();
-    return Number.isNaN(t) ? null : val.toISOString();
-  }
-  if (typeof val === "string" || typeof val === "number") {
-    const d = new Date(val);
-    const t = d.getTime();
-    return Number.isNaN(t) ? null : d.toISOString();
-  }
-  return null;
-}
-
 export async function GET(request: NextRequest) {
   const access = await requireExportAccess("absences");
   if (!access.ok) return access.response;

@@ -5,7 +5,6 @@ import { AbsenManualDialog } from "~/components/absen-manual-dialog";
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -42,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Eye, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AbsensiPage() {

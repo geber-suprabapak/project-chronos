@@ -145,19 +145,6 @@ async function DashboardContent() {
   // Pending permissions only for today
   const pendingPermissions = perizinanToday.slice(0, 5);
 
-  // Get current day name
-  const dayOfWeek = new Date().getDay();
-  const hariMap = [
-    "Minggu",
-    "Senin",
-    "Selasa",
-    "Rabu",
-    "Kamis",
-    "Jumat",
-    "Sabtu",
-  ];
-  const currentDayName = hariMap[dayOfWeek];
-
   return (
     <div className="flex flex-col gap-6">
       {/* Top Section: Statistics & Actions */}
