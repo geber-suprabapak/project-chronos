@@ -179,6 +179,54 @@ function parseLeaveRequestResponse(envelope: AstraLeaveRequestEnvelope):
   };
 }
 
+interface AstraLocationEnvelope {
+  readonly success: boolean;
+  readonly data?: {
+    readonly id?: string;
+    readonly school_id?: string | null;
+    readonly name?: string;
+    readonly latitude?: number;
+    readonly longitude?: number;
+    readonly radius_meters?: number;
+    readonly is_active?: boolean;
+  };
+}
+
+function parseLocationResponse(envelope: AstraLocationEnvelope):
+  | {
+      readonly ok: true;
+      readonly id: string;
+      readonly name: string;
+      readonly latitude: number;
+      readonly longitude: number;
+      readonly radiusMeters: number;
+      readonly isActive: boolean;
+    }
+  | { readonly ok: false; readonly error: string } {
+  if (!envelope.success || !envelope.data || !envelope.data.id) {
+    return { ok: false, error: "Invalid location response envelope." };
+  }
+  const latitude = envelope.data.latitude;
+  const longitude = envelope.data.longitude;
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return { ok: false, error: "Invalid location response envelope." };
+  }
+  return {
+    ok: true,
+    id: envelope.data.id,
+    name: envelope.data.name ?? "Unnamed Location",
+    latitude,
+    longitude,
+    radiusMeters: envelope.data.radius_meters ?? 100,
+    isActive: envelope.data.is_active ?? true,
+  };
+}
+
 describe("Astra API Contract Boundary", () => {
   describe("buildAstraHeaders", () => {
     it("includes versioned contract header v1 and authorization token", () => {
@@ -369,6 +417,49 @@ describe("Astra API Contract Boundary", () => {
     it("returns error when success is false or data is missing", () => {
       const result = parseLeaveRequestResponse({
         success: false,
+      });
+      assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseLocationResponse", () => {
+    it("extracts location details and radius from valid contract envelope", () => {
+      const result = parseLocationResponse({
+        success: true,
+        data: {
+          id: "loc-kantor-pusat",
+          name: "Kantor Pusat",
+          latitude: -7.4503,
+          longitude: 110.2241,
+          radius_meters: 500,
+          is_active: true,
+        },
+      });
+      assert.deepEqual(result, {
+        ok: true,
+        id: "loc-kantor-pusat",
+        name: "Kantor Pusat",
+        latitude: -7.4503,
+        longitude: 110.2241,
+        radiusMeters: 500,
+        isActive: true,
+      });
+    });
+
+    it("returns error when success is false or data is missing", () => {
+      const result = parseLocationResponse({
+        success: false,
+      });
+      assert.equal(result.ok, false);
+    });
+
+    it("returns error when coordinates are invalid or missing", () => {
+      const result = parseLocationResponse({
+        success: true,
+        data: {
+          id: "loc-invalid",
+          name: "Invalid Loc",
+        },
       });
       assert.equal(result.ok, false);
     });
