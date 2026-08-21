@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
-import type { User } from "@supabase/supabase-js";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
-import { db } from "~/server/db";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
+import {
+  extractExtendedClaims,
+  isAdminRole,
+  isMfaVerified,
+  isPasswordChangeRequired,
+  isPrivilegedRole,
+  resolveLogtoRole,
+} from "~/lib/logto/claims";
 import {
   ADMIN_ROLES,
   PRIVILEGED_ROLES,
   type AppRole,
+  type AuthenticatedUser,
   hasRequiredRole,
-  resolveUserRole,
 } from "~/server/auth/rbac";
 
 export type ExportResource = "absences" | "perizinan" | "profiles" | "siswa";
@@ -20,9 +27,8 @@ const EXPORT_ROLE_MAP = {
 } as const satisfies Record<ExportResource, readonly AppRole[]>;
 
 type ExportAccessResult =
-  | { ok: true; user: User; role: AppRole }
+  | { ok: true; user: AuthenticatedUser; role: AppRole }
   | { ok: false; response: NextResponse<{ error: string }> };
-
 /**
  * Check if user can export a specific resource
  * Returns success result with user/role or error response
@@ -30,27 +36,76 @@ type ExportAccessResult =
 export async function requireExportAccess(
   resource: ExportResource,
 ): Promise<ExportAccessResult> {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const requiredRoles = EXPORT_ROLE_MAP[resource];
 
-  if (!user) {
+  try {
+    const logtoContext = await getLogtoContext(logtoConfig, {
+      fetchUserInfo: true,
+    });
+
+    if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      };
+    }
+
+    const claims = extractExtendedClaims(logtoContext.claims);
+    if (isPasswordChangeRequired(claims)) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: "Password change required" },
+          { status: 403 },
+        ),
+      };
+    }
+
+    const role = resolveLogtoRole(claims?.roles ?? []);
+    if (!role || !isPrivilegedRole(role)) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+
+    if (
+      isAdminRole(role) &&
+      !isMfaVerified(claims?.mfa_verified, claims?.amr)
+    ) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: "MFA verification required" },
+          { status: 403 },
+        ),
+      };
+    }
+
+    if (!hasRequiredRole(role, requiredRoles)) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+
+    // SAFETY: Logto user info fields are standard optional OIDC string claims.
+    const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
+    const email = claims?.email ?? fallbackEmail ?? "";
+    // SAFETY: Logto user info name is the optional OIDC display-name claim.
+    const fullName = logtoContext.userInfo?.name as string | undefined;
+    const user: AuthenticatedUser = {
+      id: claims?.sub ?? "",
+      email,
+      app_metadata: { role },
+      user_metadata: { full_name: fullName ?? email },
+    };
+
+    return { ok: true, user, role };
+  } catch {
     return {
       ok: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
-
-  const role = await resolveUserRole(db, user);
-  const requiredRoles = EXPORT_ROLE_MAP[resource];
-
-  if (!hasRequiredRole(role, requiredRoles)) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-    };
-  }
-
-  return { ok: true, user, role };
 }

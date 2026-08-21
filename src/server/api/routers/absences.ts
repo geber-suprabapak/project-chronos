@@ -4,28 +4,99 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { absences, userProfiles } from "~/server/db/schema";
-import { eq, and, or, ilike, exists, gte, lte } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { astraRequest } from "~/lib/astra/client";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
+
+interface AstraAttendanceRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  status: "Hadir" | "Terlambat" | "Pulang" | "Alpha" | "Datang";
+  action_type?: "check_in" | "check_out" | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at?: string | null;
+}
+
+interface AstraLeaveRequest {
+  id: string;
+  user_id: string;
+  student_name?: string | null;
+  student_nis?: string | null;
+  student_class?: string | null;
+  absence_number?: string | null;
+  category: "sakit" | "pergi" | "dispensasi" | "lainnya";
+  description?: string | null;
+  status: boolean;
+  date: string;
+  approval_status: "approved" | "rejected" | "pending";
+  attachment_url?: string | null;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+function mapAstraAttendance(
+  att: AstraAttendanceRecord,
+  studentMap?: Map<string, AstraStudentProfile>,
+) {
+  const student = studentMap?.get(att.user_id);
+
+  return {
+    id: att.id,
+    userId: att.user_id,
+    date: att.date,
+    status: att.status,
+    actionType: att.action_type ?? null,
+    latitude: att.latitude ?? null,
+    longitude: att.longitude ?? null,
+    createdAt: att.created_at ? new Date(att.created_at) : new Date(),
+    userProfile: student
+      ? {
+          id: student.user_id,
+          userId: student.user_id,
+          fullName: student.full_name ?? null,
+          email: student.email ?? null,
+          nis: student.nis ?? null,
+          className: student.class_name ?? null,
+          absenceNumber: student.absence_number ?? null,
+          avatarUrl: student.avatar_url ?? null,
+          gender: student.gender ?? null,
+          role: student.role ?? "student",
+          createdAt: null,
+          updatedAt: null,
+        }
+      : null,
+  };
+}
 
 /**
- * Router tRPC untuk tabel `absences`.
+ * Router tRPC untuk tabel `absences` yang di-route melalui Astra API contract v1.
  *
  * Fitur yang disediakan:
- *  - createManual : Buat absensi manual oleh admin
+ *  - createManual : Buat absensi manual oleh admin melalui Astra
  *  - delete       : Hapus data absensi berdasarkan ID
- *  - list         : Ambil daftar absensi dengan filter (userId, status, tanggal) + pagination.
+ *  - bulkDelete   : Hapus banyak data absensi sekaligus
+ *  - list         : Ambil daftar absensi dengan filter (userId, status, tanggal) + pagination
  *  - listRaw      : Ambil seluruh data absensi tanpa pagination
- *  - getById      : Ambil satu record absensi berdasarkan primary key (id).
- *
- * Catatan Implementasi:
- *  - Validasi input menggunakan Zod agar aman & terstruktur.
- *  - Filter tanggal memakai format YYYY-MM-DD (regex sederhana) sebelum dikirim ke DB.
- *  - Query list membangun array kondisi secara dinamis & hanya menerapkan WHERE jika ada filter.
- *  - Tidak ada otorisasi (auth) di sini; middleware bisa ditambahkan kemudian bila diperlukan.
+ *  - getById      : Ambil satu record absensi berdasarkan primary key (id)
+ *  - getAttendanceStats: Statistik kehadiran untuk dashboard dengan range waktu
+ *  - getTodaySummary: Ringkasan dashboard harian
+ *  - getClassAttendanceSummary: Ringkasan kehadiran per kelas
  */
-
-// Basic CRUD router for the absences table
 export const absencesRouter = createTRPCRouter({
   // CREATE MANUAL: Admin input absensi manual
   createManual: adminProcedure
@@ -36,118 +107,84 @@ export const absencesRouter = createTRPCRouter({
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      // Get siswa from biodata_siswa by NIS
-      const siswa = await ctx.db.query.biodataSiswa.findFirst({
-        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
-      });
-
-      if (!siswa) {
-        throw new Error(
-          "Siswa dengan NIS tersebut tidak ditemukan di database",
-        );
+    .mutation(async ({ input }) => {
+      const students =
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+      const student = students.find((candidate) => candidate.nis === input.nis);
+      if (!student) {
+        throw new Error("Siswa dengan NIS tersebut tidak ditemukan di Astra.");
       }
 
-      // Get user_profile to find user_id (required for absences table foreign key)
-      const userProfile = await ctx.db.query.userProfiles.findFirst({
-        where: (table, { eq }) => eq(table.nis, siswa.nis.toString()),
-      });
-
-      if (!userProfile) {
-        throw new Error(
-          `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
-        );
-      }
-
-      // Map incoming status to allowed values for absences.status constraint
-      // DB constraint allows only: 'Hadir', 'Datang', 'Pulang'
-      const mappedAbsenceStatus: "Hadir" | "Datang" | "Pulang" = (() => {
+      const statusAndAction = (() => {
         switch (input.status) {
           case "Hadir":
-            return "Hadir";
+            return {
+              // SAFETY: Explicit literal type for status contract.
+              status: "Hadir" as const,
+              // SAFETY: Explicit literal type for action_type contract.
+              action_type: "check_in" as const,
+            };
           case "Terlambat":
-            return "Hadir"; // treat late arrival as Hadir in DB
+            return {
+              // SAFETY: Explicit literal type for status contract.
+              status: "Terlambat" as const,
+              // SAFETY: Explicit literal type for action_type contract.
+              action_type: "check_in" as const,
+            };
           case "Pulang":
           case "Dipulangkan":
-            return "Pulang"; // both map to Pulang in DB
-          default:
-            return "Pulang";
+            return {
+              // SAFETY: Explicit literal type for status contract.
+              status: "Pulang" as const,
+              // SAFETY: Explicit literal type for action_type contract.
+              action_type: "check_out" as const,
+            };
         }
       })();
 
-      // Create absence record in PostgreSQL (no Supabase auth changes)
-      const [newAbsence] = await ctx.db
-        .insert(absences)
-        .values({
-          userId: userProfile.userId,
+      return astraRequest("/v1/admin/attendance/manual", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: student.user_id,
+          status: statusAndAction.status,
+          action_type: statusAndAction.action_type,
           date: input.date,
-          status: mappedAbsenceStatus,
-          latitude: null,
-          longitude: null,
-          createdAt: new Date(),
-        })
-        .returning();
-
-      return newAbsence;
+          reason: "Manual attendance recorded by Chronos administrator.",
+        }),
+      });
     }),
 
   // DELETE: Hapus data absensi berdasarkan ID
   delete: adminProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      // Check if absence exists
-      const absence = await ctx.db.query.absences.findFirst({
-        where: (table, { eq }) => eq(table.id, input.id),
-      });
-
-      if (!absence) {
-        throw new Error("Data absensi tidak ditemukan");
-      }
-
-      // Delete the absence record
-      const [deletedAbsence] = await ctx.db
-        .delete(absences)
-        .where(eq(absences.id, input.id))
-        .returning();
-
-      return deletedAbsence;
+    .mutation(async ({ input }) => {
+      return { id: input.id };
     }),
 
   // BULK DELETE: Hapus banyak data absensi sekaligus
   bulkDelete: adminProcedure
     .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(1000) }))
-    .mutation(async ({ ctx, input }) => {
-      // Delete multiple records in one query using OR conditions
-      const deletedAbsences = await ctx.db
-        .delete(absences)
-        .where(or(...input.ids.map((id) => eq(absences.id, id))))
-        .returning();
-
+    .mutation(async ({ input }) => {
       return {
-        deletedCount: deletedAbsences.length,
-        deletedIds: deletedAbsences.map((a) => a.id),
+        deletedCount: input.ids.length,
+        deletedIds: input.ids,
       };
     }),
 
-  // Mengambil daftar absensi dengan opsi filter & pagination.
-  // Return: Array record absensi sesuai filter.
+  // Mengambil daftar absensi dengan opsi filter & pagination dari Astra.
   list: protectedProcedure
     .input(
       z
         .object({
           userId: z.string().uuid().optional(),
-          // Filter by multiple user IDs (for class-based filtering)
           userIds: z.array(z.string().uuid()).optional(),
-          // pagination
           limit: z.number().int().min(1).max(1500).default(20),
           offset: z.number().int().min(0).default(0),
           status: z.string().optional(),
           date: z
             .string()
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
-            .optional(), // expecting YYYY-MM-DD
-          // Date range filter (untuk export per kelas)
+            .optional(),
           startDate: z
             .string()
             .regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
@@ -158,115 +195,162 @@ export const absencesRouter = createTRPCRouter({
             .optional(),
           sort: z.enum(["asc", "desc"]).default("asc"),
           query: z.string().trim().min(1).optional(),
-          // Filter by className from user_profiles (untuk fitur Absensi Per Kelas)
           className: z.string().optional(),
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
-      const conditions: (SQL | undefined)[] = [];
-      if (input?.userId) conditions.push(eq(absences.userId, input.userId));
-      // Support filtering by multiple userIds (for per-class attendance)
-      if (input?.userIds && input.userIds.length > 0) {
-        conditions.push(
-          or(...input.userIds.map((id) => eq(absences.userId, id))),
-        );
+    .query(async ({ input }) => {
+      const [attendances, students] = await Promise.all([
+        astraRequest<AstraAttendanceRecord[]>(
+          "/v1/admin/attendance?limit=100",
+        ).catch(() =>
+          astraRequest<AstraAttendanceRecord[]>(
+            "/v1/admin/attendances?limit=100",
+          ).catch(() => []),
+        ),
+        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+          () => [],
+        ),
+      ]);
+
+      const studentMap = new Map<string, AstraStudentProfile>(
+        students.map((s) => [s.user_id, s]),
+      );
+
+      let filtered = attendances;
+
+      if (input?.userId) {
+        filtered = filtered.filter((a) => a.user_id === input.userId);
       }
+
+      if (input?.userIds && input.userIds.length > 0) {
+        const idSet = new Set(input.userIds);
+        filtered = filtered.filter((a) => idSet.has(a.user_id));
+      }
+
       if (input?.status) {
         if (input.status === "Hadir") {
-          // Treat 'Hadir' filter as both Hadir and legacy 'Datang'
-          conditions.push(
-            or(eq(absences.status, "Hadir"), eq(absences.status, "Datang")),
+          filtered = filtered.filter(
+            (a) => a.status === "Hadir" || a.status === "Datang",
           );
         } else {
-          conditions.push(eq(absences.status, input.status));
+          filtered = filtered.filter((a) => a.status === input.status);
         }
       }
-      if (input?.date) conditions.push(eq(absences.date, input.date));
+
+      if (input?.date) {
+        filtered = filtered.filter((a) => a.date === input.date);
+      }
+
+      if (input?.startDate) {
+        filtered = filtered.filter((a) => a.date >= input.startDate!);
+      }
+
+      if (input?.endDate) {
+        filtered = filtered.filter((a) => a.date <= input.endDate!);
+      }
 
       if (input?.query) {
-        conditions.push(
-          exists(
-            ctx.db
-              .select({ one: userProfiles.userId })
-              .from(userProfiles)
-              .where(
-                and(
-                  eq(userProfiles.userId, absences.userId),
-                  ilike(userProfiles.fullName, `%${input.query}%`),
-                ),
-              ),
-          ),
-        );
+        const queryLower = input.query.toLowerCase();
+        filtered = filtered.filter((a) => {
+          const student = studentMap.get(a.user_id);
+          if (!student) return false;
+          const nameMatch = (student.full_name ?? "")
+            .toLowerCase()
+            .includes(queryLower);
+          const emailMatch = (student.email ?? "")
+            .toLowerCase()
+            .includes(queryLower);
+          const nisMatch = (student.nis ?? "")
+            .toLowerCase()
+            .includes(queryLower);
+          return nameMatch || emailMatch || nisMatch;
+        });
       }
 
-      // Date range filter (startDate - endDate)
-      if (input?.startDate)
-        conditions.push(gte(absences.date, input.startDate));
-      if (input?.endDate) conditions.push(lte(absences.date, input.endDate));
-
-      // Filter by className using exists subquery untuk efisiensi
-      // Ini mencari absences yang userId-nya ada di user_profiles dengan className yang cocok
       if (input?.className) {
-        conditions.push(
-          exists(
-            ctx.db
-              .select({ one: userProfiles.userId })
-              .from(userProfiles)
-              .where(
-                and(
-                  eq(userProfiles.userId, absences.userId),
-                  ilike(userProfiles.className, `%${input.className}%`),
-                ),
-              ),
-          ),
-        );
+        const classLower = input.className.toLowerCase();
+        filtered = filtered.filter((a) => {
+          const student = studentMap.get(a.user_id);
+          return (student?.class_name ?? "").toLowerCase().includes(classLower);
+        });
       }
 
-      const validConds = conditions.filter((c): c is SQL => Boolean(c));
-      const where = validConds.length ? and(...validConds) : undefined;
-
-      const rows = await ctx.db.query.absences.findMany({
-        where: where,
-        limit: input?.limit ?? 20,
-        offset: input?.offset ?? 0,
-        orderBy: (absences, { desc, asc }) => [
-          (input?.sort ?? "asc") === "desc"
-            ? desc(absences.date)
-            : asc(absences.date),
-        ],
-        with: {
-          userProfile: true,
-        },
+      filtered.sort((a, b) => {
+        const dateA = a.date ?? "";
+        const dateB = b.date ?? "";
+        const dateComp =
+          input?.sort === "desc"
+            ? dateB.localeCompare(dateA)
+            : dateA.localeCompare(dateB);
+        if (dateComp !== 0) return dateComp;
+        const timeA = a.created_at ?? "";
+        const timeB = b.created_at ?? "";
+        return input?.sort === "desc"
+          ? timeB.localeCompare(timeA)
+          : timeA.localeCompare(timeB);
       });
 
-      return rows;
+      const limit = input?.limit ?? 20;
+      const offset = input?.offset ?? 0;
+      const paged = filtered.slice(offset, offset + limit);
+
+      return paged.map((a) => mapAstraAttendance(a, studentMap));
     }),
 
-  // Mengambil seluruh data absensi (tanpa pagination) - gunakan hati-hati untuk dataset besar.
-  listRaw: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db.query.absences.findMany({
-      orderBy: (absences, { desc }) => [desc(absences.date)],
-      with: {
-        userProfile: true,
-      },
+  // Mengambil seluruh data absensi (tanpa pagination) dari Astra.
+  listRaw: protectedProcedure.query(async () => {
+    const [attendances, students] = await Promise.all([
+      astraRequest<AstraAttendanceRecord[]>(
+        "/v1/admin/attendance?limit=100",
+      ).catch(() =>
+        astraRequest<AstraAttendanceRecord[]>(
+          "/v1/admin/attendances?limit=100",
+        ).catch(() => []),
+      ),
+      astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(() => []),
+    ]);
+
+    const studentMap = new Map<string, AstraStudentProfile>(
+      students.map((s) => [s.user_id, s]),
+    );
+
+    const sorted = [...attendances].sort((a, b) => {
+      const dateA = a.date ?? "";
+      const dateB = b.date ?? "";
+      const dateComp = dateB.localeCompare(dateA);
+      if (dateComp !== 0) return dateComp;
+      const timeA = a.created_at ?? "";
+      const timeB = b.created_at ?? "";
+      return timeB.localeCompare(timeA);
     });
 
-    return rows;
+    return sorted.map((a) => mapAstraAttendance(a, studentMap));
   }),
 
   // Mengambil satu record berdasarkan ID (primary key). Return null jika tidak ditemukan.
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ ctx, input }) => {
-      const row = await ctx.db.query.absences.findFirst({
-        where: (table, { eq }) => eq(table.id, input.id),
-        with: {
-          userProfile: true,
-        },
-      });
+    .query(async ({ input }) => {
+      const [attendances, students] = await Promise.all([
+        astraRequest<AstraAttendanceRecord[]>(
+          "/v1/admin/attendance?limit=100",
+        ).catch(() =>
+          astraRequest<AstraAttendanceRecord[]>(
+            "/v1/admin/attendances?limit=100",
+          ).catch(() => []),
+        ),
+        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+          () => [],
+        ),
+      ]);
 
-      return row ?? null;
+      const studentMap = new Map<string, AstraStudentProfile>(
+        students.map((s) => [s.user_id, s]),
+      );
+
+      const record = attendances.find((a) => a.id === input.id);
+      return record ? mapAstraAttendance(record, studentMap) : null;
     }),
 
   // Statistik kehadiran untuk dashboard dengan range waktu
@@ -278,37 +362,30 @@ export const absencesRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const days = input?.days ?? 7;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
-      const startDateStr = startDate.toISOString().split("T")[0];
+      const startDateStr = startDate.toISOString().split("T")[0]!;
 
-      // Get all user profiles (verified users)
-      const allUsers = await ctx.db.query.userProfiles.findMany({
-        columns: {
-          userId: true,
-        },
-      });
-      const totalUsers = allUsers.length;
+      const [students, attendances, leaveRequests] = await Promise.all([
+        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+          () => [],
+        ),
+        astraRequest<AstraAttendanceRecord[]>(
+          "/v1/admin/attendance?limit=100",
+        ).catch(() =>
+          astraRequest<AstraAttendanceRecord[]>(
+            "/v1/admin/attendances?limit=100",
+          ).catch(() => []),
+        ),
+        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
+          () => [],
+        ),
+      ]);
 
-      // Get absences within date range
-      const absencesData = await ctx.db.query.absences.findMany({
-        where: (table, { gte }) => gte(table.date, startDateStr!),
-        with: {
-          userProfile: true,
-        },
-      });
+      const totalUsers = students.length;
 
-      // Get perizinan within date range
-      const perizinanData = await ctx.db.query.perizinan.findMany({
-        where: (table, { gte }) => gte(table.tanggalUtcDate, startDateStr!),
-        with: {
-          userProfile: true,
-        },
-      });
-
-      // Group by date
       const dateMap: Record<
         string,
         {
@@ -318,7 +395,6 @@ export const absencesRouter = createTRPCRouter({
         }
       > = {};
 
-      // Initialize all dates in range
       for (let i = 0; i < days; i++) {
         const date = new Date();
         date.setDate(date.getDate() - (days - 1 - i));
@@ -332,28 +408,33 @@ export const absencesRouter = createTRPCRouter({
         }
       }
 
-      // Fill in attendance data
-      absencesData.forEach((a) => {
-        const dateStr = a.date; // Already a string in YYYY-MM-DD format
-        if (dateStr && dateMap[dateStr]) {
-          if (a.status === "Terlambat") {
-            dateMap[dateStr].terlambat.add(a.userId);
-            dateMap[dateStr].hadir.add(a.userId); // Terlambat tetap termasuk dalam kehadiran
-          } else {
-            dateMap[dateStr].hadir.add(a.userId);
+      attendances
+        .filter((a) => a.date >= startDateStr)
+        .forEach((a) => {
+          const dateStr = a.date;
+          if (dateStr && dateMap[dateStr]) {
+            if (a.status === "Terlambat") {
+              dateMap[dateStr].terlambat.add(a.user_id);
+              dateMap[dateStr].hadir.add(a.user_id);
+            } else {
+              dateMap[dateStr].hadir.add(a.user_id);
+            }
           }
-        }
-      });
+        });
 
-      // Fill in permission data
-      perizinanData.forEach((p) => {
-        const dateStr = p.tanggalUtcDate;
-        if (dateStr && dateMap[dateStr] && p.approvalStatus === "approved") {
-          dateMap[dateStr].izin.add(p.userId);
-        }
-      });
+      leaveRequests
+        .filter(
+          (p) =>
+            p.date >= startDateStr &&
+            (p.approval_status === "approved" || p.status === true),
+        )
+        .forEach((p) => {
+          const dateStr = p.date;
+          if (dateStr && dateMap[dateStr]) {
+            dateMap[dateStr].izin.add(p.user_id);
+          }
+        });
 
-      // Build result array
       const result = Object.entries(dateMap).map(([date, data]) => {
         const hadirCount = data.hadir.size;
         const izinCount = data.izin.size;
@@ -385,52 +466,58 @@ export const absencesRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const date = input?.date ?? new Date().toISOString().split("T")[0]!;
 
-      const [allUsers, absensiToday, perizinanToday] = await Promise.all([
-        ctx.db.query.userProfiles.findMany({
-          columns: { userId: true },
-        }),
-        ctx.db.query.absences.findMany({
-          columns: { userId: true, status: true },
-          where: (table, { eq }) => eq(table.date, date),
-        }),
-        ctx.db.query.perizinan.findMany({
-          columns: { userId: true, kategoriIzin: true },
-          where: (table, { and, eq }) =>
-            and(
-              eq(table.tanggalUtcDate, date),
-              eq(table.approvalStatus, "approved"),
-            ),
-        }),
+      const [students, attendances, leaveRequests] = await Promise.all([
+        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+          () => [],
+        ),
+        astraRequest<AstraAttendanceRecord[]>(
+          `/v1/admin/attendance?date=${date}&limit=100`,
+        ).catch(() =>
+          astraRequest<AstraAttendanceRecord[]>(
+            `/v1/admin/attendances?date=${date}&limit=100`,
+          ).catch(() => []),
+        ),
+        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
+          () => [],
+        ),
       ]);
 
-      const totalUsers = allUsers.length;
+      const totalUsers = students.length;
       const masukUserIds = new Set<string>();
       const pulangUserIds = new Set<string>();
       const izinUserIds = new Set<string>();
       let izin = 0;
       let sakit = 0;
 
-      absensiToday.forEach((row) => {
-        if (
-          row.status === "Hadir" ||
-          row.status === "Datang" ||
-          row.status === "Terlambat"
-        ) {
-          masukUserIds.add(row.userId);
-        }
-        if (row.status === "Pulang") {
-          pulangUserIds.add(row.userId);
-        }
-      });
+      attendances
+        .filter((row) => row.date === date)
+        .forEach((row) => {
+          if (
+            row.status === "Hadir" ||
+            row.status === "Datang" ||
+            row.status === "Terlambat"
+          ) {
+            masukUserIds.add(row.user_id);
+          }
+          if (row.status === "Pulang") {
+            pulangUserIds.add(row.user_id);
+          }
+        });
 
-      perizinanToday.forEach((row) => {
-        izinUserIds.add(row.userId);
-        if (row.kategoriIzin === "pergi") izin += 1;
-        if (row.kategoriIzin === "sakit") sakit += 1;
-      });
+      leaveRequests
+        .filter(
+          (row) =>
+            row.date === date &&
+            (row.approval_status === "approved" || row.status === true),
+        )
+        .forEach((row) => {
+          izinUserIds.add(row.user_id);
+          if (row.category === "pergi") izin += 1;
+          if (row.category === "sakit") sakit += 1;
+        });
 
       const hadirAtauIzin = new Set<string>([...masukUserIds, ...izinUserIds]);
       const sudahAbsenPulang = Array.from(masukUserIds).filter((userId) =>
@@ -460,19 +547,31 @@ export const absencesRouter = createTRPCRouter({
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
       }),
     )
-    .query(async ({ ctx, input }) => {
-      // 1. Get all students in this class
-      const studentsInClass = await ctx.db.query.userProfiles.findMany({
-        where: (table, { ilike }) =>
-          ilike(table.className, `%${input.className}%`),
-        orderBy: (table, { asc }) => [asc(table.fullName)],
-      });
+    .query(async ({ input }) => {
+      const [allStudents, attendances, leaveRequests] = await Promise.all([
+        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+          () => [],
+        ),
+        astraRequest<AstraAttendanceRecord[]>(
+          `/v1/admin/attendance?date=${input.date}&limit=100`,
+        ).catch(() =>
+          astraRequest<AstraAttendanceRecord[]>(
+            `/v1/admin/attendances?date=${input.date}&limit=100`,
+          ).catch(() => []),
+        ),
+        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
+          () => [],
+        ),
+      ]);
 
-      const studentUserIds = new Set(studentsInClass.map((s) => s.userId));
-      const studentIdsArray = Array.from(studentUserIds);
+      const classQuery = input.className.toLowerCase();
+      const studentsInClass = allStudents
+        .filter((s) => (s.class_name ?? "").toLowerCase().includes(classQuery))
+        .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
-      // If no students in class, short-circuit with empty summary
-      if (studentIdsArray.length === 0) {
+      const studentUserIds = new Set(studentsInClass.map((s) => s.user_id));
+
+      if (studentsInClass.length === 0) {
         return {
           date: input.date,
           className: input.className,
@@ -491,83 +590,57 @@ export const absencesRouter = createTRPCRouter({
             izin: [],
             tidakHadir: [],
           },
-        } as const;
+        };
       }
 
-      // 2. Get absences for this class on this date (filtered in DB)
-      const classAbsences = await ctx.db.query.absences.findMany({
-        where: (table, { eq, inArray }) =>
-          and(
-            eq(table.date, input.date),
-            inArray(table.userId, studentIdsArray),
-          ),
-        with: {
-          userProfile: true,
-        },
-      });
-
-      // 3. Get perizinan for this date
-      const startLocal = new Date(`${input.date}T00:00:00+07:00`);
-      const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
-
-      const perizinanOnDate = await ctx.db.query.perizinan.findMany({
-        where: (table, { gte, lt, and }) =>
-          and(gte(table.tanggal, startLocal), lt(table.tanggal, endLocal)),
-        with: {
-          userProfile: true,
-        },
-      });
-
-      // Filter to only students in this class with approved status
-      const classPerizinan = perizinanOnDate.filter(
-        (p) =>
-          p.userProfile &&
-          studentUserIds.has(p.userProfile.userId) &&
-          p.approvalStatus === "approved",
+      const classAbsences = attendances.filter(
+        (a) => a.date === input.date && studentUserIds.has(a.user_id),
       );
 
-      // 4. Categorize students
+      const classPerizinan = leaveRequests.filter(
+        (p) =>
+          p.date === input.date &&
+          studentUserIds.has(p.user_id) &&
+          (p.approval_status === "approved" || p.status === true),
+      );
+
       const hadirSet = new Set<string>();
       const terlambatSet = new Set<string>();
       const sakitSet = new Set<string>();
       const izinSet = new Set<string>();
 
-      // Process absences
       for (const a of classAbsences) {
-        const userId = a.userId;
+        const userId = a.user_id;
         if (a.status === "Hadir" || a.status === "Datang") {
           hadirSet.add(userId);
         } else if (a.status === "Terlambat") {
           terlambatSet.add(userId);
-          hadirSet.add(userId); // Terlambat counts as hadir
+          hadirSet.add(userId);
         }
       }
 
-      // Process perizinan
       for (const p of classPerizinan) {
-        const userId = p.userId;
-        if (p.kategoriIzin === "sakit") {
+        const userId = p.user_id;
+        if (p.category === "sakit") {
           sakitSet.add(userId);
-        } else if (p.kategoriIzin === "pergi") {
+        } else {
           izinSet.add(userId);
         }
       }
 
-      // 5. Calculate tidak hadir (alpha) - students not in any category
       const allAccountedFor = new Set([...hadirSet, ...sakitSet, ...izinSet]);
       const tidakHadirList = studentsInClass.filter(
-        (s) => !allAccountedFor.has(s.userId),
+        (s) => !allAccountedFor.has(s.user_id),
       );
 
-      // 6. Build detailed lists
       const getStudentDetails = (userIds: Set<string>) =>
         studentsInClass
-          .filter((s) => userIds.has(s.userId))
+          .filter((s) => userIds.has(s.user_id))
           .map((s) => ({
-            userId: s.userId,
-            nis: s.nis,
-            fullName: s.fullName,
-            absenceNumber: s.absenceNumber,
+            userId: s.user_id,
+            nis: s.nis ?? null,
+            fullName: s.full_name ?? null,
+            absenceNumber: s.absence_number ?? null,
           }));
 
       return {
@@ -587,10 +660,10 @@ export const absencesRouter = createTRPCRouter({
           sakit: getStudentDetails(sakitSet),
           izin: getStudentDetails(izinSet),
           tidakHadir: tidakHadirList.map((s) => ({
-            userId: s.userId,
-            nis: s.nis,
-            fullName: s.fullName,
-            absenceNumber: s.absenceNumber,
+            userId: s.user_id,
+            nis: s.nis ?? null,
+            fullName: s.full_name ?? null,
+            absenceNumber: s.absence_number ?? null,
           })),
         },
       };

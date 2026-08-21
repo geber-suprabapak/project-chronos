@@ -7,10 +7,22 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z.string().url(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    LOGTO_ENDPOINT: z.string().url().default("http://localhost:3001"),
+    LOGTO_APP_ID: z.string().min(1).default("chronos-app"),
+    LOGTO_APP_SECRET: z
+      .string()
+      .min(1)
+      .default("chronos-secret-key-at-least-32-chars"),
+    LOGTO_COOKIE_SECRET: z
+      .string()
+      .min(32)
+      .default("complex_password_at_least_32_characters_long_12345"),
+    LOGTO_BASE_URL: z.string().url().default("http://localhost:3000"),
+    LOGTO_RESOURCE: z.string().optional(),
+    ASTRA_API_URL: z.string().url().default("http://localhost:8787"),
   },
 
   /**
@@ -18,24 +30,21 @@ export const env = createEnv({
    * isn't built with invalid env vars. To expose them to the client, prefix them with
    * `NEXT_PUBLIC_`.
    */
-  client: {
-    NEXT_PUBLIC_SUPABASE_URL: z.string(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
-
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
-  },
+  client: {},
 
   /**
    * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    LOGTO_ENDPOINT: process.env.LOGTO_ENDPOINT,
+    LOGTO_APP_ID: process.env.LOGTO_APP_ID,
+    LOGTO_APP_SECRET: process.env.LOGTO_APP_SECRET,
+    LOGTO_COOKIE_SECRET: process.env.LOGTO_COOKIE_SECRET,
+    LOGTO_BASE_URL: process.env.LOGTO_BASE_URL,
+    LOGTO_RESOURCE: process.env.LOGTO_RESOURCE,
+    ASTRA_API_URL: process.env.ASTRA_API_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

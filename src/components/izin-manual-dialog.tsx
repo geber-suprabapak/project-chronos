@@ -33,7 +33,6 @@ import {
   X,
 } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
 interface SiswaResult {
   nis: string;
@@ -168,30 +167,24 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     }
   };
 
-  const uploadToSupabase = async (file: File): Promise<string | null> => {
+  const uploadToAstra = async (file: File): Promise<string | null> => {
     try {
-      const supabase = getSupabaseBrowserClient();
-      const fileExt = file.name.split(".").pop() ?? "jpg";
-      const fileName = `manual/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-
-      const { error } = await supabase.storage
-        .from("perizinan")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (error) {
-        console.error("Upload error:", error);
-        toast.error(`Gagal upload foto: ${error.message}`);
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/astra/files", {
+        method: "POST",
+        body: form,
+      });
+      // SAFETY: The response was checked by the caller path and is decoded only for the upload contract fields.
+      const result = (await response.json()) as {
+        url?: string;
+        error?: string;
+      };
+      if (!response.ok || !result.url) {
+        toast.error(result.error ?? "Gagal upload foto");
         return null;
       }
-
-      const { data: urlData } = supabase.storage
-        .from("perizinan")
-        .getPublicUrl(fileName);
-
-      return urlData.publicUrl;
+      return result.url;
     } catch (err) {
       console.error("Upload error:", err);
       toast.error("Gagal upload foto");
@@ -199,19 +192,14 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     }
   };
 
-  const handleSelectSiswa = (siswa: {
-    nis: bigint;
-    nama: string | null;
-    kelas: string | null;
-    absen: number | null;
-  }) => {
+  const handleSelectSiswa = (siswa: SiswaResult) => {
     setSelectedSiswa({
-      nis: siswa.nis.toString(),
+      nis: siswa.nis,
       nama: siswa.nama,
       kelas: siswa.kelas,
       absen: siswa.absen,
     });
-    setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis.toString()}`);
+    setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis}`);
     setShowDropdown(false);
   };
 
@@ -238,7 +226,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     // Upload file if selected
     if (uploadFile) {
       setIsUploading(true);
-      const uploadedUrl = await uploadToSupabase(uploadFile);
+      const uploadedUrl = await uploadToAstra(uploadFile);
       setIsUploading(false);
 
       if (!uploadedUrl) {
@@ -246,7 +234,6 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
       }
       finalLinkFoto = uploadedUrl;
     }
-
     createIzin.mutate({
       nis: selectedSiswa.nis,
       kategoriIzin: kategori,

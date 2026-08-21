@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
+import {
+  extractExtendedClaims,
+  isAdminRole,
+  isMfaVerified,
+  isPasswordChangeRequired,
+  isPrivilegedRole,
+  resolveLogtoRole,
+} from "~/lib/logto/claims";
 import { AppSidebar } from "~/components/app-sidebar";
 import {
   SidebarProvider,
@@ -20,11 +29,38 @@ export default async function DashLayout({
 }: {
   children: ReactNode;
 }) {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  try {
+    const logtoContext = await getLogtoContext(logtoConfig, {
+      fetchUserInfo: true,
+    });
+
+    if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+      redirect("/login");
+    }
+
+    const claims = extractExtendedClaims(logtoContext.claims);
+    if (isPasswordChangeRequired(claims)) {
+      redirect("/ganti-password");
+    }
+
+    const rawRoles = claims?.roles ?? [];
+    const userRole = resolveLogtoRole(rawRoles);
+    if (!userRole || !isPrivilegedRole(userRole)) {
+      redirect("/login?error=forbidden_role");
+    }
+
+    if (isAdminRole(userRole)) {
+      const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
+      if (!mfaOk) {
+        redirect("/login?error=mfa_required");
+      }
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+      throw err;
+    }
+    redirect("/login");
+  }
 
   // Persist default open state for collapsible sidebar via cookie (shadcn pattern)
   const cookieStore = await cookies();

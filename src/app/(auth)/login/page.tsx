@@ -1,5 +1,5 @@
+import { Suspense } from "react";
 import { GalleryVerticalEnd } from "lucide-react";
-
 import { LoginForm } from "~/components/login-form";
 
 export default function LoginPage() {
@@ -12,7 +12,9 @@ export default function LoginPage() {
           </div>
           Chronos Alpha
         </a>
-        <LoginForm />
+        <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );

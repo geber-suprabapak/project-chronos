@@ -1,64 +1,106 @@
 import { z } from "zod";
-import { eq, sql, desc } from "drizzle-orm";
 import {
   adminProcedure,
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { location } from "~/server/db/schema";
+import { astraRequest } from "~/lib/astra/client";
 
+export interface AstraLocation {
+  id: string;
+  school_id?: string | null;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export function mapAstraLocation(loc: AstraLocation, indexFallback?: number) {
+  const numericId = parseInt(loc.id, 10);
+  const safeId = !Number.isNaN(numericId) ? numericId : (indexFallback ?? 1);
+
+  return {
+    id: safeId,
+    astraId: loc.id,
+    name: loc.name,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    distance: loc.radius_meters,
+    isActive: loc.is_active,
+    createdAt: loc.created_at ? new Date(loc.created_at) : new Date(),
+    updatedAt: loc.updated_at ? new Date(loc.updated_at) : new Date(),
+  };
+}
+
+/**
+ * Router tRPC untuk konfigurasi lokasi yang di-route melalui Astra API contract v1.
+ */
 export const locationRouter = createTRPCRouter({
   // Get current active location (primary location for system)
-  get: protectedProcedure.query(async ({ ctx }) => {
-    const config = await ctx.db
-      .select()
-      .from(location)
-      .where(eq(location.isActive, true))
-      .orderBy(desc(location.updatedAt))
-      .limit(1);
-
-    return config[0] ?? null;
+  get: protectedProcedure.query(async () => {
+    try {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations?isActive=true",
+      );
+      const active = locations.find((loc) => loc.is_active) ?? locations[0];
+      return active ? mapAstraLocation(active, 1) : null;
+    } catch {
+      return null;
+    }
   }),
 
   // Get all locations (both active and inactive)
-  getAll: protectedProcedure.query(async ({ ctx }) => {
-    const configs = await ctx.db
-      .select()
-      .from(location)
-      .orderBy(desc(location.createdAt));
-
-    return configs;
+  getAll: protectedProcedure.query(async () => {
+    try {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      return locations.map((loc, idx) => mapAstraLocation(loc, idx + 1));
+    } catch {
+      return [];
+    }
   }),
 
   // Get only active locations
-  getActive: protectedProcedure.query(async ({ ctx }) => {
-    const configs = await ctx.db
-      .select()
-      .from(location)
-      .where(eq(location.isActive, true))
-      .orderBy(desc(location.createdAt));
-
-    return configs;
+  getActive: protectedProcedure.query(async () => {
+    try {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations?isActive=true",
+      );
+      return locations
+        .filter((loc) => loc.is_active)
+        .map((loc, idx) => mapAstraLocation(loc, idx + 1));
+    } catch {
+      return [];
+    }
   }),
 
   // Get location by ID
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const config = await ctx.db
-        .select()
-        .from(location)
-        .where(eq(location.id, input.id))
-        .limit(1);
-
-      return config[0] ?? null;
+    .query(async ({ input }) => {
+      try {
+        const locations = await astraRequest<AstraLocation[]>(
+          "/v1/admin/locations",
+        );
+        const idStr = String(input.id);
+        const loc = locations.find(
+          (l, idx) => l.id === idStr || idx + 1 === input.id,
+        );
+        return loc ? mapAstraLocation(loc, input.id) : null;
+      } catch {
+        return null;
+      }
     }),
 
   // Create new location
   create: adminProcedure
     .input(
       z.object({
-        id: z.number().min(1),
+        id: z.number().min(1).optional(),
         name: z.string().min(1).max(255),
         latitude: z.number().min(-90).max(90),
         longitude: z.number().min(-180).max(180),
@@ -66,20 +108,19 @@ export const locationRouter = createTRPCRouter({
         isActive: z.boolean().optional().default(true),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .insert(location)
-        .values({
-          id: input.id,
+    .mutation(async ({ input }) => {
+      const created = await astraRequest<AstraLocation>("/v1/admin/locations", {
+        method: "POST",
+        body: JSON.stringify({
           name: input.name,
           latitude: input.latitude,
           longitude: input.longitude,
-          distance: input.distance,
-          isActive: input.isActive,
-        })
-        .returning();
+          radius_meters: input.distance,
+          is_active: input.isActive,
+        }),
+      });
 
-      return result[0];
+      return mapAstraLocation(created, input.id ?? 1);
     }),
 
   // Update location by ID
@@ -96,57 +137,80 @@ export const locationRouter = createTRPCRouter({
         }),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .update(location)
-        .set({
-          ...input.data,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(location.id, input.id))
-        .returning();
+    .mutation(async ({ input }) => {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const idStr = String(input.id);
+      const target = locations.find(
+        (l, idx) => l.id === idStr || idx + 1 === input.id,
+      );
+      const targetId = target ? target.id : idStr;
 
-      return result[0] ?? null;
+      const updated = await astraRequest<AstraLocation>(
+        `/v1/admin/locations/${targetId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            name: input.data.name,
+            latitude: input.data.latitude,
+            longitude: input.data.longitude,
+            radius_meters: input.data.distance,
+            is_active: input.data.isActive,
+          }),
+        },
+      );
+
+      return mapAstraLocation(updated, input.id);
     }),
 
   // Toggle location active status
   toggleActive: adminProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      // Get current status
-      const current = await ctx.db
-        .select({ isActive: location.isActive })
-        .from(location)
-        .where(eq(location.id, input.id))
-        .limit(1);
+    .mutation(async ({ input }) => {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const idStr = String(input.id);
+      const target = locations.find(
+        (l, idx) => l.id === idStr || idx + 1 === input.id,
+      );
 
-      if (!current[0]) {
+      if (!target) {
         throw new Error("Location not found");
       }
 
-      // Toggle status
-      const result = await ctx.db
-        .update(location)
-        .set({
-          isActive: !current[0].isActive,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(location.id, input.id))
-        .returning();
+      const updated = await astraRequest<AstraLocation>(
+        `/v1/admin/locations/${target.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            is_active: !target.is_active,
+          }),
+        },
+      );
 
-      return result[0];
+      return mapAstraLocation(updated, input.id);
     }),
 
   // Delete location
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .delete(location)
-        .where(eq(location.id, input.id))
-        .returning();
+    .mutation(async ({ input }) => {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const idStr = String(input.id);
+      const target = locations.find(
+        (l, idx) => l.id === idStr || idx + 1 === input.id,
+      );
+      const targetId = target ? target.id : idStr;
 
-      return result[0] ?? null;
+      await astraRequest<{ id: string }>(`/v1/admin/locations/${targetId}`, {
+        method: "DELETE",
+      });
+
+      return target ? mapAstraLocation(target, input.id) : null;
     }),
 
   // Update single field quickly
@@ -158,17 +222,32 @@ export const locationRouter = createTRPCRouter({
         value: z.union([z.string(), z.number()]),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .update(location)
-        .set({
-          [input.field]: input.value,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(location.id, input.id))
-        .returning();
+    .mutation(async ({ input }) => {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const idStr = String(input.id);
+      const target = locations.find(
+        (l, idx) => l.id === idStr || idx + 1 === input.id,
+      );
+      const targetId = target ? target.id : idStr;
 
-      return result[0] ?? null;
+      const payload: Record<string, string | number> = {};
+      if (input.field === "distance") {
+        payload.radius_meters = Number(input.value);
+      } else {
+        payload[input.field] = input.value;
+      }
+
+      const updated = await astraRequest<AstraLocation>(
+        `/v1/admin/locations/${targetId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        },
+      );
+
+      return mapAstraLocation(updated, input.id);
     }),
 
   // Upsert location (for primary location management)
@@ -181,69 +260,75 @@ export const locationRouter = createTRPCRouter({
         distance: z.number().min(1).max(10000),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      // Check if there's an existing primary location (id = 1)
-      const existing = await ctx.db
-        .select()
-        .from(location)
-        .where(eq(location.id, 1))
-        .limit(1);
+    .mutation(async ({ input }) => {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const existing = locations[0];
 
-      if (existing[0]) {
-        // Update existing primary location
-        const result = await ctx.db
-          .update(location)
-          .set({
-            name: input.name,
-            latitude: input.latitude,
-            longitude: input.longitude,
-            distance: input.distance,
-            isActive: true,
-            updatedAt: sql`CURRENT_TIMESTAMP`,
-          })
-          .where(eq(location.id, 1))
-          .returning();
-
-        return result[0];
-      } else {
-        // Create new primary location
-        const result = await ctx.db
-          .insert(location)
-          .values({
-            id: 1,
-            name: input.name,
-            latitude: input.latitude,
-            longitude: input.longitude,
-            distance: input.distance,
-            isActive: true,
-          })
-          .returning();
-
-        return result[0];
+      if (existing) {
+        const updated = await astraRequest<AstraLocation>(
+          `/v1/admin/locations/${existing.id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              name: input.name,
+              latitude: input.latitude,
+              longitude: input.longitude,
+              radius_meters: input.distance,
+              is_active: true,
+            }),
+          },
+        );
+        return mapAstraLocation(updated, 1);
       }
+
+      const created = await astraRequest<AstraLocation>("/v1/admin/locations", {
+        method: "POST",
+        body: JSON.stringify({
+          name: input.name,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          radius_meters: input.distance,
+          is_active: true,
+        }),
+      });
+
+      return mapAstraLocation(created, 1);
     }),
 
   // Reset to default configuration
-  reset: adminProcedure.mutation(async ({ ctx }) => {
+  reset: adminProcedure.mutation(async () => {
     const defaultConfig = {
-      id: 1,
       name: "Kantor Pusat",
       latitude: -7.4503,
       longitude: 110.2241,
-      distance: 500,
-      isActive: true,
+      radius_meters: 500,
+      is_active: true,
     };
 
-    // Delete existing primary location if exists
-    await ctx.db.delete(location).where(eq(location.id, 1));
+    const locations = await astraRequest<AstraLocation[]>(
+      "/v1/admin/locations",
+    );
+    const existing = locations[0];
 
-    // Insert default configuration
-    const result = await ctx.db
-      .insert(location)
-      .values(defaultConfig)
-      .returning();
+    if (existing) {
+      const updated = await astraRequest<AstraLocation>(
+        `/v1/admin/locations/${existing.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(defaultConfig),
+        },
+      );
+      return mapAstraLocation(updated, 1);
+    }
 
-    return result[0];
+    const created = await astraRequest<AstraLocation>("/v1/admin/locations", {
+      method: "POST",
+      body: JSON.stringify(defaultConfig),
+    });
+
+    return mapAstraLocation(created, 1);
   }),
 
   // Bulk operations
@@ -251,7 +336,7 @@ export const locationRouter = createTRPCRouter({
     .input(
       z.array(
         z.object({
-          id: z.number().min(1),
+          id: z.number().min(1).optional(),
           name: z.string().min(1).max(255),
           latitude: z.number().min(-90).max(90),
           longitude: z.number().min(-180).max(180),
@@ -260,34 +345,60 @@ export const locationRouter = createTRPCRouter({
         }),
       ),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db.insert(location).values(input).returning();
-
-      return result;
+    .mutation(async ({ input }) => {
+      const results = [];
+      for (let i = 0; i < input.length; i++) {
+        const item = input[i]!;
+        const created = await astraRequest<AstraLocation>(
+          "/v1/admin/locations",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name: item.name,
+              latitude: item.latitude,
+              longitude: item.longitude,
+              radius_meters: item.distance,
+              is_active: item.isActive,
+            }),
+          },
+        );
+        results.push(mapAstraLocation(created, item.id ?? i + 1));
+      }
+      return results;
     }),
 
   // Get location statistics
-  getStats: protectedProcedure.query(async ({ ctx }) => {
-    const stats = await ctx.db
-      .select({
-        total: sql<number>`count(*)`,
-        active: sql<number>`count(*) filter (where ${location.isActive} = true)`,
-        inactive: sql<number>`count(*) filter (where ${location.isActive} = false)`,
-        avgDistance: sql<number>`avg(${location.distance})`,
-        maxDistance: sql<number>`max(${location.distance})`,
-        minDistance: sql<number>`min(${location.distance})`,
-      })
-      .from(location);
+  getStats: protectedProcedure.query(async () => {
+    try {
+      const locations = await astraRequest<AstraLocation[]>(
+        "/v1/admin/locations",
+      );
+      const total = locations.length;
+      const active = locations.filter((loc) => loc.is_active).length;
+      const inactive = total - active;
+      const distances = locations.map((loc) => loc.radius_meters);
+      const avgDistance =
+        total > 0 ? distances.reduce((sum, d) => sum + d, 0) / total : 0;
+      const maxDistance = total > 0 ? Math.max(...distances) : 0;
+      const minDistance = total > 0 ? Math.min(...distances) : 0;
 
-    return (
-      stats[0] ?? {
+      return {
+        total,
+        active,
+        inactive,
+        avgDistance: Math.round(avgDistance),
+        maxDistance,
+        minDistance,
+      };
+    } catch {
+      return {
         total: 0,
         active: 0,
         inactive: 0,
         avgDistance: 0,
         maxDistance: 0,
         minDistance: 0,
-      }
-    );
+      };
+    }
   }),
 });

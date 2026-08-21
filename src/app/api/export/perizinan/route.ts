@@ -1,25 +1,44 @@
 import { NextResponse } from "next/server";
 import { Workbook } from "exceljs";
-import { db } from "~/server/db";
-import { perizinan, userProfiles } from "~/server/db/schema";
 import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
+import { astraRequest } from "~/lib/astra/client";
 
 // Ensure fresh data on each request
 export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
 export const runtime = "nodejs";
 
-/**
- * Helper to safely format date values
- */
-function formatDate(
-  val: Date | string | number | null | undefined,
-): string | null {
-  if (val == null) return null;
-  const d = val instanceof Date ? val : new Date(val);
-  const t = d.getTime();
-  return Number.isNaN(t) ? null : d.toISOString();
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
+
+interface AstraLeaveRequest {
+  id: string;
+  user_id: string;
+  student_name?: string | null;
+  student_nis?: string | null;
+  student_class?: string | null;
+  absence_number?: string | null;
+  category: "sakit" | "pergi" | "dispensasi";
+  description?: string | null;
+  status: boolean;
+  date: string;
+  approval_status: "approved" | "rejected" | "pending";
+  attachment_url?: string | null;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export async function GET() {
@@ -43,62 +62,63 @@ export async function GET() {
   // Style the header row
   ws.getRow(1).font = { bold: true };
 
-  // Fetch all perizinan data
-  const rows = await db.select().from(perizinan);
+  // Fetch leave requests and student profiles from Astra
+  const [leaveRequests, students] = await Promise.all([
+    astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
+      () => [],
+    ),
+    astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(() => []),
+  ]);
 
-  // Fetch all profiles to map user IDs to names
-  const profiles = await db.select().from(userProfiles);
-  const profileMap = new Map<string, (typeof profiles)[number]>();
-
-  // Create a lookup map of user profiles by ID
-  for (const profile of profiles) {
-    if (profile.userId) {
-      profileMap.set(profile.userId, profile);
-    }
-  }
+  const studentMap = new Map<string, AstraStudentProfile>(
+    students.map((s) => [s.user_id, s]),
+  );
 
   // Sort rows by date first, then by NIS
-  const sortedRows = rows.sort((a, b) => {
-    const dateA = formatDate(a.tanggal) ?? "";
-    const dateB = formatDate(b.tanggal) ?? "";
+  const sortedRows = [...leaveRequests].sort((a, b) => {
+    const dateA = a.date ?? "";
+    const dateB = b.date ?? "";
     const dateCompare = dateA.localeCompare(dateB);
 
     if (dateCompare !== 0) return dateCompare;
 
-    // If dates are equal, sort by NIS
-    const nisA = profileMap.get(a.userId)?.nis ?? "";
-    const nisB = profileMap.get(b.userId)?.nis ?? "";
+    const nisA = a.student_nis ?? studentMap.get(a.user_id)?.nis ?? "";
+    const nisB = b.student_nis ?? studentMap.get(b.user_id)?.nis ?? "";
     return nisA.localeCompare(nisB);
   });
 
   // Add rows to worksheet
   for (const r of sortedRows) {
-    const profile = profileMap.get(r.userId);
-    const desc = r.deskripsi ?? "";
+    const profile = studentMap.get(r.user_id);
+    const desc = r.description ?? "";
     const kategoriDisplay = /dipulangkan/i.test(desc)
       ? "dipulangkan"
       : /terlambat/i.test(desc)
         ? "terlambat"
-        : r.kategoriIzin;
+        : r.category;
 
     // Format tanggal as YYYY-MM-DD only
-    const tanggalStr = formatDate(r.tanggal)?.split("T")[0] ?? "-";
+    const tanggalStr = r.date
+      ? r.date.includes("T")
+        ? r.date.split("T")[0]
+        : r.date
+      : "-";
 
     // Build keterangan with kategori and status
-    let keterangan = kategoriDisplay ?? "-";
-    if (r.approvalStatus === "approved") {
+    let keterangan = (kategoriDisplay ?? "-").toString();
+    if (r.approval_status === "approved") {
       keterangan += " (Disetujui)";
-    } else if (r.approvalStatus === "rejected") {
+    } else if (r.approval_status === "rejected") {
       keterangan += " (Ditolak)";
-    } else if (r.approvalStatus === "pending") {
+    } else if (r.approval_status === "pending") {
       keterangan += " (Menunggu)";
     }
 
     ws.addRow({
       tanggal: tanggalStr,
-      nis: profile?.nis ?? "-",
-      kelas: profile?.className ?? "-",
-      nama: profile?.fullName ?? "-",
+      nis: r.student_nis ?? profile?.nis ?? "-",
+      kelas: r.student_class ?? profile?.class_name ?? "-",
+      nama: r.student_name ?? profile?.full_name ?? "-",
       keterangan: keterangan,
     });
   }

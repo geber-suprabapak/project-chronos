@@ -1,16 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Workbook } from "exceljs";
-import { db } from "~/server/db";
-import { absences, userProfiles } from "~/server/db/schema";
-import { eq, and, ilike, exists, gte, lte } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
 import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
+import { astraRequest } from "~/lib/astra/client";
 
 // Ensure fresh data on each request
 export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
 export const runtime = "nodejs";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
+
+interface AstraAttendanceRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  status: "Hadir" | "Terlambat" | "Pulang" | "Alpha" | "Datang";
+  action_type?: "check_in" | "check_out" | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  created_at?: string | null;
+}
 
 export async function GET(request: NextRequest) {
   const access = await requireExportAccess("absences");
@@ -39,74 +60,66 @@ export async function GET(request: NextRequest) {
   // Style the header row
   ws.getRow(1).font = { bold: true };
 
-  // Build WHERE conditions array
-  const conditions: (SQL | undefined)[] = [];
+  // Fetch attendance records and student profiles from Astra
+  const [attendances, students] = await Promise.all([
+    astraRequest<AstraAttendanceRecord[]>(
+      "/v1/admin/attendance?limit=100",
+    ).catch(() =>
+      astraRequest<AstraAttendanceRecord[]>(
+        "/v1/admin/attendances?limit=100",
+      ).catch(() => []),
+    ),
+    astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(() => []),
+  ]);
 
-  // className filter using EXISTS subquery
-  if (className) {
-    conditions.push(
-      exists(
-        db
-          .select({ one: userProfiles.userId })
-          .from(userProfiles)
-          .where(
-            and(
-              eq(userProfiles.userId, absences.userId),
-              ilike(userProfiles.className, `%${className}%`),
-            ),
-          ),
-      ),
-    );
+  const studentMap = new Map<string, AstraStudentProfile>(
+    students.map((s) => [s.user_id, s]),
+  );
+
+  let filtered = attendances;
+
+  if (className && className !== "ALL") {
+    const classQuery = className.trim().toLowerCase();
+    filtered = filtered.filter((a) => {
+      const student = studentMap.get(a.user_id);
+      return (student?.class_name ?? "").toLowerCase().includes(classQuery);
+    });
   }
 
-  // Date range filter
-  if (startDate) conditions.push(gte(absences.date, startDate));
-  if (endDate) conditions.push(lte(absences.date, endDate));
+  if (startDate) {
+    filtered = filtered.filter((a) => a.date >= startDate);
+  }
 
-  // Combine conditions
-  const validConds = conditions.filter((c): c is SQL => Boolean(c));
-  const whereCondition = validConds.length > 0 ? and(...validConds) : undefined;
-
-  // Fetch absences data with filters
-  const rows = await db.select().from(absences).where(whereCondition);
-
-  // Fetch all profiles to map user IDs to names
-  const profiles = await db.select().from(userProfiles);
-  const profileMap = new Map<string, (typeof profiles)[number]>();
-
-  // Create a lookup map of user profiles by userId (not id)
-  for (const profile of profiles) {
-    if (profile.userId) {
-      profileMap.set(profile.userId, profile);
-    }
+  if (endDate) {
+    filtered = filtered.filter((a) => a.date <= endDate);
   }
 
   // Sort rows by date first, then by class, then by NIS
-  const sortedRows = rows.sort((a, b) => {
-    const dateA = String(a.date);
-    const dateB = String(b.date);
+  const sortedRows = filtered.sort((a, b) => {
+    const dateA = a.date ?? "";
+    const dateB = b.date ?? "";
     const dateCompare = dateA.localeCompare(dateB);
 
     if (dateCompare !== 0) return dateCompare;
 
     // If dates are equal, sort by class
-    const classA = profileMap.get(a.userId)?.className ?? "";
-    const classB = profileMap.get(b.userId)?.className ?? "";
+    const classA = studentMap.get(a.user_id)?.class_name ?? "";
+    const classB = studentMap.get(b.user_id)?.class_name ?? "";
     const classCompare = classA.localeCompare(classB);
 
     if (classCompare !== 0) return classCompare;
 
     // If class is equal, sort by NIS
-    const nisA = profileMap.get(a.userId)?.nis ?? "";
-    const nisB = profileMap.get(b.userId)?.nis ?? "";
+    const nisA = studentMap.get(a.user_id)?.nis ?? "";
+    const nisB = studentMap.get(b.user_id)?.nis ?? "";
     return nisA.localeCompare(nisB);
   });
 
   // Add rows to worksheet with separator between dates
   let lastDate = "";
   for (const r of sortedRows) {
-    const profile = profileMap.get(r.userId);
-    const currentDate = String(r.date);
+    const profile = studentMap.get(r.user_id);
+    const currentDate = r.date ?? "-";
 
     // Add empty row as separator when date changes (except for first row)
     if (lastDate && currentDate !== lastDate) {
@@ -117,8 +130,8 @@ export async function GET(request: NextRequest) {
     ws.addRow({
       tanggal: currentDate,
       nis: profile?.nis ?? "-",
-      kelas: profile?.className ?? "-",
-      nama: profile?.fullName ?? "-",
+      kelas: profile?.class_name ?? "-",
+      nama: profile?.full_name ?? "-",
       keterangan: r.status ?? "-",
     });
   }

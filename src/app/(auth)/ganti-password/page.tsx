@@ -1,39 +1,29 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
+import {
+  extractExtendedClaims,
+  isPasswordChangeRequired,
+} from "~/lib/logto/claims";
 import { ChangePasswordForm } from "~/components/change-password-form";
 
-type UserWithPasswordMeta = {
-  readonly user_metadata?: {
-    readonly must_change_password?: boolean | string | number | null;
-  } | null;
-};
-
-function readMustChangePasswordFlag(user: UserWithPasswordMeta): boolean {
-  const value = user.user_metadata?.must_change_password;
-  if (
-    value === true ||
-    value === 1 ||
-    value === "true" ||
-    value === "1" ||
-    value === "yes"
-  ) {
-    return true;
-  }
-  return false;
-}
-
 export default async function ChangePasswordPage() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  try {
+    const logtoContext = await getLogtoContext(logtoConfig, {
+      fetchUserInfo: true,
+    });
+    if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+      redirect("/login");
+    }
+    const claims = extractExtendedClaims(logtoContext.claims);
+    if (!isPasswordChangeRequired(claims)) {
+      redirect("/dashboard");
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+      throw err;
+    }
     redirect("/login");
-  }
-
-  if (!readMustChangePasswordFlag(user)) {
-    redirect("/dashboard");
   }
 
   return (

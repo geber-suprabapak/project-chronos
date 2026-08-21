@@ -1,15 +1,26 @@
 import { NextResponse } from "next/server";
 import { Workbook } from "exceljs";
-import { db } from "~/server/db";
-import { biodataSiswa } from "~/server/db/schema";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
-import { sql } from "drizzle-orm";
 import { requireExportAccess } from "~/server/auth/export-guard";
+import { astraRequest } from "~/lib/astra/client";
 
 // Ensure fresh data on each request
 export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
 export const runtime = "nodejs";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
 
 /**
  * Helper to format gender display
@@ -49,25 +60,41 @@ export async function GET() {
   // Style the header row
   ws.getRow(1).font = { bold: true };
 
-  // Fetch all siswa data, ordered by class and absen
-  const rows = await db
-    .select()
-    .from(biodataSiswa)
-    .orderBy(
-      sql`coalesce(${biodataSiswa.kelas}, '~~~~') ASC`,
-      sql`coalesce(${biodataSiswa.absen}, 999) ASC`,
-      sql`coalesce(${biodataSiswa.nama}, '~~~~') ASC`,
-    );
+  // Fetch all siswa data from Astra
+  const students =
+    await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+
+  // Order by class, then absen, then name
+  const sortedRows = [...students].sort((a, b) => {
+    const classA = a.class_name ?? "~~~~";
+    const classB = b.class_name ?? "~~~~";
+    const classComp = classA.localeCompare(classB);
+    if (classComp !== 0) return classComp;
+
+    const absNumA = a.absence_number ? parseInt(a.absence_number, 10) : 999;
+    const absNumB = b.absence_number ? parseInt(b.absence_number, 10) : 999;
+    const safeAbsA = Number.isNaN(absNumA) ? 999 : absNumA;
+    const safeAbsB = Number.isNaN(absNumB) ? 999 : absNumB;
+    if (safeAbsA !== safeAbsB) return safeAbsA - safeAbsB;
+
+    const nameA = a.full_name ?? "~~~~";
+    const nameB = b.full_name ?? "~~~~";
+    return nameA.localeCompare(nameB);
+  });
 
   // Add rows to worksheet
-  for (const r of rows) {
+  for (const r of sortedRows) {
+    const absenceNum = r.absence_number ? parseInt(r.absence_number, 10) : null;
+    const absen = Number.isNaN(absenceNum) ? "-" : absenceNum;
+    const isActivated = r.lifecycle_status === "approved";
+
     ws.addRow({
-      nis: r.nis.toString(),
-      nama: r.nama,
-      kelas: r.kelas,
-      absen: r.absen,
-      kelamin: formatGender(r.kelamin),
-      activated: formatActivated(r.activated),
+      nis: r.nis ?? "-",
+      nama: r.full_name ?? "-",
+      kelas: r.class_name ?? "-",
+      absen: absen,
+      kelamin: formatGender(r.gender ?? null),
+      activated: formatActivated(isActivated),
     });
   }
 

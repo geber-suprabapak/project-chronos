@@ -1,14 +1,8 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
 
 export default async function Home() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) {
-    redirect("/dashboard");
-  } else {
-    redirect("/login");
-  }
+  const context = await getLogtoContext(logtoConfig);
+  redirect(context.isAuthenticated ? "/dashboard" : "/login");
 }
