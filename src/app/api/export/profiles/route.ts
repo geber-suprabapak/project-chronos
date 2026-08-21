@@ -1,14 +1,28 @@
 import { NextResponse } from "next/server";
 import { Workbook } from "exceljs";
-import { db } from "~/server/db";
-import { userProfiles } from "~/server/db/schema";
 import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
+import { astraRequest } from "~/lib/astra/client";
 
 // Ensure fresh data on each request
 export const dynamic = "force-dynamic";
 // Excel generation requires Node.js
 export const runtime = "nodejs";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+  created_at?: string | Date | null;
+  updated_at?: string | Date | null;
+}
 
 /**
  * Helper to safely format date values
@@ -47,21 +61,22 @@ export async function GET() {
   // Style the header row
   ws.getRow(1).font = { bold: true };
 
-  // Fetch all profiles data
-  const rows = await db.select().from(userProfiles);
+  // Fetch all profiles data from Astra
+  const students =
+    await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
 
   // Add rows to worksheet
-  for (const r of rows) {
+  for (const r of students) {
     ws.addRow({
-      id: r.id,
-      nis: r.nis,
-      fullName: r.fullName,
-      email: r.email,
-      className: r.className,
-      absenceNumber: r.absenceNumber,
-      role: r.role,
-      createdAt: formatDate(r.createdAt),
-      updatedAt: formatDate(r.updatedAt),
+      id: r.user_id,
+      nis: r.nis ?? "-",
+      fullName: r.full_name ?? "-",
+      email: r.email ?? "-",
+      className: r.class_name ?? "-",
+      absenceNumber: r.absence_number ?? "-",
+      role: r.role ?? "student",
+      createdAt: formatDate(r.created_at),
+      updatedAt: formatDate(r.updated_at),
     });
   }
 
