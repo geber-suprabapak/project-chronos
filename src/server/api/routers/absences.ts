@@ -7,7 +7,7 @@ import {
 import { absences, userProfiles } from "~/server/db/schema";
 import { eq, and, or, ilike, exists, gte, lte } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-
+import { astraRequest } from "~/lib/astra/client";
 /**
  * Router tRPC untuk tabel `absences`.
  *
@@ -36,60 +36,47 @@ export const absencesRouter = createTRPCRouter({
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      // Get siswa from biodata_siswa by NIS
-      const siswa = await ctx.db.query.biodataSiswa.findFirst({
-        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
-      });
-
-      if (!siswa) {
-        throw new Error(
-          "Siswa dengan NIS tersebut tidak ditemukan di database",
+    .mutation(async ({ input }) => {
+      const students =
+        await astraRequest<Array<{ user_id: string; nis?: string | null }>>(
+          "/v1/admin/students",
         );
+      const student = students.find((candidate) => candidate.nis === input.nis);
+      if (!student) {
+        throw new Error("Siswa dengan NIS tersebut tidak ditemukan di Astra.");
       }
 
-      // Get user_profile to find user_id (required for absences table foreign key)
-      const userProfile = await ctx.db.query.userProfiles.findFirst({
-        where: (table, { eq }) => eq(table.nis, siswa.nis.toString()),
-      });
-
-      if (!userProfile) {
-        throw new Error(
-          `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
-            `Siswa harus aktivasi akun terlebih dahulu sebelum bisa diabsen.`,
-        );
-      }
-
-      // Map incoming status to allowed values for absences.status constraint
-      // DB constraint allows only: 'Hadir', 'Datang', 'Pulang'
-      const mappedAbsenceStatus: "Hadir" | "Datang" | "Pulang" = (() => {
+      const statusAndAction = (() => {
         switch (input.status) {
           case "Hadir":
-            return "Hadir";
+            return {
+              status: "Hadir" as const,
+              action_type: "check_in" as const,
+            };
           case "Terlambat":
-            return "Hadir"; // treat late arrival as Hadir in DB
+            return {
+              status: "Terlambat" as const,
+              action_type: "check_in" as const,
+            };
           case "Pulang":
           case "Dipulangkan":
-            return "Pulang"; // both map to Pulang in DB
-          default:
-            return "Pulang";
+            return {
+              status: "Pulang" as const,
+              action_type: "check_out" as const,
+            };
         }
       })();
 
-      // Create the domain record through the application database.
-      const [newAbsence] = await ctx.db
-        .insert(absences)
-        .values({
-          userId: userProfile.userId,
+      return astraRequest("/v1/admin/attendance/manual", {
+        method: "POST",
+        body: JSON.stringify({
+          user_id: student.user_id,
+          status: statusAndAction.status,
+          action_type: statusAndAction.action_type,
           date: input.date,
-          status: mappedAbsenceStatus,
-          latitude: null,
-          longitude: null,
-          createdAt: new Date(),
-        })
-        .returning();
-
-      return newAbsence;
+          reason: "Manual attendance recorded by Chronos administrator.",
+        }),
+      });
     }),
 
   // DELETE: Hapus data absensi berdasarkan ID
