@@ -16,6 +16,7 @@
     "lint": "oxlint && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "preview": "next build && next start",
     "start": "next start",
+    "test": "node --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "check-types": "tsc --noEmit"
   },
