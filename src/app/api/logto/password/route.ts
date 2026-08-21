@@ -42,7 +42,16 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({ new_password: parsed.data.password }),
   });
-  if (!response.ok) {
+  if (
+    !response.ok ||
+    response.headers.get("X-Astra-Contract-Version") !== "v1"
+  ) {
+    if (response.ok) {
+      return NextResponse.json(
+        { error: "Password contract is unavailable or incompatible." },
+        { status: 502 },
+      );
+    }
     // SAFETY: Astra returns its documented error envelope for non-success responses.
     const body = (await response.json().catch(() => null)) as {
       error?: { message?: string };

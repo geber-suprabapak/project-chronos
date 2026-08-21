@@ -45,7 +45,7 @@ export function ChangePasswordForm() {
         setError(result.error ?? "Password tidak dapat diperbarui.");
         return;
       }
-      router.replace("/login?password_changed=1");
+      window.location.href = "/api/logto/sign-out";
     } finally {
       setIsLoading(false);
     }
