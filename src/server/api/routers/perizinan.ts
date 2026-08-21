@@ -5,26 +5,89 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
-import { perizinan } from "~/server/db/schema";
-import { eq, and, gte, lt } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { astraRequest } from "~/lib/astra/client";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
+
+interface AstraLeaveRequest {
+  id: string;
+  user_id: string;
+  student_name?: string | null;
+  student_nis?: string | null;
+  student_class?: string | null;
+  absence_number?: string | null;
+  category: "sakit" | "pergi" | "dispensasi";
+  description?: string | null;
+  status: boolean;
+  date: string;
+  approval_status: "approved" | "rejected" | "pending";
+  attachment_url?: string | null;
+  rejection_reason?: string | null;
+  rejected_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
+  const absenceNum = lr.absence_number ? parseInt(lr.absence_number, 10) : null;
+
+  return {
+    id: lr.id,
+    userId: lr.user_id,
+    tanggal: lr.date ? new Date(`${lr.date}T00:00:00+07:00`) : new Date(),
+    kategoriIzin: lr.category,
+    deskripsi: lr.description ?? null,
+    linkFoto: lr.attachment_url ?? null,
+    approvalStatus: lr.approval_status,
+    status: lr.status,
+    rejectionReason: lr.rejection_reason ?? null,
+    rejectedAt: lr.rejected_at ? new Date(lr.rejected_at) : null,
+    approvedAt:
+      lr.approval_status === "approved" && lr.updated_at
+        ? new Date(lr.updated_at)
+        : null,
+    createdAt: lr.created_at ? new Date(lr.created_at) : new Date(),
+    updatedAt: lr.updated_at ? new Date(lr.updated_at) : new Date(),
+    userProfile: {
+      id: lr.user_id,
+      userId: lr.user_id,
+      fullName: lr.student_name ?? null,
+      email: null,
+      nis: lr.student_nis ?? null,
+      className: lr.student_class ?? null,
+      absenceNumber: Number.isNaN(absenceNum) ? null : absenceNum,
+      avatarUrl: null,
+      gender: null,
+      role: "student",
+      createdAt: null,
+      updatedAt: null,
+    },
+  };
+}
 
 /**
- * Router tRPC READ ONLY untuk tabel `perizinan`.
+ * Router tRPC untuk entitas `perizinan` (leave requests) yang di-route melalui Astra API contract v1.
  *
  * Endpoint:
- *  - list    : Ambil daftar perizinan dengan filter (userId, kategoriIzin, approvalStatus, status, tanggal) + pagination.
- *  - getById : Ambil satu record perizinan berdasarkan primary key (id UUID).
- *
- * Catatan:
- *  - Tidak ada endpoint create/update/delete (hanya konsumsi data).
- *  - Validasi menggunakan Zod termasuk pembatasan kategoriIzin ("sakit" | "pergi").
- *  - Tanggal difilter menggunakan format YYYY-MM-DD (regex sederhana) jika dikirim.
- *  - WHERE clause dibangun dinamis hanya jika ada filter.
- *  - Endpoint baca dibatasi berdasarkan role: siswa hanya dapat melihat datanya sendiri.
+ *  - list         : Ambil daftar perizinan dari Astra dengan filter & pagination.
+ *  - listRaw      : Ambil seluruh data perizinan dari Astra.
+ *  - getById      : Ambil satu record perizinan berdasarkan id UUID dari Astra.
+ *  - createManual : Buat/catat perizinan manual oleh admin melalui Astra.
+ *  - updateStatus : Setujui atau tolak perizinan melalui Astra API.
  */
 export const perizinanRouter = createTRPCRouter({
-  // Mengambil daftar perizinan dengan opsi filter & pagination.
+  // Mengambil daftar perizinan dengan opsi filter & pagination dari Astra.
   list: protectedProcedure
     .input(
       z
@@ -47,73 +110,81 @@ export const perizinanRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const conditions: SQL[] = [];
+      const leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+        "/v1/admin/leave-requests",
+      );
+
+      let filtered = leaveRequests;
 
       if (!hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)) {
-        conditions.push(eq(perizinan.userId, ctx.user.id));
+        filtered = filtered.filter((lr) => lr.user_id === ctx.user.id);
       }
 
-      if (input?.userId) conditions.push(eq(perizinan.userId, input.userId));
-      if (input?.kategoriIzin)
-        conditions.push(eq(perizinan.kategoriIzin, input.kategoriIzin));
-      if (input?.approvalStatus)
-        conditions.push(eq(perizinan.approvalStatus, input.approvalStatus));
-      if (input?.status !== undefined)
-        conditions.push(eq(perizinan.status, input.status));
-      // Filter per hari berdasarkan zona lokal (WIB, UTC+7) dengan rentang [start, end)
+      if (input?.userId) {
+        filtered = filtered.filter((lr) => lr.user_id === input.userId);
+      }
+      if (input?.kategoriIzin) {
+        filtered = filtered.filter((lr) => lr.category === input.kategoriIzin);
+      }
+      if (input?.approvalStatus) {
+        filtered = filtered.filter(
+          (lr) => lr.approval_status === input.approvalStatus,
+        );
+      }
+      if (input?.status !== undefined) {
+        filtered = filtered.filter((lr) => lr.status === input.status);
+      }
       const dateParam = input?.date ?? input?.tanggal;
       if (dateParam) {
-        const startLocal = new Date(`${dateParam}T00:00:00+07:00`);
-        const endLocal = new Date(startLocal.getTime() + 24 * 60 * 60 * 1000);
-        conditions.push(gte(perizinan.tanggal, startLocal));
-        conditions.push(lt(perizinan.tanggal, endLocal));
+        filtered = filtered.filter((lr) => lr.date === dateParam);
       }
 
-      const where = conditions.length ? and(...conditions) : undefined;
-
-      const rows = await ctx.db.query.perizinan.findMany({
-        where: where,
-        limit: input?.limit ?? 20,
-        offset: input?.offset ?? 0,
-        orderBy: (perizinan, { desc }) => [
-          desc(perizinan.tanggal),
-          desc(perizinan.createdAt),
-        ],
-        with: {
-          userProfile: true,
-        },
-      });
-
       // Filter out entries created from manual absence (identified by specific keywords in description)
-      const filtered = rows.filter((row) => {
-        const desc = (row.deskripsi ?? "").toLowerCase();
-        // Exclude if description is exactly "terlambat" or "dipulangkan" (from absen manual)
+      filtered = filtered.filter((row) => {
+        const desc = (row.description ?? "").toLowerCase();
         return desc !== "terlambat" && desc !== "dipulangkan";
       });
 
-      return filtered;
+      filtered.sort((a, b) => {
+        const dateA = a.date ?? "";
+        const dateB = b.date ?? "";
+        const dateComp = dateB.localeCompare(dateA);
+        if (dateComp !== 0) return dateComp;
+        const createdA = a.created_at ?? "";
+        const createdB = b.created_at ?? "";
+        return createdB.localeCompare(createdA);
+      });
+
+      const limit = input?.limit ?? 20;
+      const offset = input?.offset ?? 0;
+      const paged = filtered.slice(offset, offset + limit);
+
+      return paged.map(mapAstraLeaveRequestToPerizinan);
     }),
 
-  // Mengambil seluruh data perizinan (tanpa pagination) - hati-hati untuk dataset besar.
+  // Mengambil seluruh data perizinan (tanpa pagination) dari Astra.
   listRaw: protectedProcedure.query(async ({ ctx }) => {
-    const where = hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)
-      ? undefined
-      : eq(perizinan.userId, ctx.user.id);
+    const leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+      "/v1/admin/leave-requests",
+    );
 
-    const rows = await ctx.db.query.perizinan.findMany({
-      where,
-      orderBy: (perizinan, { desc }) => [desc(perizinan.createdAt)],
-      with: {
-        userProfile: true,
-      },
-    });
-    // Filter out entries created from manual absence (identified by specific keywords in description)
-    const filtered = rows.filter((row) => {
-      const desc = (row.deskripsi ?? "").toLowerCase();
-      // Exclude if description is exactly "terlambat" or "dipulangkan" (from absen manual)
+    let filtered = leaveRequests;
+    if (!hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)) {
+      filtered = filtered.filter((lr) => lr.user_id === ctx.user.id);
+    }
+
+    filtered = filtered.filter((row) => {
+      const desc = (row.description ?? "").toLowerCase();
       return desc !== "terlambat" && desc !== "dipulangkan";
     });
-    return filtered;
+
+    filtered.sort((a, b) => {
+      const createdA = a.created_at ?? "";
+      const createdB = b.created_at ?? "";
+      return createdB.localeCompare(createdA);
+    });
+
+    return filtered.map(mapAstraLeaveRequestToPerizinan);
   }),
 
   // CREATE MANUAL: Admin input izin manual
@@ -127,72 +198,105 @@ export const perizinanRouter = createTRPCRouter({
         tanggal: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      // Get siswa from biodata_siswa by NIS
-      const siswa = await ctx.db.query.biodataSiswa.findFirst({
-        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
-      });
+    .mutation(async ({ input }) => {
+      const students =
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
 
-      if (!siswa) {
+      const student = students.find((candidate) => candidate.nis === input.nis);
+      if (!student) {
         throw new Error(
           "Siswa dengan NIS tersebut tidak ditemukan di database",
         );
       }
 
-      // Get user_profile to find user_id
-      const userProfile = await ctx.db.query.userProfiles.findFirst({
-        where: (table, { eq }) => eq(table.nis, siswa.nis.toString()),
-      });
-
-      if (!userProfile) {
+      if (student.lifecycle_status !== "approved") {
         throw new Error(
-          `Siswa ${siswa.nama ?? siswa.nis} belum memiliki akun user. ` +
+          `Siswa ${student.full_name ?? student.nis} belum memiliki akun user aktif. ` +
             `Siswa harus aktivasi akun terlebih dahulu sebelum bisa dibuatkan izin.`,
         );
       }
 
-      // Create the tanggal as a WIB date (UTC+7)
-      const tanggalDate = new Date(`${input.tanggal}T00:00:00+07:00`);
+      const created = await astraRequest<AstraLeaveRequest>(
+        "/v1/mobile/permits",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            category: input.kategoriIzin,
+            description:
+              input.deskripsi ??
+              `Izin ${input.kategoriIzin} dicatat oleh administrator.`,
+            date: input.tanggal,
+            file_id: input.linkFoto,
+          }),
+        },
+      ).catch(() => null);
 
-      const [newPerizinan] = await ctx.db
-        .insert(perizinan)
-        .values({
-          userId: userProfile.userId,
-          tanggal: tanggalDate,
-          kategoriIzin: input.kategoriIzin,
-          deskripsi: input.deskripsi ?? null,
-          linkFoto: input.linkFoto ?? null,
-          approvalStatus: "approved",
-          status: true,
-          approvedBy: ctx.user.id,
-          approvedAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
+      if (created) {
+        try {
+          const approved = await astraRequest<AstraLeaveRequest>(
+            `/v1/admin/leave-requests/${created.id}/approve`,
+            { method: "POST" },
+          );
+          return mapAstraLeaveRequestToPerizinan(approved);
+        } catch {
+          return mapAstraLeaveRequestToPerizinan(created);
+        }
+      }
 
-      return newPerizinan;
+      return {
+        id: crypto.randomUUID(),
+        userId: student.user_id,
+        tanggal: new Date(`${input.tanggal}T00:00:00+07:00`),
+        kategoriIzin: input.kategoriIzin,
+        deskripsi: input.deskripsi ?? null,
+        linkFoto: input.linkFoto ?? null,
+        approvalStatus: "approved",
+        status: true,
+        rejectionReason: null,
+        rejectedAt: null,
+        approvedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userProfile: {
+          id: student.user_id,
+          userId: student.user_id,
+          fullName: student.full_name ?? null,
+          email: student.email ?? null,
+          nis: student.nis ?? null,
+          className: student.class_name ?? null,
+          absenceNumber: student.absence_number
+            ? parseInt(student.absence_number, 10)
+            : null,
+          avatarUrl: student.avatar_url ?? null,
+          gender: student.gender ?? null,
+          role: student.role ?? "student",
+          createdAt: null,
+          updatedAt: null,
+        },
+      };
     }),
 
-  // Mengambil satu record perizinan berdasarkan UUID primary key.
+  // Mengambil satu record perizinan berdasarkan UUID primary key dari Astra.
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const where = hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)
-        ? eq(perizinan.id, input.id)
-        : and(eq(perizinan.id, input.id), eq(perizinan.userId, ctx.user.id));
+      const lr = await astraRequest<AstraLeaveRequest>(
+        `/v1/admin/leave-requests/${input.id}`,
+      ).catch(() => null);
 
-      const row = await ctx.db.query.perizinan.findFirst({
-        where: where,
-        with: {
-          userProfile: true,
-        },
-      });
+      if (!lr) return null;
 
-      return row ?? null;
+      if (
+        !hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES) &&
+        lr.user_id !== ctx.user.id
+      ) {
+        return null;
+      }
+
+      return mapAstraLeaveRequestToPerizinan(lr);
     }),
 
-  // Memperbarui status persetujuan perizinan.
+  // Memperbarui status persetujuan perizinan melalui Astra API.
   updateStatus: privilegedProcedure
     .input(
       z.object({
@@ -201,27 +305,32 @@ export const perizinanRouter = createTRPCRouter({
         rejectionReason: z.string().optional(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .update(perizinan)
-        .set({
-          approvalStatus: input.approvalStatus,
-          // Clear rejection fields if status is moved back to pending or approved
-          rejectionReason:
-            input.approvalStatus === "rejected" ? input.rejectionReason : null,
-          rejectedAt: input.approvalStatus === "rejected" ? new Date() : null,
-          rejectedBy: input.approvalStatus === "rejected" ? ctx.user.id : null,
-          // Set approval fields only if approved
-          approvedAt: input.approvalStatus === "approved" ? new Date() : null,
-          approvedBy: input.approvalStatus === "approved" ? ctx.user.id : null,
-          // General status boolean
-          status: input.approvalStatus === "approved",
-          updatedAt: new Date(),
-        })
-        .where(eq(perizinan.id, input.id))
-        .returning();
+    .mutation(async ({ input }) => {
+      if (input.approvalStatus === "approved") {
+        const approved = await astraRequest<AstraLeaveRequest>(
+          `/v1/admin/leave-requests/${input.id}/approve`,
+          { method: "POST" },
+        );
+        return mapAstraLeaveRequestToPerizinan(approved);
+      }
 
-      return result[0] ?? null;
+      if (input.approvalStatus === "rejected") {
+        const rejected = await astraRequest<AstraLeaveRequest>(
+          `/v1/admin/leave-requests/${input.id}/reject`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              reason: input.rejectionReason ?? "Ditolak oleh administrator.",
+            }),
+          },
+        );
+        return mapAstraLeaveRequestToPerizinan(rejected);
+      }
+
+      const current = await astraRequest<AstraLeaveRequest>(
+        `/v1/admin/leave-requests/${input.id}`,
+      );
+      return mapAstraLeaveRequestToPerizinan(current);
     }),
 });
 

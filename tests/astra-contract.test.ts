@@ -127,6 +127,58 @@ function parseStudentRosterResponse(envelope: AstraStudentRosterEnvelope):
   };
 }
 
+interface AstraLeaveRequestEnvelope {
+  readonly success: boolean;
+  readonly data?: {
+    readonly id?: string;
+    readonly user_id?: string;
+    readonly category?: string;
+    readonly description?: string | null;
+    readonly date?: string;
+    readonly approval_status?: string;
+    readonly status?: boolean;
+    readonly attachment_url?: string | null;
+    readonly student_name?: string | null;
+    readonly student_nis?: string | null;
+    readonly student_class?: string | null;
+    readonly rejection_reason?: string | null;
+  };
+}
+
+function parseLeaveRequestResponse(envelope: AstraLeaveRequestEnvelope):
+  | {
+      readonly ok: true;
+      readonly id: string;
+      readonly userId: string;
+      readonly category: string;
+      readonly approvalStatus: string;
+      readonly date: string;
+      readonly studentName: string | null;
+      readonly studentNis: string | null;
+      readonly attachmentUrl: string | null;
+    }
+  | { readonly ok: false; readonly error: string } {
+  if (
+    !envelope.success ||
+    !envelope.data ||
+    !envelope.data.id ||
+    !envelope.data.user_id
+  ) {
+    return { ok: false, error: "Invalid leave request response envelope." };
+  }
+  return {
+    ok: true,
+    id: envelope.data.id,
+    userId: envelope.data.user_id,
+    category: envelope.data.category ?? "sakit",
+    approvalStatus: envelope.data.approval_status ?? "pending",
+    date: envelope.data.date ?? "",
+    studentName: envelope.data.student_name ?? null,
+    studentNis: envelope.data.student_nis ?? null,
+    attachmentUrl: envelope.data.attachment_url ?? null,
+  };
+}
+
 describe("Astra API Contract Boundary", () => {
   describe("buildAstraHeaders", () => {
     it("includes versioned contract header v1 and authorization token", () => {
@@ -277,6 +329,45 @@ describe("Astra API Contract Boundary", () => {
 
     it("returns error when success is false or data is not an array", () => {
       const result = parseStudentRosterResponse({
+        success: false,
+      });
+      assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseLeaveRequestResponse", () => {
+    it("extracts leave request details and student info from valid contract envelope", () => {
+      const result = parseLeaveRequestResponse({
+        success: true,
+        data: {
+          id: "leave-req-123",
+          user_id: "user-stu-001",
+          category: "sakit",
+          description: "Sakit demam tinggi",
+          date: "2026-08-22",
+          approval_status: "approved",
+          status: true,
+          student_name: "Ahmad Dahlan",
+          student_nis: "1001",
+          student_class: "XII RPL 1",
+          attachment_url: "https://storage.local/signed/surat_dokter.jpg",
+        },
+      });
+      assert.deepEqual(result, {
+        ok: true,
+        id: "leave-req-123",
+        userId: "user-stu-001",
+        category: "sakit",
+        approvalStatus: "approved",
+        date: "2026-08-22",
+        studentName: "Ahmad Dahlan",
+        studentNis: "1001",
+        attachmentUrl: "https://storage.local/signed/surat_dokter.jpg",
+      });
+    });
+
+    it("returns error when success is false or data is missing", () => {
+      const result = parseLeaveRequestResponse({
         success: false,
       });
       assert.equal(result.ok, false);
