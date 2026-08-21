@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
     Accept: "application/json",
+    "X-Astra-Contract-Version": "v1",
   };
   const intentResponse = await fetch(
     `${env.ASTRA_API_URL}/v1/mobile/files/upload-intent`,
