@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -123,7 +124,24 @@ describe("Astra API Contract Boundary", () => {
           file_id: "file-abc-123",
         },
       });
+
       assert.equal(result.ok, false);
     });
+  });
+});
+describe("Published Astra artifact", () => {
+  it("pins the same v1 contract consumed by Chronos", () => {
+    // SAFETY: The checked-in artifact is a JSON contract file owned by this repository.
+    const artifact = JSON.parse(
+      readFileSync(
+        new URL("../contracts/astra-v1.json", import.meta.url),
+        "utf8",
+      ),
+    ) as {
+      version?: string;
+      response?: { contract_header?: { value?: string } };
+    };
+    assert.equal(artifact.version, "v1");
+    assert.equal(artifact.response?.contract_header?.value, "v1");
   });
 });
