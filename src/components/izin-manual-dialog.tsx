@@ -192,19 +192,14 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     }
   };
 
-  const handleSelectSiswa = (siswa: {
-    nis: bigint;
-    nama: string | null;
-    kelas: string | null;
-    absen: number | null;
-  }) => {
+  const handleSelectSiswa = (siswa: SiswaResult) => {
     setSelectedSiswa({
-      nis: siswa.nis.toString(),
+      nis: siswa.nis,
       nama: siswa.nama,
       kelas: siswa.kelas,
       absen: siswa.absen,
     });
-    setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis.toString()}`);
+    setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis}`);
     setShowDropdown(false);
   };
 

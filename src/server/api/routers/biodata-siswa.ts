@@ -1,31 +1,55 @@
 import { z } from "zod";
-import { and, eq, ilike, sql, or } from "drizzle-orm";
 import { createTRPCRouter, privilegedProcedure } from "~/server/api/trpc";
-import { biodataSiswa } from "~/server/db/schema";
+import { astraRequest } from "~/lib/astra/client";
+
+interface AstraStudentProfile {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  class_name?: string | null;
+  absence_number?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  lifecycle_status?: string | null;
+  gender?: string | null;
+}
+
+interface AstraClassItem {
+  id?: string;
+  name: string;
+  grade?: number | null;
+}
 
 /**
- * tRPC router untuk tabel `biodata_siswa`.
- * Fokus pada operasi READ dan statistik siswa.
+ * Student roster queries backed by Astra API contract boundary.
  */
 export const biodataSiswaRouter = createTRPCRouter({
   // GET BY NIS
   getByNis: privilegedProcedure
     .input(z.object({ nis: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const row = await ctx.db.query.biodataSiswa.findFirst({
-        where: (table, { eq }) => eq(table.nis, BigInt(input.nis)),
-      });
+    .query(async ({ input }) => {
+      const students =
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
 
-      if (!row) return null;
+      const student = students.find((s) => s.nis === input.nis);
+      if (!student) return null;
 
-      // Convert BigInt to string for serialization
+      const absenceNum = student.absence_number
+        ? parseInt(student.absence_number, 10)
+        : null;
+
       return {
-        ...row,
-        nis: row.nis.toString(),
+        nis: student.nis ?? input.nis,
+        nama: student.full_name ?? null,
+        kelas: student.class_name ?? null,
+        absen: Number.isNaN(absenceNum) ? null : absenceNum,
+        kelamin: student.gender ?? null,
+        activated: student.lifecycle_status === "approved",
       };
     }),
 
-  // LIST: ambil daftar biodata siswa dengan pagination dan filtering
+  // LIST: ambil daftar biodata siswa dengan pagination dan filtering dari Astra
   list: privilegedProcedure
     .input(
       z
@@ -39,34 +63,21 @@ export const biodataSiswaRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
-      // Create conditions based on input
-      const conditions = [];
+    .query(async ({ input }) => {
+      const students =
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+
+      let filtered = students;
 
       if (input?.nama && input.nama.trim().length > 0) {
-        const searchTerm = input.nama.trim();
-
-        // Check if the search term is a number (NIS search)
-        const isNumeric = /^\d+$/.test(searchTerm);
-
-        if (isNumeric) {
-          // Search by NIS (convert to bigint for comparison)
-          try {
-            const nisValue = BigInt(searchTerm);
-            conditions.push(eq(biodataSiswa.nis, nisValue));
-          } catch {
-            // If conversion fails, fall back to name search
-            conditions.push(ilike(biodataSiswa.nama, `%${searchTerm}%`));
-          }
-        } else {
-          // Search by name or allow mixed search (name OR NIS contains the term)
-          conditions.push(
-            or(
-              ilike(biodataSiswa.nama, `%${searchTerm}%`),
-              sql`CAST(${biodataSiswa.nis} AS TEXT) ILIKE ${`%${searchTerm}%`}`,
-            ),
-          );
-        }
+        const searchTerm = input.nama.trim().toLowerCase();
+        filtered = filtered.filter((s) => {
+          const nameMatch = (s.full_name ?? "")
+            .toLowerCase()
+            .includes(searchTerm);
+          const nisMatch = (s.nis ?? "").toLowerCase().includes(searchTerm);
+          return nameMatch || nisMatch;
+        });
       }
 
       if (
@@ -74,38 +85,48 @@ export const biodataSiswaRouter = createTRPCRouter({
         input.kelas !== "ALL" &&
         input.kelas.trim().length > 0
       ) {
-        conditions.push(ilike(biodataSiswa.kelas, `%${input.kelas.trim()}%`));
+        const classQuery = input.kelas.trim().toLowerCase();
+        filtered = filtered.filter((s) =>
+          (s.class_name ?? "").toLowerCase().includes(classQuery),
+        );
       }
 
       if (input?.kelamin) {
-        conditions.push(eq(biodataSiswa.kelamin, input.kelamin));
+        filtered = filtered.filter((s) => s.gender === input.kelamin);
       }
 
       if (input?.activated !== undefined) {
-        conditions.push(eq(biodataSiswa.activated, input.activated));
+        filtered = filtered.filter((s) => {
+          const isActivated = s.lifecycle_status === "approved";
+          return isActivated === input.activated;
+        });
       }
 
-      const whereCondition =
-        conditions.length > 0 ? and(...conditions) : undefined;
+      // Sort by NIS
+      filtered.sort((a, b) => {
+        const nisA = a.nis ?? "~~~~";
+        const nisB = b.nis ?? "~~~~";
+        return nisA.localeCompare(nisB, undefined, { numeric: true });
+      });
+
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
+      const total = filtered.length;
+      const paged = filtered.slice(offset, offset + limit);
 
-      // Run data + total count in parallel
-      const [rows, totalResult] = await Promise.all([
-        ctx.db
-          .select()
-          .from(biodataSiswa)
-          .where(whereCondition)
-          .orderBy(biodataSiswa.nis)
-          .limit(limit)
-          .offset(offset),
-        ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(biodataSiswa)
-          .where(whereCondition),
-      ]);
-
-      const total = Number(totalResult[0]?.count ?? 0);
+      const rows = paged.map((s) => {
+        const absenceNum = s.absence_number
+          ? parseInt(s.absence_number, 10)
+          : null;
+        return {
+          nis: s.nis ?? "",
+          nama: s.full_name ?? null,
+          kelas: s.class_name ?? null,
+          absen: Number.isNaN(absenceNum) ? null : absenceNum,
+          kelamin: s.gender ?? null,
+          activated: s.lifecycle_status === "approved",
+        };
+      });
 
       return {
         data: rows,
@@ -118,55 +139,78 @@ export const biodataSiswaRouter = createTRPCRouter({
       };
     }),
 
-  // STATISTICS: get overview statistics
-  getStatistics: privilegedProcedure.query(async ({ ctx }) => {
-    const [totalSiswa, siswaLaki, siswaPerempuan, siswaAktif] =
-      await Promise.all([
-        // Total siswa
-        ctx.db.select({ count: sql<number>`count(*)` }).from(biodataSiswa),
-        // Siswa laki-laki
-        ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(biodataSiswa)
-          .where(eq(biodataSiswa.kelamin, "L")),
-        // Siswa perempuan
-        ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(biodataSiswa)
-          .where(eq(biodataSiswa.kelamin, "P")),
-        // Siswa yang sudah diaktifkan
-        ctx.db
-          .select({ count: sql<number>`count(*)` })
-          .from(biodataSiswa)
-          .where(eq(biodataSiswa.activated, true)),
-      ]);
+  // STATISTICS: get overview statistics dari Astra
+  getStatistics: privilegedProcedure.query(async () => {
+    const students =
+      await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+
+    let laki = 0;
+    let perempuan = 0;
+    let activated = 0;
+
+    for (const s of students) {
+      if (s.gender === "L") {
+        laki++;
+      } else if (s.gender === "P") {
+        perempuan++;
+      }
+      if (s.lifecycle_status === "approved") {
+        activated++;
+      }
+    }
 
     return {
-      total: Number(totalSiswa[0]?.count ?? 0),
-      laki: Number(siswaLaki[0]?.count ?? 0),
-      perempuan: Number(siswaPerempuan[0]?.count ?? 0),
-      activated: Number(siswaAktif[0]?.count ?? 0),
+      total: students.length,
+      laki,
+      perempuan,
+      activated,
     };
   }),
 
-  // LIST RAW: semua data (hati-hati untuk dataset besar)
-  listRaw: privilegedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
-      .from(biodataSiswa)
-      .orderBy(biodataSiswa.nis);
-    return rows;
+  // LIST RAW: semua data dari Astra
+  listRaw: privilegedProcedure.query(async () => {
+    const students =
+      await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+
+    const sorted = [...students].sort((a, b) => {
+      const nisA = a.nis ?? "~~~~";
+      const nisB = b.nis ?? "~~~~";
+      return nisA.localeCompare(nisB, undefined, { numeric: true });
+    });
+
+    return sorted.map((s) => {
+      const absenceNum = s.absence_number
+        ? parseInt(s.absence_number, 10)
+        : null;
+      return {
+        nis: s.nis ?? "",
+        nama: s.full_name ?? null,
+        kelas: s.class_name ?? null,
+        absen: Number.isNaN(absenceNum) ? null : absenceNum,
+        kelamin: s.gender ?? null,
+        activated: s.lifecycle_status === "approved",
+      };
+    });
   }),
 
-  // GET UNIQUE CLASSES: untuk filter dropdown
-  getUniqueClasses: privilegedProcedure.query(async ({ ctx }) => {
-    const classes = await ctx.db
-      .selectDistinct({ kelas: biodataSiswa.kelas })
-      .from(biodataSiswa)
-      .where(sql`${biodataSiswa.kelas} IS NOT NULL`)
-      .orderBy(biodataSiswa.kelas);
+  // GET UNIQUE CLASSES: untuk filter dropdown dari Astra
+  getUniqueClasses: privilegedProcedure.query(async () => {
+    const [classes, students] = await Promise.all([
+      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => []),
+      astraRequest<Array<{ class_name?: string | null }>>(
+        "/v1/admin/students",
+      ).catch(() => []),
+    ]);
 
-    return classes.map((c) => c.kelas).filter(Boolean);
+    const uniqueClasses = new Set<string>();
+    for (const c of classes) {
+      if (c?.name) uniqueClasses.add(c.name);
+    }
+    for (const s of students) {
+      if (s?.class_name) uniqueClasses.add(s.class_name);
+    }
+
+    return Array.from(uniqueClasses).sort();
   }),
 });
 

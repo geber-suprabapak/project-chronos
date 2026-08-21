@@ -84,6 +84,49 @@ function parseProfileResponse(envelope: AstraProfileEnvelope):
   };
 }
 
+interface AstraStudentRosterEnvelope {
+  readonly success: boolean;
+  readonly data?: ReadonlyArray<{
+    readonly user_id: string;
+    readonly full_name?: string | null;
+    readonly nis?: string | null;
+    readonly class_name?: string | null;
+    readonly absence_number?: string | null;
+    readonly gender?: string | null;
+    readonly lifecycle_status?: string | null;
+  }>;
+}
+
+function parseStudentRosterResponse(envelope: AstraStudentRosterEnvelope):
+  | {
+      readonly ok: true;
+      readonly count: number;
+      readonly students: ReadonlyArray<{
+        readonly userId: string;
+        readonly nis: string | null;
+        readonly fullName: string | null;
+        readonly className: string | null;
+        readonly activated: boolean;
+      }>;
+    }
+  | { readonly ok: false; readonly error: string } {
+  if (!envelope.success || !Array.isArray(envelope.data)) {
+    return { ok: false, error: "Invalid student roster response envelope." };
+  }
+  const students = envelope.data.map((s) => ({
+    userId: s.user_id,
+    nis: s.nis ?? null,
+    fullName: s.full_name ?? null,
+    className: s.class_name ?? null,
+    activated: s.lifecycle_status === "approved",
+  }));
+  return {
+    ok: true,
+    count: students.length,
+    students,
+  };
+}
+
 describe("Astra API Contract Boundary", () => {
   describe("buildAstraHeaders", () => {
     it("includes versioned contract header v1 and authorization token", () => {
@@ -179,6 +222,61 @@ describe("Astra API Contract Boundary", () => {
 
     it("returns error when success is false or data is missing", () => {
       const result = parseProfileResponse({
+        success: false,
+      });
+      assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseStudentRosterResponse", () => {
+    it("extracts student roster records and activation status from valid contract envelope", () => {
+      const result = parseStudentRosterResponse({
+        success: true,
+        data: [
+          {
+            user_id: "user-stu-001",
+            full_name: "Ahmad Dahlan",
+            nis: "1001",
+            class_name: "XII RPL 1",
+            absence_number: "01",
+            gender: "L",
+            lifecycle_status: "approved",
+          },
+          {
+            user_id: "user-stu-002",
+            full_name: "Siti Rahma",
+            nis: "1002",
+            class_name: "XII RPL 1",
+            absence_number: "02",
+            gender: "P",
+            lifecycle_status: "pending",
+          },
+        ],
+      });
+      assert.deepEqual(result, {
+        ok: true,
+        count: 2,
+        students: [
+          {
+            userId: "user-stu-001",
+            nis: "1001",
+            fullName: "Ahmad Dahlan",
+            className: "XII RPL 1",
+            activated: true,
+          },
+          {
+            userId: "user-stu-002",
+            nis: "1002",
+            fullName: "Siti Rahma",
+            className: "XII RPL 1",
+            activated: false,
+          },
+        ],
+      });
+    });
+
+    it("returns error when success is false or data is not an array", () => {
+      const result = parseStudentRosterResponse({
         success: false,
       });
       assert.equal(result.ok, false);

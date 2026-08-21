@@ -64,7 +64,7 @@ export default async function SiswaPage({
   }
 
   let rows: Array<{
-    nis: bigint;
+    nis: string;
     nama: string | null;
     kelas: string | null;
     absen: number | null;
