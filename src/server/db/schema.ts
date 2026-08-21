@@ -24,7 +24,7 @@ import {
  */
 
 /**
- * Public schema tables from Supabase
+ * Chronos compatibility schema for Astra-owned domain records.
  */
 
 // absences

@@ -11,7 +11,6 @@ import {
   isPrivilegedRole,
   resolveLogtoRole,
 } from "~/lib/logto/claims";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
 import { AppSidebar } from "~/components/app-sidebar";
 import {
   SidebarProvider,
@@ -35,41 +34,32 @@ export default async function DashLayout({
       fetchUserInfo: true,
     });
 
-    if (logtoContext.isAuthenticated && logtoContext.claims) {
-      const claims = extractExtendedClaims(logtoContext.claims);
-      if (isPasswordChangeRequired(claims)) {
-        redirect("/ganti-password");
-      }
+    if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+      redirect("/login");
+    }
 
-      const rawRoles = claims?.roles ?? [];
-      const userRole = resolveLogtoRole(rawRoles);
+    const claims = extractExtendedClaims(logtoContext.claims);
+    if (isPasswordChangeRequired(claims)) {
+      redirect("/ganti-password");
+    }
 
-      if (!userRole || !isPrivilegedRole(userRole)) {
-        redirect("/login?error=forbidden_role");
-      }
+    const rawRoles = claims?.roles ?? [];
+    const userRole = resolveLogtoRole(rawRoles);
+    if (!userRole || !isPrivilegedRole(userRole)) {
+      redirect("/login?error=forbidden_role");
+    }
 
-      if (isAdminRole(userRole)) {
-        const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
-        if (!mfaOk) {
-          redirect("/login?error=mfa_required");
-        }
+    if (isAdminRole(userRole)) {
+      const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
+      if (!mfaOk) {
+        redirect("/login?error=mfa_required");
       }
-    } else {
-      const supabase = createSupabaseServerClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) redirect("/login");
     }
   } catch (err) {
     if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
       throw err;
     }
-    const supabase = createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) redirect("/login");
+    redirect("/login");
   }
 
   // Persist default open state for collapsible sidebar via cookie (shadcn pattern)

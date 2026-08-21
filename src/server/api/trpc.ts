@@ -19,15 +19,13 @@ import {
   isPrivilegedRole,
   resolveLogtoRole,
 } from "~/lib/logto/claims";
-import { createSupabaseServerClient } from "~/lib/supabase/server";
 import {
   ADMIN_ROLES,
   PRIVILEGED_ROLES,
   type AppRole,
+  type AuthenticatedUser,
   hasRequiredRole,
-  resolveUserRole,
 } from "~/server/auth/rbac";
-import type { User } from "@supabase/supabase-js";
 
 import { db } from "~/server/db";
 
@@ -53,7 +51,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 export type AuthenticatedContext = Awaited<
   ReturnType<typeof createTRPCContext>
 > & {
-  user: User;
+  user: AuthenticatedUser;
   userRole: AppRole;
 };
 
@@ -109,93 +107,51 @@ export const createTRPCRouter = t.router;
  * Authentication middleware - resolves user role and adds to context
  */
 const isAuthed = t.middleware(async ({ ctx, next }) => {
-  try {
-    const logtoContext = await getLogtoContext(logtoConfig, {
-      fetchUserInfo: true,
-    });
+  const logtoContext = await getLogtoContext(logtoConfig, {
+    fetchUserInfo: true,
+  });
 
-    if (logtoContext.isAuthenticated && logtoContext.claims) {
-      const claims = extractExtendedClaims(logtoContext.claims);
-      if (isPasswordChangeRequired(claims)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Password change required.",
-        });
-      }
-
-      const rawRoles = claims?.roles ?? [];
-      const userRole = resolveLogtoRole(rawRoles);
-
-      if (!userRole || !isPrivilegedRole(userRole)) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Forbidden role.",
-        });
-      }
-
-      if (isAdminRole(userRole)) {
-        const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
-        if (!mfaOk) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "MFA verification required.",
-          });
-        }
-      }
-
-      // SAFETY: logtoContext userInfo contains standard OIDC email claim
-      const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
-      const email = claims?.email ?? fallbackEmail ?? "";
-      // SAFETY: logtoContext userInfo contains standard OIDC name claim
-      const fullName = logtoContext.userInfo?.name as string | undefined;
-
-      const user: User = {
-        id: claims?.sub ?? "",
-        email,
-        app_metadata: { role: userRole },
-        user_metadata: {
-          full_name: fullName ?? email,
-        },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-      };
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[tRPC Auth (Logto)] user=${user.id} role=${userRole}`);
-      }
-
-      return next({
-        ctx: {
-          ...ctx,
-          user,
-          userRole,
-        },
-      });
-    }
-  } catch (err) {
-    if (err instanceof TRPCError) throw err;
-    if (process.env.NODE_ENV === "development") {
-      console.warn(
-        "[tRPC Auth] Logto context check failed, falling back:",
-        err,
-      );
-    }
-  }
-
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!logtoContext.isAuthenticated || !logtoContext.claims) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  const userRole = await resolveUserRole(ctx.db, user);
-
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[tRPC Auth] user=${user.id} role=${userRole}`);
+  const claims = extractExtendedClaims(logtoContext.claims);
+  if (isPasswordChangeRequired(claims)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Password change required.",
+    });
   }
+
+  const userRole = resolveLogtoRole(claims?.roles ?? []);
+  if (!userRole || !isPrivilegedRole(userRole)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Forbidden role.",
+    });
+  }
+
+  if (
+    isAdminRole(userRole) &&
+    !isMfaVerified(claims?.mfa_verified, claims?.amr)
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "MFA verification required.",
+    });
+  }
+
+  // SAFETY: Logto user info fields are standard optional OIDC string claims.
+  const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
+  const email = claims?.email ?? fallbackEmail ?? "";
+  // SAFETY: Logto user info name is the optional OIDC display-name claim.
+  const fullName = logtoContext.userInfo?.name as string | undefined;
+  const user: AuthenticatedUser = {
+    id: claims?.sub ?? "",
+    email,
+    app_metadata: { role: userRole },
+    user_metadata: { full_name: fullName ?? email },
+  };
 
   return next({
     ctx: {

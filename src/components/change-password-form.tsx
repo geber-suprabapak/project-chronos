@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -11,7 +10,6 @@ import { Label } from "~/components/ui/label";
 const MIN_PASSWORD_LENGTH = 8;
 
 export function ChangePasswordForm() {
-  const supabase = getSupabaseBrowserClient();
   const router = useRouter();
 
   const [newPassword, setNewPassword] = useState("");
@@ -36,17 +34,17 @@ export function ChangePasswordForm() {
     setIsLoading(true);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-        data: { must_change_password: false },
+      const response = await fetch("/api/logto/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
       });
-
-      if (updateError) {
-        setError(updateError.message);
+      // SAFETY: The API returns a JSON error envelope on both success and failure.
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setError(result.error ?? "Password tidak dapat diperbarui.");
         return;
       }
-
-      await supabase.auth.refreshSession();
       router.replace("/dashboard");
     } finally {
       setIsLoading(false);

@@ -1,45 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { cn } from "~/lib/utils";
-import { extractRoleFromAccessToken } from "~/lib/jwt";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { getSupabaseBrowserClient } from "~/lib/supabase/client";
-
-const ALLOWED_ROLES = new Set([
-  "platform_admin",
-  "school_admin",
-  "teacher",
-  "staff",
-  "admin",
-  "kepala_sekolah",
-  "guru",
-  "wali_kelas",
-]);
-
-type MetadataWithPasswordFlag = {
-  readonly must_change_password?: boolean | string | number | null;
-};
-
-function readMustChangePasswordFlag(
-  metadata: MetadataWithPasswordFlag | null | undefined,
-): boolean {
-  const value = metadata?.must_change_password;
-  if (
-    value === true ||
-    value === 1 ||
-    value === "true" ||
-    value === "1" ||
-    value === "yes"
-  ) {
-    return true;
-  }
-  return false;
-}
 
 const ERROR_MESSAGES = {
   mfa_required:
@@ -54,12 +19,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const supabase = getSupabaseBrowserClient();
-  const router = useRouter();
   const searchParams = useSearchParams();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -75,46 +35,6 @@ export function LoginForm({
   function handleLogtoSignIn() {
     setIsLoading(true);
     window.location.href = "/api/logto/sign-in";
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword(
-        {
-          email,
-          password,
-        },
-      );
-
-      if (authError) {
-        setError("Invalid credentials.");
-        return;
-      }
-
-      // Extract role from access token (authoritative source after custom hook)
-      const role = extractRoleFromAccessToken(
-        data.session?.access_token ?? null,
-      );
-
-      if (!role || !ALLOWED_ROLES.has(role)) {
-        await supabase.auth.signOut();
-        setError("Invalid credentials.");
-        return;
-      }
-
-      if (readMustChangePasswordFlag(data.user?.user_metadata)) {
-        router.replace("/ganti-password");
-        return;
-      }
-
-      router.replace("/dashboard");
-    } finally {
-      setIsLoading(false);
-    }
   }
 
   return (
@@ -133,55 +53,11 @@ export function LoginForm({
                 ? "Mengalihkan..."
                 : "Masuk dengan Akun Skanida (Logto)"}
             </Button>
-
-            <div className="relative flex items-center justify-center">
-              <div className="border-border absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <span className="bg-card text-muted-foreground relative px-2 text-xs uppercase">
-                Atau login manual
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmit} className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-              {error && (
-                <p className="text-destructive text-sm" role="alert">
-                  {error}
-                </p>
-              )}
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Logging in..." : "Login"}
-              </Button>
-            </form>
+            {error && (
+              <p className="text-destructive text-sm" role="alert">
+                {error}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

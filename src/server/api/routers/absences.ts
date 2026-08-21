@@ -76,7 +76,7 @@ export const absencesRouter = createTRPCRouter({
         }
       })();
 
-      // Create absence record in PostgreSQL (no Supabase auth changes)
+      // Create the domain record through the application database.
       const [newAbsence] = await ctx.db
         .insert(absences)
         .values({

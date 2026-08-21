@@ -9,7 +9,6 @@ import {
   Monitor,
   Mail,
 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { NavMain } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
 import {
@@ -19,7 +18,6 @@ import {
   SidebarFooter,
   SidebarRail,
 } from "~/components/ui/sidebar";
-import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import Image from "next/image";
 
 // Update icons to match each link
@@ -76,34 +74,52 @@ const navItems = [
   },
 ];
 
+type ChronosUser = {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+};
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const supabase = getSupabaseBrowserClient();
-  const [user, setUser] = React.useState<User | null>(null);
+  const [user, setUser] = React.useState<ChronosUser | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     let active = true;
-    // Initial fetch
-    void (async () => {
-      try {
-        const { data } = await supabase.auth.getUser();
-        if (!active) return;
-        setUser(data.user ?? null);
-      } finally {
+    void fetch("/api/logto/user")
+      .then(async (response) => {
+        if (!response.ok) return null;
+        // SAFETY: /api/logto/user returns the documented Logto context envelope.
+        const context = (await response.json()) as {
+          isAuthenticated?: boolean;
+          claims?: { sub?: string; email?: string; name?: string } | null;
+          userInfo?: { email?: string; name?: string } | null;
+        };
+        if (!context.isAuthenticated || !context.claims?.sub) return null;
+        return {
+          id: context.claims.sub,
+          email: context.claims.email ?? context.userInfo?.email,
+          user_metadata: {
+            full_name: context.claims.name ?? context.userInfo?.name,
+          },
+        } satisfies ChronosUser;
+      })
+      .then((nextUser) => {
+        if (active) setUser(nextUser);
+      })
+      .catch(() => {
+        if (active) setUser(null);
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    })();
-    // Listen to auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      },
-    );
+      });
     return () => {
       active = false;
-      listener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   return (
     <Sidebar collapsible="icon" {...props}>

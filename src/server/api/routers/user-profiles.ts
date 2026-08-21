@@ -18,8 +18,7 @@ async function withDbRetry<T>(operation: () => Promise<T>): Promise<T> {
 }
 
 /**
- * tRPC router untuk tabel `user_profiles` (Supabase).
- * Fokus pada operasi READ-ONLY (get, list).
+ * Read-only profile queries backed by the Chronos application database.
  */
 export const userProfilesRouter = createTRPCRouter({
   // GET ME: Ambil profil user yang sedang login berdasarkan ctx.user.id

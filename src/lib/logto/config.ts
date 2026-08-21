@@ -1,6 +1,6 @@
 import type { LogtoNextConfig } from "@logto/next";
 import { UserScope } from "@logto/next";
-import { env } from "~/env";
+import { env } from "../../env.js";
 
 export const logtoConfig: LogtoNextConfig = {
   endpoint: env.LOGTO_ENDPOINT ?? "http://localhost:3001",

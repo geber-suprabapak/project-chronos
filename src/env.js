@@ -7,7 +7,10 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z.string().url(),
+    DATABASE_URL: z
+      .string()
+      .url()
+      .default("postgresql://postgres:postgres@localhost:5432/chronos"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -23,6 +26,9 @@ export const env = createEnv({
       .default("complex_password_at_least_32_characters_long_12345"),
     LOGTO_BASE_URL: z.string().url().default("http://localhost:3000"),
     LOGTO_RESOURCE: z.string().optional(),
+    ASTRA_API_URL: z.string().url().default("http://localhost:8787"),
+    LOGTO_MANAGEMENT_APP_ID: z.string().min(1).optional(),
+    LOGTO_MANAGEMENT_APP_SECRET: z.string().min(1).optional(),
   },
 
   /**
@@ -30,12 +36,7 @@ export const env = createEnv({
    * isn't built with invalid env vars. To expose them to the client, prefix them with
    * `NEXT_PUBLIC_`.
    */
-  client: {
-    NEXT_PUBLIC_SUPABASE_URL: z.string(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
-
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
-  },
+  client: {},
 
   /**
    * You can't destruct `process.env` as a regular object in the Next.js edge runtimes (e.g.
@@ -50,10 +51,9 @@ export const env = createEnv({
     LOGTO_COOKIE_SECRET: process.env.LOGTO_COOKIE_SECRET,
     LOGTO_BASE_URL: process.env.LOGTO_BASE_URL,
     LOGTO_RESOURCE: process.env.LOGTO_RESOURCE,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    ASTRA_API_URL: process.env.ASTRA_API_URL,
+    LOGTO_MANAGEMENT_APP_ID: process.env.LOGTO_MANAGEMENT_APP_ID,
+    LOGTO_MANAGEMENT_APP_SECRET: process.env.LOGTO_MANAGEMENT_APP_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

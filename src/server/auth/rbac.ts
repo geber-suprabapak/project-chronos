@@ -1,6 +1,5 @@
-import type { User } from "@supabase/supabase-js";
-import { db as appDb } from "~/server/db";
 import { extractRoleFromAppMetadata, type AppMetadataClaims } from "~/lib/jwt";
+import { db as appDb } from "~/server/db";
 import { isTransientDbError } from "~/server/lib/db-utils";
 
 export const APP_ROLES = [
@@ -45,11 +44,24 @@ export function isAppRole(value: string | null | undefined): value is AppRole {
 /**
  * Read role from user JWT claims (app_metadata)
  */
-export function readRoleFromUserClaims(user: User): AppRole | null {
-  // SAFETY: Supabase auth user.app_metadata conforms to AppMetadataClaims
-  const role = extractRoleFromAppMetadata(
-    user.app_metadata as AppMetadataClaims,
-  );
+export type AuthenticatedUser = {
+  readonly id: string;
+  readonly email?: string;
+  readonly app_metadata?: AppMetadataClaims | null;
+  readonly user_metadata?: {
+    readonly full_name?: string;
+    readonly avatar_url?: string;
+    readonly [key: string]: string | undefined;
+  } | null;
+};
+
+/**
+ * Read role from the Logto-derived application claims.
+ */
+export function readRoleFromUserClaims(
+  user: AuthenticatedUser,
+): AppRole | null {
+  const role = extractRoleFromAppMetadata(user.app_metadata);
   return role && isAppRole(role) ? role : null;
 }
 
@@ -119,7 +131,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
  */
 export async function resolveUserRole(
   db: typeof appDb,
-  user: User,
+  user: AuthenticatedUser,
 ): Promise<AppRole> {
   // 1. JWT claims (instant, no DB)
   const claimRole = readRoleFromUserClaims(user);

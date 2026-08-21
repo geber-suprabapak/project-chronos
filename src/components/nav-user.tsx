@@ -8,7 +8,6 @@ import {
   Monitor,
   Check,
 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
@@ -27,29 +26,28 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar";
-import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 import * as React from "react";
 import { useTheme } from "next-themes";
 
+type ChronosUser = {
+  id: string;
+  email?: string;
+  user_metadata?: { full_name?: string; avatar_url?: string };
+};
+
 interface NavUserProps {
-  user: User | null;
+  user: ChronosUser | null;
   loading?: boolean;
 }
 
 export function NavUser({ user, loading }: NavUserProps) {
   const { isMobile } = useSidebar();
-  const supabase = getSupabaseBrowserClient();
   const router = useRouter();
   const [signingOut, setSigningOut] = React.useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
 
-  async function handleLogout() {
+  function handleLogout() {
     setSigningOut(true);
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // ignore
-    }
     window.location.href = "/api/logto/sign-out";
   }
 
@@ -69,11 +67,8 @@ export function NavUser({ user, loading }: NavUserProps) {
   // Jika sudah tidak loading dan user null, jangan render apa-apa (efek di atas akan redirect)
   if (!user) return null;
 
-  // Derive display data (can extend with user_metadata avatar, name etc.)
-  // SAFETY: Supabase auth user_metadata full_name is an optional string
-  const fullName = user.user_metadata?.full_name as string | undefined;
-  // SAFETY: Supabase auth user_metadata avatar_url is an optional string URL
-  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const fullName = user.user_metadata?.full_name;
+  const avatarUrl = user.user_metadata?.avatar_url;
   const displayName = fullName ?? user.email ?? "";
 
   return (

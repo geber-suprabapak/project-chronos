@@ -10,7 +10,6 @@ import {
   isPrivilegedRole,
   resolveLogtoRole,
 } from "~/lib/logto/claims";
-import { createSupabaseMiddlewareClient } from "~/lib/supabase/middleware";
 
 const PUBLIC_PATHS = new Set(["/login", "/ganti-password", "/auth/callback"]);
 
@@ -87,54 +86,18 @@ export async function middleware(req: NextRequest) {
     }
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("[middleware] Logto context error, falling back:", err);
+      console.warn("[middleware] Logto context error:", err);
     }
   }
 
-  // Fallback to legacy Supabase session if Logto session is not present
-  const { supabase, response } = createSupabaseMiddlewareClient(req);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const mustChangePassword =
-    user?.user_metadata?.must_change_password === true ||
-    user?.user_metadata?.must_change_password === 1 ||
-    user?.user_metadata?.must_change_password === "true" ||
-    user?.user_metadata?.must_change_password === "1" ||
-    user?.user_metadata?.must_change_password === "yes";
-
-  if (pathname === "/login" && user) {
-    const url = req.nextUrl.clone();
-    url.pathname = mustChangePassword ? "/ganti-password" : "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
-  if (
-    user &&
-    mustChangePassword &&
-    pathname !== "/ganti-password" &&
-    !isPublicPath(pathname)
-  ) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/ganti-password";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && !mustChangePassword && pathname === "/ganti-password") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
-  if (!user && !isPublicPath(pathname)) {
+  if (!isPublicPath(pathname)) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
