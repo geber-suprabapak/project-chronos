@@ -4,6 +4,11 @@ import { extractRoleFromAppMetadata, type AppMetadataClaims } from "~/lib/jwt";
 import { isTransientDbError } from "~/server/lib/db-utils";
 
 export const APP_ROLES = [
+  "platform_admin",
+  "school_admin",
+  "teacher",
+  "staff",
+  "student",
   "admin",
   "kepala_sekolah",
   "guru",
@@ -14,13 +19,22 @@ export const APP_ROLES = [
 export type AppRole = (typeof APP_ROLES)[number];
 
 export const PRIVILEGED_ROLES: readonly AppRole[] = [
+  "platform_admin",
+  "school_admin",
+  "teacher",
+  "staff",
   "admin",
   "kepala_sekolah",
   "guru",
   "wali_kelas",
 ];
 
-export const ADMIN_ROLES: readonly AppRole[] = ["admin", "kepala_sekolah"];
+export const ADMIN_ROLES: readonly AppRole[] = [
+  "platform_admin",
+  "school_admin",
+  "admin",
+  "kepala_sekolah",
+];
 
 const VALID_APP_ROLES: ReadonlySet<string> = new Set<string>(APP_ROLES);
 
@@ -194,3 +208,12 @@ export function hasRequiredRole(
 ): boolean {
   return allowed.includes(role);
 }
+
+export {
+  isMfaVerified,
+  isPasswordChangeRequired,
+  resolveLogtoRole,
+  isPrivilegedRole,
+  isAdminRole,
+  isMfaRequired,
+} from "~/lib/logto/claims";

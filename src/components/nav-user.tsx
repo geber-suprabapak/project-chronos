@@ -45,9 +45,12 @@ export function NavUser({ user, loading }: NavUserProps) {
 
   async function handleLogout() {
     setSigningOut(true);
-    await supabase.auth.signOut();
-    setSigningOut(false);
-    router.replace("/login");
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
+    window.location.href = "/api/logto/sign-out";
   }
 
   // Redirect ke /login jika user sudah hilang (misal setelah sign out) – dilakukan via efek client.

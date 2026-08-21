@@ -9,6 +9,16 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z, ZodError } from "zod";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
+import {
+  extractExtendedClaims,
+  isAdminRole,
+  isMfaVerified,
+  isPasswordChangeRequired,
+  isPrivilegedRole,
+  resolveLogtoRole,
+} from "~/lib/logto/claims";
 import { createSupabaseServerClient } from "~/lib/supabase/server";
 import {
   ADMIN_ROLES,
@@ -99,6 +109,79 @@ export const createTRPCRouter = t.router;
  * Authentication middleware - resolves user role and adds to context
  */
 const isAuthed = t.middleware(async ({ ctx, next }) => {
+  try {
+    const logtoContext = await getLogtoContext(logtoConfig, {
+      fetchUserInfo: true,
+    });
+
+    if (logtoContext.isAuthenticated && logtoContext.claims) {
+      const claims = extractExtendedClaims(logtoContext.claims);
+      if (isPasswordChangeRequired(claims)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Password change required.",
+        });
+      }
+
+      const rawRoles = claims?.roles ?? [];
+      const userRole = resolveLogtoRole(rawRoles);
+
+      if (!userRole || !isPrivilegedRole(userRole)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Forbidden role.",
+        });
+      }
+
+      if (isAdminRole(userRole)) {
+        const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
+        if (!mfaOk) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "MFA verification required.",
+          });
+        }
+      }
+
+      // SAFETY: logtoContext userInfo contains standard OIDC email claim
+      const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
+      const email = claims?.email ?? fallbackEmail ?? "";
+      // SAFETY: logtoContext userInfo contains standard OIDC name claim
+      const fullName = logtoContext.userInfo?.name as string | undefined;
+
+      const user: User = {
+        id: claims?.sub ?? "",
+        email,
+        app_metadata: { role: userRole },
+        user_metadata: {
+          full_name: fullName ?? email,
+        },
+        aud: "authenticated",
+        created_at: new Date().toISOString(),
+      };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[tRPC Auth (Logto)] user=${user.id} role=${userRole}`);
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user,
+          userRole,
+        },
+      });
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "[tRPC Auth] Logto context check failed, falling back:",
+        err,
+      );
+    }
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
