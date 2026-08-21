@@ -227,6 +227,48 @@ function parseLocationResponse(envelope: AstraLocationEnvelope):
   };
 }
 
+interface AstraAttendanceEnvelope {
+  readonly success: boolean;
+  readonly data?: {
+    readonly id?: string;
+    readonly user_id?: string;
+    readonly date?: string;
+    readonly status?: string;
+    readonly action_type?: string | null;
+    readonly latitude?: number | null;
+    readonly longitude?: number | null;
+    readonly created_at?: string;
+  };
+}
+
+function parseAttendanceResponse(envelope: AstraAttendanceEnvelope):
+  | {
+      readonly ok: true;
+      readonly id: string;
+      readonly userId: string;
+      readonly date: string;
+      readonly status: string;
+      readonly actionType: string | null;
+    }
+  | { readonly ok: false; readonly error: string } {
+  if (
+    !envelope.success ||
+    !envelope.data ||
+    !envelope.data.id ||
+    !envelope.data.user_id
+  ) {
+    return { ok: false, error: "Invalid attendance response envelope." };
+  }
+  return {
+    ok: true,
+    id: envelope.data.id,
+    userId: envelope.data.user_id,
+    date: envelope.data.date ?? "",
+    status: envelope.data.status ?? "Hadir",
+    actionType: envelope.data.action_type ?? null,
+  };
+}
+
 describe("Astra API Contract Boundary", () => {
   describe("buildAstraHeaders", () => {
     it("includes versioned contract header v1 and authorization token", () => {
@@ -459,6 +501,50 @@ describe("Astra API Contract Boundary", () => {
         data: {
           id: "loc-invalid",
           name: "Invalid Loc",
+        },
+      });
+      assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseAttendanceResponse", () => {
+    it("extracts attendance details from valid contract envelope", () => {
+      const result = parseAttendanceResponse({
+        success: true,
+        data: {
+          id: "att-rec-123",
+          user_id: "user-stu-001",
+          date: "2026-08-21",
+          status: "Hadir",
+          action_type: "check_in",
+          latitude: -7.45,
+          longitude: 110.22,
+          created_at: "2026-08-21T07:00:00Z",
+        },
+      });
+      assert.deepEqual(result, {
+        ok: true,
+        id: "att-rec-123",
+        userId: "user-stu-001",
+        date: "2026-08-21",
+        status: "Hadir",
+        actionType: "check_in",
+      });
+    });
+
+    it("returns error when success is false or data is missing", () => {
+      const result = parseAttendanceResponse({
+        success: false,
+      });
+      assert.equal(result.ok, false);
+    });
+
+    it("returns error when id or user_id is missing", () => {
+      const result = parseAttendanceResponse({
+        success: true,
+        data: {
+          date: "2026-08-21",
+          status: "Hadir",
         },
       });
       assert.equal(result.ok, false);
