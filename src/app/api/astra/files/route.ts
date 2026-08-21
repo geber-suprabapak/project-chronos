@@ -45,10 +45,13 @@ export async function POST(request: Request) {
       }),
     },
   );
-  if (!intentResponse.ok) {
+  if (
+    !intentResponse.ok ||
+    intentResponse.headers.get("X-Astra-Contract-Version") !== "v1"
+  ) {
     return NextResponse.json(
-      { error: "Upload intent could not be created." },
-      { status: intentResponse.status },
+      { error: "Upload intent contract is unavailable or incompatible." },
+      { status: intentResponse.ok ? 502 : intentResponse.status },
     );
   }
 
@@ -81,12 +84,26 @@ export async function POST(request: Request) {
       headers,
     },
   );
-  if (!confirmResponse.ok) {
+  if (
+    !confirmResponse.ok ||
+    confirmResponse.headers.get("X-Astra-Contract-Version") !== "v1"
+  ) {
     return NextResponse.json(
-      { error: "File upload confirmation failed." },
+      { error: "File upload contract is unavailable or incompatible." },
+      { status: confirmResponse.ok ? 502 : confirmResponse.status },
+    );
+  }
+  // SAFETY: Astra returned a successful confirmation envelope; the download URL is validated below.
+  const confirmation = (await confirmResponse.json()) as {
+    data?: { download_url?: string | null };
+  };
+  const downloadUrl = confirmation.data?.download_url;
+  if (!downloadUrl) {
+    return NextResponse.json(
+      { error: "File upload confirmation returned no download URL." },
       { status: 502 },
     );
   }
 
-  return NextResponse.json({ file_id: fileId });
+  return NextResponse.json({ file_id: fileId, url: downloadUrl });
 }

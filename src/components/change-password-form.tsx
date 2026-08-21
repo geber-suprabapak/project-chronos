@@ -45,7 +45,7 @@ export function ChangePasswordForm() {
         setError(result.error ?? "Password tidak dapat diperbarui.");
         return;
       }
-      router.replace("/dashboard");
+      router.replace("/login?password_changed=1");
     } finally {
       setIsLoading(false);
     }

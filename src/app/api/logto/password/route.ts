@@ -1,4 +1,4 @@
-import { getLogtoContext } from "@logto/next/server-actions";
+import { getAccessToken, getLogtoContext } from "@logto/next/server-actions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { env } from "~/env.js";
@@ -8,8 +8,7 @@ const passwordSchema = z.object({ password: z.string().min(8).max(128) });
 
 export async function POST(request: Request) {
   const context = await getLogtoContext(logtoConfig);
-  const userId = context.claims?.sub;
-  if (!context.isAuthenticated || !userId) {
+  if (!context.isAuthenticated || !context.claims?.sub) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,54 +21,39 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!env.LOGTO_MANAGEMENT_APP_ID || !env.LOGTO_MANAGEMENT_APP_SECRET) {
+
+  let accessToken: string;
+  try {
+    accessToken = await getAccessToken(logtoConfig, env.LOGTO_RESOURCE);
+  } catch {
     return NextResponse.json(
-      { error: "Password management is not configured." },
-      { status: 503 },
+      { error: "Session is unavailable." },
+      { status: 401 },
     );
   }
 
-  const tokenResponse = await fetch(`${env.LOGTO_ENDPOINT}/oidc/token`, {
+  const response = await fetch(`${env.ASTRA_API_URL}/v1/auth/password`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: env.LOGTO_MANAGEMENT_APP_ID,
-      client_secret: env.LOGTO_MANAGEMENT_APP_SECRET,
-      resource: "https://default.logto.app/api",
-      scope: "all",
-    }),
-  });
-  if (!tokenResponse.ok) {
-    return NextResponse.json(
-      { error: "Identity provider is unavailable." },
-      { status: 502 },
-    );
-  }
-  // SAFETY: A successful token response is decoded only for the optional access_token field.
-  const token = (await tokenResponse.json()) as { access_token?: string };
-  if (!token.access_token) {
-    return NextResponse.json(
-      { error: "Identity provider returned no management token." },
-      { status: 502 },
-    );
-  }
-
-  const updateResponse = await fetch(
-    `${env.LOGTO_ENDPOINT}/api/users/${encodeURIComponent(userId)}/password`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ password: parsed.data.password }),
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Astra-Contract-Version": "v1",
     },
-  );
-  if (!updateResponse.ok) {
+    body: JSON.stringify({ new_password: parsed.data.password }),
+  });
+  if (!response.ok) {
+    // SAFETY: Astra returns its documented error envelope for non-success responses.
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+      message?: string;
+    } | null;
     return NextResponse.json(
-      { error: "Password update failed." },
-      { status: updateResponse.status },
+      {
+        error:
+          body?.error?.message ?? body?.message ?? "Password update failed.",
+      },
+      { status: response.status },
     );
   }
 
