@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { eq, sql } from "drizzle-orm";
 import {
   adminProcedure,
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { jadwalAbsensi } from "~/server/db/schema";
+import { astraRequest } from "~/lib/astra/client";
 
 // Valid days enum
 const HARI_ENUM = [
@@ -18,15 +17,120 @@ const HARI_ENUM = [
   "minggu",
 ] as const;
 
+export type Hari = (typeof HARI_ENUM)[number];
+
+export function isHari(val: string): val is Hari {
+  return (
+    val === "senin" ||
+    val === "selasa" ||
+    val === "rabu" ||
+    val === "kamis" ||
+    val === "jumat" ||
+    val === "sabtu" ||
+    val === "minggu"
+  );
+}
+
+const HARI_TO_ID = {
+  senin: 1,
+  selasa: 2,
+  rabu: 3,
+  kamis: 4,
+  jumat: 5,
+  sabtu: 6,
+  minggu: 7,
+} as const;
+
+const ID_TO_HARI = {
+  1: "senin",
+  2: "selasa",
+  3: "rabu",
+  4: "kamis",
+  5: "jumat",
+  6: "sabtu",
+  7: "minggu",
+} as const;
+
+export type DayId = keyof typeof ID_TO_HARI;
+
+export function isDayId(id: number): id is DayId {
+  return id in ID_TO_HARI;
+}
+
+export interface AstraSchedule {
+  id: string;
+  school_id?: string | null;
+  class_id?: string | null;
+  academic_period_id?: string | null;
+  location_id?: string | null;
+  day_of_week?: string;
+  hari?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  start_checkout?: string | null;
+  end_checkout?: string | null;
+  mulai_masuk?: string | null;
+  selesai_masuk?: string | null;
+  mulai_pulang?: string | null;
+  selesai_pulang?: string | null;
+  grace_period_minutes?: number | null;
+  kompensasi_waktu?: number | null;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export function mapAstraSchedule(sched: AstraSchedule, indexFallback?: number) {
+  const hariRaw = (sched.hari ?? sched.day_of_week ?? "senin").toLowerCase();
+  const hari = isHari(hariRaw) ? hariRaw : "senin";
+  const numericId = parseInt(sched.id, 10);
+  const safeId = !Number.isNaN(numericId)
+    ? numericId
+    : (HARI_TO_ID[hari] ?? indexFallback ?? 1);
+
+  const formatTime = (t?: string | null, fallback = "00:00:00") => {
+    if (!t) return fallback;
+    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;
+    return t;
+  };
+
+  return {
+    id: safeId,
+    astraId: sched.id,
+    hari,
+    mulaiMasuk: formatTime(sched.mulai_masuk ?? sched.start_time, "06:30:00"),
+    selesaiMasuk: formatTime(sched.selesai_masuk ?? sched.end_time, "07:30:00"),
+    mulaiPulang: formatTime(
+      sched.mulai_pulang ?? sched.start_checkout,
+      "15:00:00",
+    ),
+    selesaiPulang: formatTime(
+      sched.selesai_pulang ?? sched.end_checkout,
+      "16:00:00",
+    ),
+    kompensasiWaktu: sched.kompensasi_waktu ?? sched.grace_period_minutes ?? 0,
+    isActive: sched.is_active ?? true,
+    createdAt: sched.created_at ? new Date(sched.created_at) : new Date(),
+    updatedAt: sched.updated_at ? new Date(sched.updated_at) : new Date(),
+  };
+}
+
+/**
+ * Router tRPC untuk entitas `jadwal` (schedules) yang di-route melalui Astra API contract v1.
+ */
 export const jadwalRouter = createTRPCRouter({
   // Get all schedules
-  getAll: protectedProcedure.query(async ({ ctx }) => {
-    const schedules = await ctx.db
-      .select()
-      .from(jadwalAbsensi)
-      .orderBy(jadwalAbsensi.id);
-
-    return schedules;
+  getAll: protectedProcedure.query(async () => {
+    try {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
+      return schedules
+        .map((s, idx) => mapAstraSchedule(s, idx + 1))
+        .sort((a, b) => a.id - b.id);
+    } catch {
+      return [];
+    }
   }),
 
   // Get schedule by day
@@ -36,62 +140,92 @@ export const jadwalRouter = createTRPCRouter({
         hari: z.enum(HARI_ENUM),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const schedule = await ctx.db
-        .select()
-        .from(jadwalAbsensi)
-        .where(eq(jadwalAbsensi.hari, input.hari))
-        .limit(1);
-
-      return schedule[0] ?? null;
+    .query(async ({ input }) => {
+      try {
+        const schedules = await astraRequest<AstraSchedule[]>(
+          `/v1/admin/schedules?day_of_week=${input.hari}`,
+        );
+        const schedule =
+          schedules.find(
+            (s) =>
+              (s.hari ?? s.day_of_week)?.toLowerCase() ===
+              input.hari.toLowerCase(),
+          ) ?? schedules[0];
+        return schedule
+          ? mapAstraSchedule(schedule, HARI_TO_ID[input.hari])
+          : null;
+      } catch {
+        return null;
+      }
     }),
 
   // Get schedule by ID
   getById: protectedProcedure
     .input(z.object({ id: z.number().min(1).max(7) }))
-    .query(async ({ ctx, input }) => {
-      const schedule = await ctx.db
-        .select()
-        .from(jadwalAbsensi)
-        .where(eq(jadwalAbsensi.id, input.id))
-        .limit(1);
-
-      return schedule[0] ?? null;
+    .query(async ({ input }) => {
+      try {
+        const schedules = await astraRequest<AstraSchedule[]>(
+          "/v1/admin/schedules",
+        );
+        const targetHari = isDayId(input.id) ? ID_TO_HARI[input.id] : undefined;
+        const idStr = String(input.id);
+        const schedule = schedules.find(
+          (s, idx) =>
+            s.id === idStr ||
+            (targetHari &&
+              (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
+            idx + 1 === input.id,
+        );
+        return schedule ? mapAstraSchedule(schedule, input.id) : null;
+      } catch {
+        return null;
+      }
     }),
 
   // Get current day schedule
-  getCurrentDay: protectedProcedure.query(async ({ ctx }) => {
-    const dayOfWeek = new Date().getDay();
-    const hariMap = [
-      "minggu",
-      "senin",
-      "selasa",
-      "rabu",
-      "kamis",
-      "jumat",
-      "sabtu",
-    ] as const;
-    const currentHari = hariMap[dayOfWeek];
-    if (!currentHari) return null;
+  getCurrentDay: protectedProcedure.query(async () => {
+    try {
+      const dayOfWeek = new Date().getDay();
+      const hariMap = [
+        "minggu",
+        "senin",
+        "selasa",
+        "rabu",
+        "kamis",
+        "jumat",
+        "sabtu",
+      ] as const;
+      const currentHari = hariMap[dayOfWeek];
+      if (!currentHari) return null;
 
-    const schedule = await ctx.db
-      .select()
-      .from(jadwalAbsensi)
-      .where(eq(jadwalAbsensi.hari, currentHari))
-      .limit(1);
-
-    return schedule[0] ?? null;
+      const schedules = await astraRequest<AstraSchedule[]>(
+        `/v1/admin/schedules?day_of_week=${currentHari}`,
+      );
+      const schedule =
+        schedules.find(
+          (s) => (s.hari ?? s.day_of_week)?.toLowerCase() === currentHari,
+        ) ?? schedules[0];
+      return schedule
+        ? mapAstraSchedule(schedule, HARI_TO_ID[currentHari])
+        : null;
+    } catch {
+      return null;
+    }
   }),
 
   // Get only active schedules
-  getActive: protectedProcedure.query(async ({ ctx }) => {
-    const schedules = await ctx.db
-      .select()
-      .from(jadwalAbsensi)
-      .where(eq(jadwalAbsensi.isActive, true))
-      .orderBy(jadwalAbsensi.id);
-
-    return schedules;
+  getActive: protectedProcedure.query(async () => {
+    try {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules?is_active=true",
+      );
+      return schedules
+        .filter((s) => s.is_active)
+        .map((s, idx) => mapAstraSchedule(s, idx + 1))
+        .sort((a, b) => a.id - b.id);
+    } catch {
+      return [];
+    }
   }),
 
   // Update schedule by ID
@@ -133,17 +267,52 @@ export const jadwalRouter = createTRPCRouter({
         }),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const result = await ctx.db
-        .update(jadwalAbsensi)
-        .set({
-          ...input.data,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(jadwalAbsensi.id, input.id))
-        .returning();
+    .mutation(async ({ input }) => {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
+      const targetHari = isDayId(input.id) ? ID_TO_HARI[input.id] : "senin";
+      const idStr = String(input.id);
+      const target = schedules.find(
+        (s, idx) =>
+          s.id === idStr ||
+          (targetHari &&
+            (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
+          idx + 1 === input.id,
+      );
 
-      return result[0];
+      if (target) {
+        const updated = await astraRequest<AstraSchedule>(
+          `/v1/admin/schedules/${target.id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              day_of_week: target.day_of_week ?? targetHari,
+              start_time: input.data.mulaiMasuk,
+              end_time: input.data.selesaiMasuk,
+              start_checkout: input.data.mulaiPulang,
+              end_checkout: input.data.selesaiPulang,
+              grace_period_minutes: input.data.kompensasiWaktu,
+              is_active: input.data.isActive,
+            }),
+          },
+        );
+        return mapAstraSchedule(updated, input.id);
+      }
+
+      const created = await astraRequest<AstraSchedule>("/v1/admin/schedules", {
+        method: "POST",
+        body: JSON.stringify({
+          day_of_week: targetHari,
+          start_time: input.data.mulaiMasuk ?? "06:30:00",
+          end_time: input.data.selesaiMasuk ?? "07:30:00",
+          start_checkout: input.data.mulaiPulang ?? "15:00:00",
+          end_checkout: input.data.selesaiPulang ?? "16:00:00",
+          grace_period_minutes: input.data.kompensasiWaktu ?? 0,
+          is_active: input.data.isActive ?? true,
+        }),
+      });
+      return mapAstraSchedule(created, input.id);
     }),
 
   // Update multiple schedules at once (batch update)
@@ -175,21 +344,57 @@ export const jadwalRouter = createTRPCRouter({
         }),
       ),
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
       const results = [];
 
       for (const item of input) {
-        const result = await ctx.db
-          .update(jadwalAbsensi)
-          .set({
-            ...item.data,
-            updatedAt: sql`CURRENT_TIMESTAMP`,
-          })
-          .where(eq(jadwalAbsensi.id, item.id))
-          .returning();
+        const targetHari = isDayId(item.id) ? ID_TO_HARI[item.id] : "senin";
+        const idStr = String(item.id);
+        const target = schedules.find(
+          (s, idx) =>
+            s.id === idStr ||
+            (targetHari &&
+              (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
+            idx + 1 === item.id,
+        );
 
-        if (result[0]) {
-          results.push(result[0]);
+        if (target) {
+          const updated = await astraRequest<AstraSchedule>(
+            `/v1/admin/schedules/${target.id}`,
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                day_of_week: target.day_of_week ?? targetHari,
+                start_time: item.data.mulaiMasuk,
+                end_time: item.data.selesaiMasuk,
+                start_checkout: item.data.mulaiPulang,
+                end_checkout: item.data.selesaiPulang,
+                grace_period_minutes: item.data.kompensasiWaktu,
+                is_active: item.data.isActive,
+              }),
+            },
+          );
+          results.push(mapAstraSchedule(updated, item.id));
+        } else {
+          const created = await astraRequest<AstraSchedule>(
+            "/v1/admin/schedules",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                day_of_week: targetHari,
+                start_time: item.data.mulaiMasuk ?? "06:30:00",
+                end_time: item.data.selesaiMasuk ?? "07:30:00",
+                start_checkout: item.data.mulaiPulang ?? "15:00:00",
+                end_checkout: item.data.selesaiPulang ?? "16:00:00",
+                grace_period_minutes: item.data.kompensasiWaktu ?? 0,
+                is_active: item.data.isActive ?? true,
+              }),
+            },
+          );
+          results.push(mapAstraSchedule(created, item.id));
         }
       }
 
@@ -199,33 +404,39 @@ export const jadwalRouter = createTRPCRouter({
   // Toggle active status
   toggleActive: adminProcedure
     .input(z.object({ id: z.number().min(1).max(7) }))
-    .mutation(async ({ ctx, input }) => {
-      // Get current status
-      const current = await ctx.db
-        .select()
-        .from(jadwalAbsensi)
-        .where(eq(jadwalAbsensi.id, input.id))
-        .limit(1);
+    .mutation(async ({ input }) => {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
+      const targetHari = isDayId(input.id) ? ID_TO_HARI[input.id] : "senin";
+      const idStr = String(input.id);
+      const target = schedules.find(
+        (s, idx) =>
+          s.id === idStr ||
+          (targetHari &&
+            (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
+          idx + 1 === input.id,
+      );
 
-      if (!current[0]) {
+      if (!target) {
         throw new Error("Jadwal tidak ditemukan");
       }
 
-      // Toggle the status
-      const result = await ctx.db
-        .update(jadwalAbsensi)
-        .set({
-          isActive: !current[0].isActive,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(jadwalAbsensi.id, input.id))
-        .returning();
+      const updated = await astraRequest<AstraSchedule>(
+        `/v1/admin/schedules/${target.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            is_active: !target.is_active,
+          }),
+        },
+      );
 
-      return result[0];
+      return mapAstraSchedule(updated, input.id);
     }),
 
   // Reset all schedules to default
-  reset: adminProcedure.mutation(async ({ ctx }) => {
+  reset: adminProcedure.mutation(async () => {
     const defaultSchedules = [
       {
         id: 1,
@@ -299,25 +510,48 @@ export const jadwalRouter = createTRPCRouter({
       },
     ];
 
+    const existingSchedules = await astraRequest<AstraSchedule[]>(
+      "/v1/admin/schedules",
+    ).catch(() => []);
+
     const results = [];
 
-    for (const schedule of defaultSchedules) {
-      const result = await ctx.db
-        .update(jadwalAbsensi)
-        .set({
-          mulaiMasuk: schedule.mulaiMasuk,
-          selesaiMasuk: schedule.selesaiMasuk,
-          mulaiPulang: schedule.mulaiPulang,
-          selesaiPulang: schedule.selesaiPulang,
-          kompensasiWaktu: schedule.kompensasiWaktu,
-          isActive: schedule.isActive,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(jadwalAbsensi.id, schedule.id))
-        .returning();
+    for (const def of defaultSchedules) {
+      const existing = existingSchedules.find(
+        (s, idx) =>
+          s.id === String(def.id) ||
+          (s.hari ?? s.day_of_week)?.toLowerCase() === def.hari ||
+          idx + 1 === def.id,
+      );
 
-      if (result[0]) {
-        results.push(result[0]);
+      const payload = {
+        day_of_week: def.hari,
+        start_time: def.mulaiMasuk,
+        end_time: def.selesaiMasuk,
+        start_checkout: def.mulaiPulang,
+        end_checkout: def.selesaiPulang,
+        grace_period_minutes: def.kompensasiWaktu,
+        is_active: def.isActive,
+      };
+
+      if (existing) {
+        const updated = await astraRequest<AstraSchedule>(
+          `/v1/admin/schedules/${existing.id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          },
+        );
+        results.push(mapAstraSchedule(updated, def.id));
+      } else {
+        const created = await astraRequest<AstraSchedule>(
+          "/v1/admin/schedules",
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+        );
+        results.push(mapAstraSchedule(created, def.id));
       }
     }
 
@@ -325,22 +559,32 @@ export const jadwalRouter = createTRPCRouter({
   }),
 
   // Get statistics
-  getStats: protectedProcedure.query(async ({ ctx }) => {
-    const allSchedules = await ctx.db
-      .select()
-      .from(jadwalAbsensi)
-      .orderBy(jadwalAbsensi.id);
+  getStats: protectedProcedure.query(async () => {
+    try {
+      const schedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
+      const mapped = schedules.map((s, idx) => mapAstraSchedule(s, idx + 1));
+      const activeCount = mapped.filter((s) => s.isActive).length;
+      const avgKompensasi =
+        mapped.length > 0
+          ? mapped.reduce((sum, s) => sum + s.kompensasiWaktu, 0) /
+            mapped.length
+          : 0;
 
-    const activeCount = allSchedules.filter((s) => s.isActive).length;
-    const avgKompensasi =
-      allSchedules.reduce((sum, s) => sum + s.kompensasiWaktu, 0) /
-      allSchedules.length;
-
-    return {
-      total: allSchedules.length,
-      active: activeCount,
-      inactive: allSchedules.length - activeCount,
-      avgKompensasi: Math.round(avgKompensasi),
-    };
+      return {
+        total: mapped.length,
+        active: activeCount,
+        inactive: mapped.length - activeCount,
+        avgKompensasi: Math.round(avgKompensasi),
+      };
+    } catch {
+      return {
+        total: 0,
+        active: 0,
+        inactive: 0,
+        avgKompensasi: 0,
+      };
+    }
   }),
 });
