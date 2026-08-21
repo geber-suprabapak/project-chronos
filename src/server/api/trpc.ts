@@ -27,8 +27,6 @@ import {
   hasRequiredRole,
 } from "~/server/auth/rbac";
 
-import { db } from "~/server/db";
-
 /**
  * 1. CONTEXT
  *
@@ -41,12 +39,9 @@ import { db } from "~/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
-  return {
-    db,
-    ...opts,
-  };
-};
+export const createTRPCContext = async (opts: { headers: Headers }) => ({
+  ...opts,
+});
 
 export type AuthenticatedContext = Awaited<
   ReturnType<typeof createTRPCContext>

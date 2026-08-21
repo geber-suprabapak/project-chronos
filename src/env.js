@@ -7,10 +7,6 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_URL: z
-      .string()
-      .url()
-      .default("postgresql://postgres:postgres@localhost:5432/chronos"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -41,7 +37,6 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     LOGTO_ENDPOINT: process.env.LOGTO_ENDPOINT,
     LOGTO_APP_ID: process.env.LOGTO_APP_ID,
