@@ -55,6 +55,35 @@ function parseUploadIntentResponse(
   return { ok: true, fileId, uploadUrl };
 }
 
+interface AstraProfileEnvelope {
+  readonly success: boolean;
+  readonly data?: {
+    readonly user_id?: string;
+    readonly full_name?: string | null;
+    readonly email?: string | null;
+    readonly class_name?: string | null;
+  };
+}
+
+function parseProfileResponse(envelope: AstraProfileEnvelope):
+  | {
+      readonly ok: true;
+      readonly userId: string;
+      readonly fullName: string | null;
+      readonly className: string | null;
+    }
+  | { readonly ok: false; readonly error: string } {
+  if (!envelope.success || !envelope.data || !envelope.data.user_id) {
+    return { ok: false, error: "Invalid profile response envelope." };
+  }
+  return {
+    ok: true,
+    userId: envelope.data.user_id,
+    fullName: envelope.data.full_name ?? null,
+    className: envelope.data.class_name ?? null,
+  };
+}
+
 describe("Astra API Contract Boundary", () => {
   describe("buildAstraHeaders", () => {
     it("includes versioned contract header v1 and authorization token", () => {
@@ -125,6 +154,33 @@ describe("Astra API Contract Boundary", () => {
         },
       });
 
+      assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseProfileResponse", () => {
+    it("extracts profile details from valid contract envelope", () => {
+      const result = parseProfileResponse({
+        success: true,
+        data: {
+          user_id: "user-stu-001",
+          full_name: "Ahmad Dahlan",
+          class_name: "XII RPL 1",
+          email: "ahmad@skanida.sch.id",
+        },
+      });
+      assert.deepEqual(result, {
+        ok: true,
+        userId: "user-stu-001",
+        fullName: "Ahmad Dahlan",
+        className: "XII RPL 1",
+      });
+    });
+
+    it("returns error when success is false or data is missing", () => {
+      const result = parseProfileResponse({
+        success: false,
+      });
       assert.equal(result.ok, false);
     });
   });
