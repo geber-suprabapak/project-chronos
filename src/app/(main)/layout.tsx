@@ -5,8 +5,6 @@ import { getLogtoContext } from "@logto/next/server-actions";
 import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -47,13 +45,6 @@ export default async function DashLayout({
     const userRole = resolveLogtoRole(rawRoles);
     if (!userRole || !isPrivilegedRole(userRole)) {
       redirect("/login?error=forbidden_role");
-    }
-
-    if (isAdminRole(userRole)) {
-      const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
-      if (!mfaOk) {
-        redirect("/login?error=mfa_required");
-      }
     }
   } catch (err) {
     if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {

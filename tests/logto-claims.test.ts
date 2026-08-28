@@ -2,8 +2,6 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   isAdminRole,
-  isMfaRequired,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -75,34 +73,6 @@ describe("Logto Claims & RBAC Resolution", () => {
       assert.equal(isAdminRole("staff"), false);
       assert.equal(isAdminRole("student"), false);
     });
-
-    it("requires MFA for admin roles only", () => {
-      assert.equal(isMfaRequired("platform_admin"), true);
-      assert.equal(isMfaRequired("school_admin"), true);
-      assert.equal(isMfaRequired("teacher"), false);
-      assert.equal(isMfaRequired("student"), false);
-    });
-  });
-
-  describe("isMfaVerified", () => {
-    it("respects explicit boolean when provided", () => {
-      assert.equal(isMfaVerified(true, undefined), true);
-      assert.equal(isMfaVerified(false, ["pwd", "totp"]), false);
-    });
-
-    it("verifies MFA from AMR claims with pwd and second factor", () => {
-      assert.equal(isMfaVerified(undefined, ["pwd", "mfa"]), true);
-      assert.equal(isMfaVerified(undefined, ["pwd", "totp"]), true);
-      assert.equal(isMfaVerified(undefined, ["pwd", "otp"]), true);
-      assert.equal(isMfaVerified(undefined, ["pwd", "webauthn"]), true);
-    });
-
-    it("rejects AMR missing pwd or second factor", () => {
-      assert.equal(isMfaVerified(undefined, ["pwd"]), false);
-      assert.equal(isMfaVerified(undefined, ["totp"]), false);
-      assert.equal(isMfaVerified(undefined, []), false);
-      assert.equal(isMfaVerified(undefined, undefined), false);
-    });
   });
 
   describe("isPasswordChangeRequired", () => {
@@ -155,6 +125,8 @@ describe("Logto Claims & RBAC Resolution", () => {
       assert.ok(Array.isArray(logtoConfig.scopes));
       assert.ok(logtoConfig.scopes.includes("roles"));
       assert.ok(logtoConfig.scopes.includes("profile"));
+      assert.ok(logtoConfig.scopes.includes("mobile:access"));
+      assert.ok(logtoConfig.scopes.includes("admin:read"));
     });
   });
 });

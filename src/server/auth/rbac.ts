@@ -59,10 +59,8 @@ export function hasRequiredRole(
 }
 
 export {
-  isMfaVerified,
   isPasswordChangeRequired,
   resolveLogtoRole,
   isPrivilegedRole,
   isAdminRole,
-  isMfaRequired,
 } from "~/lib/logto/claims";

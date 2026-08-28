@@ -16,6 +16,12 @@ export const logtoConfig: LogtoNextConfig = {
     UserScope.Email,
     UserScope.Roles,
     UserScope.CustomData,
+    // These are permissions on the Astra API resource. Logto only grants the
+    // subset assigned through the authenticated user's global roles.
+    "mobile:access",
+    "admin:read",
+    "files:read:any",
+    "files:delete:any",
   ],
   resources: env.LOGTO_RESOURCE ? [env.LOGTO_RESOURCE] : undefined,
 };

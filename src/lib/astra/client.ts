@@ -1,4 +1,4 @@
-import { getAccessToken } from "@logto/next/server-actions";
+import { getAccessTokenRSC } from "@logto/next/server-actions";
 import { env } from "~/env.js";
 import { logtoConfig } from "~/lib/logto/config";
 
@@ -23,7 +23,10 @@ export async function astraRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = await getAccessToken(logtoConfig, env.LOGTO_RESOURCE);
+  // This client is also used while rendering Server Components through the
+  // server-side tRPC caller. The RSC variant deliberately does not persist a
+  // refreshed token cookie, which Next.js forbids during render.
+  const token = await getAccessTokenRSC(logtoConfig, env.LOGTO_RESOURCE);
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
   headers.set("Accept", "application/json");

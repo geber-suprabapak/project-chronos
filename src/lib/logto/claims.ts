@@ -3,8 +3,6 @@ import type { AppRole } from "~/server/auth/rbac";
 
 export type ExtendedLogtoClaims = IdTokenClaims & {
   readonly roles?: readonly string[];
-  readonly mfa_verified?: boolean;
-  readonly amr?: readonly string[];
   readonly must_change_password?: boolean | string | number | null;
 };
 
@@ -14,22 +12,6 @@ export function extractExtendedClaims(
   if (!claims) return null;
   // SAFETY: Logto ID token claims include standard OIDC claims and custom platform claims
   return claims as ExtendedLogtoClaims;
-}
-
-export function isMfaVerified(
-  explicit: boolean | undefined,
-  authenticationMethods: readonly string[] | undefined,
-): boolean {
-  if (explicit !== undefined) {
-    return explicit;
-  }
-
-  return (
-    authenticationMethods?.includes("pwd") === true &&
-    authenticationMethods.some((method) =>
-      ["mfa", "otp", "totp", "webauthn"].includes(method),
-    )
-  );
 }
 
 export function isPasswordChangeRequired(
@@ -99,8 +81,4 @@ const ADMIN_SET = new Set<string>([
 
 export function isAdminRole(role: string | null | undefined): boolean {
   return role != null && ADMIN_SET.has(role);
-}
-
-export function isMfaRequired(role: string | null | undefined): boolean {
-  return isAdminRole(role);
 }

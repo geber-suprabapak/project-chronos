@@ -4,8 +4,6 @@ import type { NextRequest } from "next/server";
 import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -14,8 +12,13 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  await handleSignIn(logtoConfig, searchParams);
+  // The authorization request registered this exact path. Construct it from
+  // the configured public base URL instead of request.nextUrl: the app is
+  // commonly reached through a tunnel or reverse proxy, whose internal host
+  // must never become part of the authorization-code redirect URI.
+  const callbackUrl = new URL("/api/logto/callback", logtoConfig.baseUrl);
+  callbackUrl.search = request.nextUrl.search;
+  await handleSignIn(logtoConfig, callbackUrl);
 
   const context = await getLogtoContext(logtoConfig, { fetchUserInfo: true });
   if (!context.isAuthenticated || !context.claims) {
@@ -32,13 +35,6 @@ export async function GET(request: NextRequest) {
 
   if (!resolvedRole || !isPrivilegedRole(resolvedRole)) {
     redirect("/login?error=forbidden_role");
-  }
-
-  if (isAdminRole(resolvedRole)) {
-    const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
-    if (!mfaOk) {
-      redirect("/login?error=mfa_required");
-    }
   }
 
   redirect("/dashboard");

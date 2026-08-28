@@ -3,8 +3,6 @@ import { getLogtoContext } from "@logto/next/server-actions";
 import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -66,19 +64,6 @@ export async function requireExportAccess(
       return {
         ok: false,
         response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-      };
-    }
-
-    if (
-      isAdminRole(role) &&
-      !isMfaVerified(claims?.mfa_verified, claims?.amr)
-    ) {
-      return {
-        ok: false,
-        response: NextResponse.json(
-          { error: "MFA verification required" },
-          { status: 403 },
-        ),
       };
     }
 

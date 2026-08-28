@@ -4,8 +4,6 @@ import LogtoClient from "@logto/next/edge";
 import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -69,16 +67,6 @@ export async function middleware(req: NextRequest) {
           url.pathname = "/login";
           url.searchParams.set("error", "forbidden_role");
           return NextResponse.redirect(url);
-        }
-
-        if (isAdminRole(userRole)) {
-          const mfaOk = isMfaVerified(claims?.mfa_verified, claims?.amr);
-          if (!mfaOk) {
-            const url = req.nextUrl.clone();
-            url.pathname = "/login";
-            url.searchParams.set("error", "mfa_required");
-            return NextResponse.redirect(url);
-          }
         }
       }
 

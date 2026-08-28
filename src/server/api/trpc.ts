@@ -13,8 +13,6 @@ import { getLogtoContext } from "@logto/next/server-actions";
 import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -123,16 +121,6 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Forbidden role.",
-    });
-  }
-
-  if (
-    isAdminRole(userRole) &&
-    !isMfaVerified(claims?.mfa_verified, claims?.amr)
-  ) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "MFA verification required.",
     });
   }
 

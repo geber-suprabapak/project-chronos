@@ -1,8 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  isAdminRole,
-  isMfaVerified,
   isPasswordChangeRequired,
   isPrivilegedRole,
   resolveLogtoRole,
@@ -45,14 +43,6 @@ function evaluateCallbackRouting(
     return decision;
   }
 
-  if (isAdminRole(role) && !isMfaVerified(claims.mfa_verified, claims.amr)) {
-    const decision: CallbackRouteDecision = {
-      action: "redirect",
-      target: "/login?error=mfa_required",
-    };
-    return decision;
-  }
-
   const decision: CallbackRouteDecision = {
     action: "redirect",
     target: "/dashboard",
@@ -72,7 +62,7 @@ describe("Logto Callback and Session Routing", () => {
     assert.deepEqual(result, { action: "redirect", target: "/ganti-password" });
   });
 
-  it("denies platform_admin missing MFA and routes to /login?error=mfa_required", () => {
+  it("allows platform_admin without a custom MFA claim", () => {
     const result = evaluateCallbackRouting({
       claims: {
         sub: "admin-1",
@@ -82,13 +72,10 @@ describe("Logto Callback and Session Routing", () => {
         amr: ["pwd"],
       },
     });
-    assert.deepEqual(result, {
-      action: "redirect",
-      target: "/login?error=mfa_required",
-    });
+    assert.deepEqual(result, { action: "redirect", target: "/dashboard" });
   });
 
-  it("allows verified platform_admin with MFA and no password change to /dashboard", () => {
+  it("allows platform_admin with an MFA method and no password change", () => {
     const result = evaluateCallbackRouting({
       claims: {
         sub: "admin-1",

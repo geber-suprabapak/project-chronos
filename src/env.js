@@ -37,14 +37,16 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    NODE_ENV: process.env.NODE_ENV,
-    LOGTO_ENDPOINT: process.env.LOGTO_ENDPOINT,
-    LOGTO_APP_ID: process.env.LOGTO_APP_ID,
-    LOGTO_APP_SECRET: process.env.LOGTO_APP_SECRET,
-    LOGTO_COOKIE_SECRET: process.env.LOGTO_COOKIE_SECRET,
-    LOGTO_BASE_URL: process.env.LOGTO_BASE_URL,
-    LOGTO_RESOURCE: process.env.LOGTO_RESOURCE,
-    ASTRA_API_URL: process.env.ASTRA_API_URL,
+    // Bracket access preserves runtime configuration in every Next server and
+    // edge bundle; direct property access can be inlined independently at build.
+    NODE_ENV: process.env["NODE_ENV"],
+    LOGTO_ENDPOINT: process.env["LOGTO_ENDPOINT"],
+    LOGTO_APP_ID: process.env["LOGTO_APP_ID"],
+    LOGTO_APP_SECRET: process.env["LOGTO_APP_SECRET"],
+    LOGTO_COOKIE_SECRET: process.env["LOGTO_COOKIE_SECRET"],
+    LOGTO_BASE_URL: process.env["LOGTO_BASE_URL"],
+    LOGTO_RESOURCE: process.env["LOGTO_RESOURCE"],
+    ASTRA_API_URL: process.env["ASTRA_API_URL"],
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
