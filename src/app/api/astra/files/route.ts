@@ -93,17 +93,13 @@ export async function POST(request: Request) {
       { status: confirmResponse.ok ? 502 : confirmResponse.status },
     );
   }
-  // SAFETY: Astra returned a successful confirmation envelope; the download URL is validated below.
+  // SAFETY: Astra returned a successful confirmation envelope containing a FileRecord.
   const confirmation = (await confirmResponse.json()) as {
-    data?: { download_url?: string | null };
+    data?: { id?: string; object_path?: string; download_url?: string | null };
   };
-  const downloadUrl = confirmation.data?.download_url;
-  if (!downloadUrl) {
-    return NextResponse.json(
-      { error: "File upload confirmation returned no download URL." },
-      { status: 502 },
-    );
-  }
 
-  return NextResponse.json({ file_id: fileId, url: downloadUrl });
+  return NextResponse.json({
+    file_id: confirmation.data?.id ?? fileId,
+    url: confirmation.data?.object_path ?? confirmation.data?.id ?? fileId,
+  });
 }

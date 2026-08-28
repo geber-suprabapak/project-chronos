@@ -22,7 +22,7 @@ export const env = createEnv({
       .default("complex_password_at_least_32_characters_long_12345"),
     LOGTO_BASE_URL: z.string().url().default("http://localhost:3000"),
     LOGTO_RESOURCE: z.string().optional(),
-    ASTRA_API_URL: z.string().url().default("http://localhost:8787"),
+    ASTRA_API_URL: z.string().url().default("http://localhost:3000"),
   },
 
   /**

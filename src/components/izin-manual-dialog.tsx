@@ -178,13 +178,14 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
       // SAFETY: The response was checked by the caller path and is decoded only for the upload contract fields.
       const result = (await response.json()) as {
         url?: string;
+        file_id?: string;
         error?: string;
       };
-      if (!response.ok || !result.url) {
+      if (!response.ok || (!result.url && !result.file_id)) {
         toast.error(result.error ?? "Gagal upload foto");
         return null;
       }
-      return result.url;
+      return result.file_id ?? result.url ?? null;
     } catch (err) {
       console.error("Upload error:", err);
       toast.error("Gagal upload foto");

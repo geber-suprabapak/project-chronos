@@ -18,29 +18,22 @@ Image yang dipublish:
 
 ### Build-time (Docker build args)
 
-Wajib diisi saat build image karena dipakai oleh client bundle Next.js:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-Di workflow nilainya diambil dari GitHub repository secrets.
+- `SKIP_ENV_VALIDATION=1` (opsional, default aktif di Dockerfile untuk build tanpa runtime env)
 
 ### Runtime (container environment)
 
-Wajib diisi saat container dijalankan:
+Wajib diisi saat container dijalankan (dapat melalui `.env` atau compose environment):
 
-- `DATABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NODE_ENV` (misal: `production`)
+- `LOGTO_ENDPOINT` (misal: `http://logto:3001` atau `https://auth.skanida.sch.id`)
+- `LOGTO_APP_ID` (misal: `chronos-app`)
+- `LOGTO_APP_SECRET` (secret Logto app)
+- `LOGTO_COOKIE_SECRET` (secret cookie minimal 32 karakter)
+- `LOGTO_BASE_URL` (misal: `https://admin.skanida.sch.id` atau `http://localhost:3000`)
+- `LOGTO_RESOURCE` (misal: `https://api.skanida.sch.id`)
+- `ASTRA_API_URL` (misal: `http://astra:3000` atau `https://api.skanida.sch.id`)
 
 Catatan: aplikasi memvalidasi env lewat `src/env.js` saat startup server.
-
-## Required GitHub Secrets
-
-Set dua secret ini di repository:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ## Pull and Run
 
@@ -58,12 +51,10 @@ docker run -p 3000:3000 --env-file .env ghcr.io/geber-suprabapak/project-chronos
 
 ## Local Build (optional)
 
-Jika build manual lokal, tetap wajib isi build args untuk `NEXT_PUBLIC_*`:
+Build image Docker secara lokal:
 
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL="your-supabase-url" \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key" \
   --build-arg SKIP_ENV_VALIDATION=1 \
   -t project-chronos:local .
 ```

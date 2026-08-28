@@ -27,7 +27,7 @@ interface AstraLeaveRequest {
   student_nis?: string | null;
   student_class?: string | null;
   absence_number?: string | null;
-  category: "sakit" | "pergi" | "dispensasi";
+  category: "sakit" | "pergi" | "dispensasi" | "lainnya";
   description?: string | null;
   status: boolean;
   date: string;
@@ -217,63 +217,33 @@ export const perizinanRouter = createTRPCRouter({
       }
 
       const created = await astraRequest<AstraLeaveRequest>(
-        "/v1/mobile/permits",
+        "/v1/admin/leave-requests",
         {
           method: "POST",
           body: JSON.stringify({
+            user_id: student.user_id,
             category: input.kategoriIzin,
             description:
               input.deskripsi ??
               `Izin ${input.kategoriIzin} dicatat oleh administrator.`,
             date: input.tanggal,
             file_id: input.linkFoto,
+            approval_status: "approved",
           }),
         },
-      ).catch(() => null);
+      );
 
-      if (created) {
-        try {
-          const approved = await astraRequest<AstraLeaveRequest>(
-            `/v1/admin/leave-requests/${created.id}/approve`,
-            { method: "POST" },
-          );
-          return mapAstraLeaveRequestToPerizinan(approved);
-        } catch {
-          return mapAstraLeaveRequestToPerizinan(created);
-        }
+      const mapped = mapAstraLeaveRequestToPerizinan(created);
+      if (!mapped.userProfile.fullName && student.full_name) {
+        mapped.userProfile.fullName = student.full_name;
       }
-
-      return {
-        id: crypto.randomUUID(),
-        userId: student.user_id,
-        tanggal: new Date(`${input.tanggal}T00:00:00+07:00`),
-        kategoriIzin: input.kategoriIzin,
-        deskripsi: input.deskripsi ?? null,
-        linkFoto: input.linkFoto ?? null,
-        approvalStatus: "approved",
-        status: true,
-        rejectionReason: null,
-        rejectedAt: null,
-        approvedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userProfile: {
-          id: student.user_id,
-          userId: student.user_id,
-          fullName: student.full_name ?? null,
-          email: student.email ?? null,
-          nis: student.nis ?? null,
-          className: student.class_name ?? null,
-          absenceNumber: student.absence_number
-            ? parseInt(student.absence_number, 10)
-            : null,
-          avatarUrl: student.avatar_url ?? null,
-          gender: student.gender ?? null,
-          role: student.role ?? "student",
-          createdAt: null,
-          updatedAt: null,
-        },
-      };
+      if (!mapped.userProfile.nis && student.nis) {
+        mapped.userProfile.nis = student.nis;
+      }
+      if (!mapped.userProfile.className && student.class_name) {
+        mapped.userProfile.className = student.class_name;
+      }
+      return mapped;
     }),
 
   // Mengambil satu record perizinan berdasarkan UUID primary key dari Astra.

@@ -55,6 +55,57 @@ function parseUploadIntentResponse(
   return { ok: true, fileId, uploadUrl };
 }
 
+interface AstraFileConfirmationEnvelope {
+  readonly success?: boolean;
+  readonly data?: {
+    readonly id?: string;
+    readonly object_path?: string;
+    readonly download_url?: string | null;
+  };
+}
+
+interface FileConfirmationResult {
+  readonly fileId: string;
+  readonly url: string;
+}
+
+function parseFileConfirmationResponse(
+  envelope: AstraFileConfirmationEnvelope,
+  fallbackFileId: string,
+): FileConfirmationResult {
+  return {
+    fileId: envelope.data?.id ?? fallbackFileId,
+    url:
+      envelope.data?.object_path ??
+      envelope.data?.download_url ??
+      envelope.data?.id ??
+      fallbackFileId,
+  };
+}
+
+interface AdminLeaveRequestPayload {
+  readonly user_id: string;
+  readonly category: string;
+  readonly description: string;
+  readonly date: string;
+  readonly file_id?: string;
+  readonly approval_status?: string;
+}
+
+function validateAdminLeaveRequestPayload(
+  payload: AdminLeaveRequestPayload,
+): boolean {
+  if (!payload.user_id || !payload.category || !payload.date) return false;
+  if (!["sakit", "pergi", "dispensasi", "lainnya"].includes(payload.category)) {
+    return false;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) return false;
+  if (payload.description.length === 0 || payload.description.length > 1000) {
+    return false;
+  }
+  return true;
+}
+
 interface AstraProfileEnvelope {
   readonly success: boolean;
   readonly data?: {
@@ -340,6 +391,65 @@ describe("Astra API Contract Boundary", () => {
       });
 
       assert.equal(result.ok, false);
+    });
+  });
+
+  describe("parseFileConfirmationResponse", () => {
+    it("handles FileRecord with object_path without requiring download_url", () => {
+      const result = parseFileConfirmationResponse(
+        {
+          success: true,
+          data: {
+            id: "file-uuid-456",
+            object_path: "permits/file-uuid-456.jpg",
+          },
+        },
+        "fallback-id",
+      );
+      assert.deepEqual(result, {
+        fileId: "file-uuid-456",
+        url: "permits/file-uuid-456.jpg",
+      });
+    });
+
+    it("falls back gracefully when data envelope is empty", () => {
+      const result = parseFileConfirmationResponse({}, "fallback-id");
+      assert.deepEqual(result, {
+        fileId: "fallback-id",
+        url: "fallback-id",
+      });
+    });
+  });
+
+  describe("validateAdminLeaveRequestPayload", () => {
+    it("accepts valid admin leave request payload with approval_status", () => {
+      const valid = validateAdminLeaveRequestPayload({
+        user_id: "user-stu-001",
+        category: "sakit",
+        description: "Izin sakit flu dan demam tinggi",
+        date: "2026-08-28",
+        file_id: "file-uuid-123",
+        approval_status: "approved",
+      });
+      assert.equal(valid, true);
+    });
+
+    it("rejects invalid date format or missing user_id", () => {
+      const invalidDate = validateAdminLeaveRequestPayload({
+        user_id: "user-stu-001",
+        category: "sakit",
+        description: "Izin sakit",
+        date: "28-08-2026",
+      });
+      assert.equal(invalidDate, false);
+
+      const missingUser = validateAdminLeaveRequestPayload({
+        user_id: "",
+        category: "sakit",
+        description: "Izin sakit",
+        date: "2026-08-28",
+      });
+      assert.equal(missingUser, false);
     });
   });
 
