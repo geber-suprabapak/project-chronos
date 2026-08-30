@@ -13,6 +13,10 @@ export default {
     ".roo/**",
     ".serena/**",
     ".windsurf/**",
+    "playwright-report/**",
+    "test-results/**",
+    "e2e/**",
+    "tests/**",
     "tools/oxlint/anti-slop/**",
   ],
   jsPlugins: [

@@ -6,6 +6,8 @@ import {
 } from "~/server/api/trpc";
 import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
 import { astraRequest } from "~/lib/astra/client";
+import { normalizeDateOnly } from "~/lib/date-utils";
+import { buildPendingLeaveRequestReset } from "~/server/api/routers/perizinan-contract";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -45,7 +47,10 @@ function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
   return {
     id: lr.id,
     userId: lr.user_id,
-    tanggal: lr.date ? new Date(`${lr.date}T00:00:00+07:00`) : new Date(),
+    // Keep a date-only value across the tRPC boundary. Appending a second
+    // `T00:00...` to an ISO timestamp creates Invalid Date, which downstream
+    // clients can coerce to 01/01/1970.
+    tanggal: normalizeDateOnly(lr.date) ?? "",
     kategoriIzin: lr.category,
     deskripsi: lr.description ?? null,
     linkFoto: lr.attachment_url ?? null,
@@ -136,7 +141,9 @@ export const perizinanRouter = createTRPCRouter({
       }
       const dateParam = input?.date ?? input?.tanggal;
       if (dateParam) {
-        filtered = filtered.filter((lr) => lr.date === dateParam);
+        filtered = filtered.filter(
+          (lr) => normalizeDateOnly(lr.date) === dateParam,
+        );
       }
 
       // Filter out entries created from manual absence (identified by specific keywords in description)
@@ -146,8 +153,8 @@ export const perizinanRouter = createTRPCRouter({
       });
 
       filtered.sort((a, b) => {
-        const dateA = a.date ?? "";
-        const dateB = b.date ?? "";
+        const dateA = normalizeDateOnly(a.date) ?? "";
+        const dateB = normalizeDateOnly(b.date) ?? "";
         const dateComp = dateB.localeCompare(dateA);
         if (dateComp !== 0) return dateComp;
         const createdA = a.created_at ?? "";
@@ -276,6 +283,17 @@ export const perizinanRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
+      if (input.approvalStatus === "pending") {
+        const reset = await astraRequest<AstraLeaveRequest>(
+          `/v1/admin/leave-requests/${input.id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(buildPendingLeaveRequestReset()),
+          },
+        );
+        return mapAstraLeaveRequestToPerizinan(reset);
+      }
+
       if (input.approvalStatus === "approved") {
         const approved = await astraRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/approve`,

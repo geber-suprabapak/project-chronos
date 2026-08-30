@@ -2,7 +2,7 @@
 
 ## GitHub Workflow for GHCR
 
-Workflow file: `.github/workflows/docker-publish.yml`
+Workflow file: `.github/workflows/buildtest.yml`
 
 Trigger:
 

@@ -5,115 +5,18 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { astraRequest } from "~/lib/astra/client";
+import {
+  HARI_ENUM,
+  HARI_TO_ID,
+  ID_TO_HARI,
+  isDayId,
+  mapAstraSchedule,
+  type AstraSchedule,
+} from "~/server/api/routers/jadwal-mapping";
+import { buildScheduleUpdatePayload } from "~/server/api/routers/jadwal-update";
 
-// Valid days enum
-const HARI_ENUM = [
-  "senin",
-  "selasa",
-  "rabu",
-  "kamis",
-  "jumat",
-  "sabtu",
-  "minggu",
-] as const;
-
-export type Hari = (typeof HARI_ENUM)[number];
-
-export function isHari(val: string): val is Hari {
-  return (
-    val === "senin" ||
-    val === "selasa" ||
-    val === "rabu" ||
-    val === "kamis" ||
-    val === "jumat" ||
-    val === "sabtu" ||
-    val === "minggu"
-  );
-}
-
-const HARI_TO_ID = {
-  senin: 1,
-  selasa: 2,
-  rabu: 3,
-  kamis: 4,
-  jumat: 5,
-  sabtu: 6,
-  minggu: 7,
-} as const;
-
-const ID_TO_HARI = {
-  1: "senin",
-  2: "selasa",
-  3: "rabu",
-  4: "kamis",
-  5: "jumat",
-  6: "sabtu",
-  7: "minggu",
-} as const;
-
-export type DayId = keyof typeof ID_TO_HARI;
-
-export function isDayId(id: number): id is DayId {
-  return id in ID_TO_HARI;
-}
-
-export interface AstraSchedule {
-  id: string;
-  school_id?: string | null;
-  class_id?: string | null;
-  academic_period_id?: string | null;
-  location_id?: string | null;
-  day_of_week?: string;
-  hari?: string;
-  start_time?: string | null;
-  end_time?: string | null;
-  start_checkout?: string | null;
-  end_checkout?: string | null;
-  mulai_masuk?: string | null;
-  selesai_masuk?: string | null;
-  mulai_pulang?: string | null;
-  selesai_pulang?: string | null;
-  grace_period_minutes?: number | null;
-  kompensasi_waktu?: number | null;
-  is_active: boolean;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export function mapAstraSchedule(sched: AstraSchedule, indexFallback?: number) {
-  const hariRaw = (sched.hari ?? sched.day_of_week ?? "senin").toLowerCase();
-  const hari = isHari(hariRaw) ? hariRaw : "senin";
-  const numericId = parseInt(sched.id, 10);
-  const safeId = !Number.isNaN(numericId)
-    ? numericId
-    : (HARI_TO_ID[hari] ?? indexFallback ?? 1);
-
-  const formatTime = (t?: string | null, fallback = "00:00:00") => {
-    if (!t) return fallback;
-    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;
-    return t;
-  };
-
-  return {
-    id: safeId,
-    astraId: sched.id,
-    hari,
-    mulaiMasuk: formatTime(sched.mulai_masuk ?? sched.start_time, "06:30:00"),
-    selesaiMasuk: formatTime(sched.selesai_masuk ?? sched.end_time, "07:30:00"),
-    mulaiPulang: formatTime(
-      sched.mulai_pulang ?? sched.start_checkout,
-      "15:00:00",
-    ),
-    selesaiPulang: formatTime(
-      sched.selesai_pulang ?? sched.end_checkout,
-      "16:00:00",
-    ),
-    kompensasiWaktu: sched.kompensasi_waktu ?? sched.grace_period_minutes ?? 0,
-    isActive: sched.is_active ?? true,
-    createdAt: sched.created_at ? new Date(sched.created_at) : new Date(),
-    updatedAt: sched.updated_at ? new Date(sched.updated_at) : new Date(),
-  };
-}
+export { isDayId, mapAstraSchedule };
+export type { AstraSchedule };
 
 /**
  * Router tRPC untuk entitas `jadwal` (schedules) yang di-route melalui Astra API contract v1.
@@ -282,19 +185,18 @@ export const jadwalRouter = createTRPCRouter({
       );
 
       if (target) {
+        const payload = buildScheduleUpdatePayload(input.data);
+        if (Object.keys(payload).length === 0) {
+          throw new Error(
+            "Pilih setidaknya satu nilai jadwal untuk diperbarui.",
+          );
+        }
+
         const updated = await astraRequest<AstraSchedule>(
           `/v1/admin/schedules/${target.id}`,
           {
             method: "PUT",
-            body: JSON.stringify({
-              day_of_week: target.day_of_week ?? targetHari,
-              start_time: input.data.mulaiMasuk,
-              end_time: input.data.selesaiMasuk,
-              start_checkout: input.data.mulaiPulang,
-              end_checkout: input.data.selesaiPulang,
-              grace_period_minutes: input.data.kompensasiWaktu,
-              is_active: input.data.isActive,
-            }),
+            body: JSON.stringify(payload),
           },
         );
         return mapAstraSchedule(updated, input.id);
@@ -362,19 +264,18 @@ export const jadwalRouter = createTRPCRouter({
         );
 
         if (target) {
+          const payload = buildScheduleUpdatePayload(item.data);
+          if (Object.keys(payload).length === 0) {
+            throw new Error(
+              "Pilih setidaknya satu nilai jadwal untuk diperbarui.",
+            );
+          }
+
           const updated = await astraRequest<AstraSchedule>(
             `/v1/admin/schedules/${target.id}`,
             {
               method: "PUT",
-              body: JSON.stringify({
-                day_of_week: target.day_of_week ?? targetHari,
-                start_time: item.data.mulaiMasuk,
-                end_time: item.data.selesaiMasuk,
-                start_checkout: item.data.mulaiPulang,
-                end_checkout: item.data.selesaiPulang,
-                grace_period_minutes: item.data.kompensasiWaktu,
-                is_active: item.data.isActive,
-              }),
+              body: JSON.stringify(payload),
             },
           );
           results.push(mapAstraSchedule(updated, item.id));

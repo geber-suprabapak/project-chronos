@@ -17,23 +17,16 @@ import {
 import { Separator } from "~/components/ui/separator";
 import { User } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
 
 // Helper to format date or datetime; handles date-only strings without timezone skew
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "-";
-  if (!(input instanceof Date)) {
-    const parts = input.split("-");
-    if (parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
-      const [yStr = "0", mStr = "1", dStr = "1"] = parts;
-      const date = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
-      return new Intl.DateTimeFormat("id-ID", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(date);
-    }
+  if (isDateOnlyValue(input)) {
+    return formatDateOnly(input);
   }
   const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("id-ID", {
     year: "numeric",
     month: "long",

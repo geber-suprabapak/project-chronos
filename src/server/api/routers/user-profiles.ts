@@ -5,6 +5,7 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { astraRequest } from "~/lib/astra/client";
+import { collectUniqueClassNames } from "~/lib/class-names";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -220,21 +221,13 @@ export const userProfilesRouter = createTRPCRouter({
   // GET UNIQUE CLASS NAMES: untuk filter dropdown jurusan
   getUniqueClassNames: privilegedProcedure.query(async () => {
     const [classes, students] = await Promise.all([
-      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => []),
+      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => null),
       astraRequest<Array<{ class_name?: string | null }>>(
         "/v1/admin/students",
-      ).catch(() => []),
+      ).catch(() => null),
     ]);
 
-    const uniqueClassNames = new Set<string>();
-    for (const c of classes) {
-      if (c?.name) uniqueClassNames.add(c.name);
-    }
-    for (const s of students) {
-      if (s?.class_name) uniqueClassNames.add(s.class_name);
-    }
-
-    return Array.from(uniqueClassNames).sort();
+    return collectUniqueClassNames(classes, students);
   }),
 });
 

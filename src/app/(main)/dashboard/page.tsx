@@ -19,27 +19,24 @@ import { Button } from "~/components/ui/button";
 import Link from "next/link";
 import { DashboardActionCard } from "~/components/dashboard-action-card";
 import { StatistikPieChart } from "~/components/pie-chart";
+import { formatDateOnly } from "~/lib/date-utils";
 
 /**
  * Helper: Format date to readable Indonesian format
  */
 function formatDate(dateString: string | Date | null | undefined): string {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "-";
-
-  return new Intl.DateTimeFormat("id-ID", {
+  return formatDateOnly(dateString, {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(date);
+  });
 }
 
 interface PendingPermissionsTableProps {
   permissions: Array<{
     id: string;
     kategoriIzin: string;
-    tanggal: Date;
+    tanggal: string | Date;
     userProfile: {
       fullName: string | null;
     } | null;

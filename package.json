@@ -9,9 +9,10 @@
     "dev": "next dev --turbo",
     "format": "oxlint --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "lint": "oxlint && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
-    "preview": "next build && next start",
+    "preview": "next build && node .next/standalone/server.js",
     "start": "next start",
     "test": "node --test tests/*.test.ts",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "check-types": "tsc --noEmit"
   },
@@ -64,6 +65,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@oxlint/plugins": "1.78.0",
+    "@playwright/test": "^1.62.1",
     "@prettier/plugin-oxc": "^0.2.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.2.0",

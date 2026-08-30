@@ -13,8 +13,7 @@ const PUBLIC_PATHS = new Set(["/login", "/ganti-password", "/auth/callback"]);
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
-  if (pathname.startsWith("/api/logto")) return true;
-  if (pathname.startsWith("/api/health")) return true;
+  if (pathname.startsWith("/api/")) return true;
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -26,10 +25,12 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
-const edgeLogtoClient = new LogtoClient(logtoConfig);
-
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+  // Keep the Logto client request-scoped. Its adapter owns mutable cookie
+  // storage, so sharing one edge client across concurrent requests can make an
+  // authenticated request observe another request's empty cookie state.
+  const edgeLogtoClient = new LogtoClient(logtoConfig);
 
   try {
     const logtoContext = await edgeLogtoClient.getLogtoContext(req);
@@ -41,6 +42,9 @@ export async function middleware(req: NextRequest) {
       const userRole = resolveLogtoRole(rawRoles);
 
       if (pathname === "/login") {
+        if (!userRole || !isPrivilegedRole(userRole)) {
+          return NextResponse.next();
+        }
         const url = req.nextUrl.clone();
         url.pathname = mustChangePassword ? "/ganti-password" : "/dashboard";
         return NextResponse.redirect(url);

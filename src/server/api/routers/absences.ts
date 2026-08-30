@@ -5,6 +5,8 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { astraRequest } from "~/lib/astra/client";
+import { normalizeStudentRows } from "~/lib/class-names";
+import { normalizeDateOnly } from "~/lib/date-utils";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -49,6 +51,10 @@ interface AstraLeaveRequest {
   updated_at?: string | null;
 }
 
+function normalizeAttendanceDate(value: string): string {
+  return normalizeDateOnly(value) ?? "";
+}
+
 function mapAstraAttendance(
   att: AstraAttendanceRecord,
   studentMap?: Map<string, AstraStudentProfile>,
@@ -58,7 +64,7 @@ function mapAstraAttendance(
   return {
     id: att.id,
     userId: att.user_id,
-    date: att.date,
+    date: normalizeAttendanceDate(att.date),
     status: att.status,
     actionType: att.action_type ?? null,
     latitude: att.latitude ?? null,
@@ -158,17 +164,24 @@ export const absencesRouter = createTRPCRouter({
   delete: adminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input }) => {
-      return { id: input.id };
+      const deleted = await astraRequest<{ id?: string }>(
+        `/v1/admin/attendance/${input.id}`,
+        { method: "DELETE" },
+      );
+      return { id: deleted.id ?? input.id };
     }),
 
   // BULK DELETE: Hapus banyak data absensi sekaligus
   bulkDelete: adminProcedure
     .input(z.object({ ids: z.array(z.string().uuid()).min(1).max(1000) }))
     .mutation(async ({ input }) => {
-      return {
-        deletedCount: input.ids.length,
-        deletedIds: input.ids,
-      };
+      return astraRequest<{ deletedCount: number; deletedIds: string[] }>(
+        "/v1/admin/attendance/bulk",
+        {
+          method: "DELETE",
+          body: JSON.stringify({ ids: input.ids }),
+        },
+      );
     }),
 
   // Mengambil daftar absensi dengan opsi filter & pagination dari Astra.
@@ -209,12 +222,12 @@ export const absencesRouter = createTRPCRouter({
           ).catch(() => []),
         ),
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
-          () => [],
+          () => null,
         ),
       ]);
 
       const studentMap = new Map<string, AstraStudentProfile>(
-        students.map((s) => [s.user_id, s]),
+        normalizeStudentRows(students).map((s) => [s.user_id, s]),
       );
 
       let filtered = attendances;
@@ -239,15 +252,21 @@ export const absencesRouter = createTRPCRouter({
       }
 
       if (input?.date) {
-        filtered = filtered.filter((a) => a.date === input.date);
+        filtered = filtered.filter(
+          (a) => normalizeAttendanceDate(a.date) === input.date,
+        );
       }
 
       if (input?.startDate) {
-        filtered = filtered.filter((a) => a.date >= input.startDate!);
+        filtered = filtered.filter(
+          (a) => normalizeAttendanceDate(a.date) >= input.startDate!,
+        );
       }
 
       if (input?.endDate) {
-        filtered = filtered.filter((a) => a.date <= input.endDate!);
+        filtered = filtered.filter(
+          (a) => normalizeAttendanceDate(a.date) <= input.endDate!,
+        );
       }
 
       if (input?.query) {
@@ -277,8 +296,8 @@ export const absencesRouter = createTRPCRouter({
       }
 
       filtered.sort((a, b) => {
-        const dateA = a.date ?? "";
-        const dateB = b.date ?? "";
+        const dateA = normalizeAttendanceDate(a.date);
+        const dateB = normalizeAttendanceDate(b.date);
         const dateComp =
           input?.sort === "desc"
             ? dateB.localeCompare(dateA)
@@ -308,16 +327,18 @@ export const absencesRouter = createTRPCRouter({
           "/v1/admin/attendances?limit=100",
         ).catch(() => []),
       ),
-      astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(() => []),
+      astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+        () => null,
+      ),
     ]);
 
     const studentMap = new Map<string, AstraStudentProfile>(
-      students.map((s) => [s.user_id, s]),
+      normalizeStudentRows(students).map((s) => [s.user_id, s]),
     );
 
     const sorted = [...attendances].sort((a, b) => {
-      const dateA = a.date ?? "";
-      const dateB = b.date ?? "";
+      const dateA = normalizeAttendanceDate(a.date);
+      const dateB = normalizeAttendanceDate(b.date);
       const dateComp = dateB.localeCompare(dateA);
       if (dateComp !== 0) return dateComp;
       const timeA = a.created_at ?? "";
@@ -346,7 +367,7 @@ export const absencesRouter = createTRPCRouter({
       ]);
 
       const studentMap = new Map<string, AstraStudentProfile>(
-        students.map((s) => [s.user_id, s]),
+        normalizeStudentRows(students).map((s) => [s.user_id, s]),
       );
 
       const record = attendances.find((a) => a.id === input.id);
@@ -384,7 +405,8 @@ export const absencesRouter = createTRPCRouter({
         ),
       ]);
 
-      const totalUsers = students.length;
+      const normalizedStudents = normalizeStudentRows(students);
+      const totalUsers = normalizedStudents.length;
 
       const dateMap: Record<
         string,
@@ -409,9 +431,9 @@ export const absencesRouter = createTRPCRouter({
       }
 
       attendances
-        .filter((a) => a.date >= startDateStr)
+        .filter((a) => normalizeAttendanceDate(a.date) >= startDateStr)
         .forEach((a) => {
-          const dateStr = a.date;
+          const dateStr = normalizeAttendanceDate(a.date);
           if (dateStr && dateMap[dateStr]) {
             if (a.status === "Terlambat") {
               dateMap[dateStr].terlambat.add(a.user_id);
@@ -425,11 +447,11 @@ export const absencesRouter = createTRPCRouter({
       leaveRequests
         .filter(
           (p) =>
-            p.date >= startDateStr &&
+            (normalizeDateOnly(p.date) ?? "") >= startDateStr &&
             (p.approval_status === "approved" || p.status === true),
         )
         .forEach((p) => {
-          const dateStr = p.date;
+          const dateStr = normalizeDateOnly(p.date) ?? "";
           if (dateStr && dateMap[dateStr]) {
             dateMap[dateStr].izin.add(p.user_id);
           }
@@ -493,7 +515,7 @@ export const absencesRouter = createTRPCRouter({
       let sakit = 0;
 
       attendances
-        .filter((row) => row.date === date)
+        .filter((row) => normalizeAttendanceDate(row.date) === date)
         .forEach((row) => {
           if (
             row.status === "Hadir" ||
@@ -510,7 +532,7 @@ export const absencesRouter = createTRPCRouter({
       leaveRequests
         .filter(
           (row) =>
-            row.date === date &&
+            normalizeDateOnly(row.date) === date &&
             (row.approval_status === "approved" || row.status === true),
         )
         .forEach((row) => {
@@ -548,7 +570,7 @@ export const absencesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      const [allStudents, attendances, leaveRequests] = await Promise.all([
+      const [studentPayload, attendances, leaveRequests] = await Promise.all([
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
           () => [],
         ),
@@ -563,6 +585,8 @@ export const absencesRouter = createTRPCRouter({
           () => [],
         ),
       ]);
+
+      const allStudents = normalizeStudentRows(studentPayload);
 
       const classQuery = input.className.toLowerCase();
       const studentsInClass = allStudents
@@ -594,12 +618,14 @@ export const absencesRouter = createTRPCRouter({
       }
 
       const classAbsences = attendances.filter(
-        (a) => a.date === input.date && studentUserIds.has(a.user_id),
+        (a) =>
+          normalizeAttendanceDate(a.date) === input.date &&
+          studentUserIds.has(a.user_id),
       );
 
       const classPerizinan = leaveRequests.filter(
         (p) =>
-          p.date === input.date &&
+          normalizeDateOnly(p.date) === input.date &&
           studentUserIds.has(p.user_id) &&
           (p.approval_status === "approved" || p.status === true),
       );

@@ -23,6 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { ArrowLeft, Terminal, User, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
 
 // Helper function to format date
 // - Handles date-only strings (YYYY-MM-DD) without applying timezone shift
@@ -30,24 +31,12 @@ import Image from "next/image";
 const formatDate = (input: string | Date | null | undefined) => {
   if (!input) return "N/A";
 
-  if (!(input instanceof Date)) {
-    const parts = input.split("-");
-    if (parts.length === 3 && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
-      const [yStr = "0", mStr = "1", dStr = "1"] = parts;
-      const y = Number(yStr);
-      const m = Number(mStr);
-      const d = Number(dStr);
-      // Construct as local date (no time), avoiding UTC timezone offset issues
-      const date = new Date(y, m - 1, d);
-      return new Intl.DateTimeFormat("id-ID", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(date);
-    }
+  if (isDateOnlyValue(input)) {
+    return formatDateOnly(input);
   }
 
   const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return "N/A";
   return new Intl.DateTimeFormat("id-ID", {
     year: "numeric",
     month: "long",

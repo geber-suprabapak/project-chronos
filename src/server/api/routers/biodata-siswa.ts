@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, privilegedProcedure } from "~/server/api/trpc";
 import { astraRequest } from "~/lib/astra/client";
+import {
+  collectUniqueClassNames,
+  normalizeStudentRows,
+} from "~/lib/class-names";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -29,8 +33,9 @@ export const biodataSiswaRouter = createTRPCRouter({
   getByNis: privilegedProcedure
     .input(z.object({ nis: z.string() }))
     .query(async ({ input }) => {
-      const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+      const students = normalizeStudentRows(
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+      );
 
       const student = students.find((s) => s.nis === input.nis);
       if (!student) return null;
@@ -64,8 +69,9 @@ export const biodataSiswaRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ input }) => {
-      const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+      const students = normalizeStudentRows(
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+      );
 
       let filtered = students;
 
@@ -141,8 +147,9 @@ export const biodataSiswaRouter = createTRPCRouter({
 
   // STATISTICS: get overview statistics dari Astra
   getStatistics: privilegedProcedure.query(async () => {
-    const students =
-      await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+    const students = normalizeStudentRows(
+      await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+    );
 
     let laki = 0;
     let perempuan = 0;
@@ -169,8 +176,9 @@ export const biodataSiswaRouter = createTRPCRouter({
 
   // LIST RAW: semua data dari Astra
   listRaw: privilegedProcedure.query(async () => {
-    const students =
-      await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+    const students = normalizeStudentRows(
+      await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+    );
 
     const sorted = [...students].sort((a, b) => {
       const nisA = a.nis ?? "~~~~";
@@ -196,21 +204,13 @@ export const biodataSiswaRouter = createTRPCRouter({
   // GET UNIQUE CLASSES: untuk filter dropdown dari Astra
   getUniqueClasses: privilegedProcedure.query(async () => {
     const [classes, students] = await Promise.all([
-      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => []),
+      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => null),
       astraRequest<Array<{ class_name?: string | null }>>(
         "/v1/admin/students",
-      ).catch(() => []),
+      ).catch(() => null),
     ]);
 
-    const uniqueClasses = new Set<string>();
-    for (const c of classes) {
-      if (c?.name) uniqueClasses.add(c.name);
-    }
-    for (const s of students) {
-      if (s?.class_name) uniqueClasses.add(s.class_name);
-    }
-
-    return Array.from(uniqueClasses).sort();
+    return collectUniqueClassNames(classes, students);
   }),
 });
 

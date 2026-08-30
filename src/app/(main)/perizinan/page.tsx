@@ -24,41 +24,32 @@ import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { FilterBar, type FilterBarValue } from "~/components/filter-bar";
+import { IzinManualDialog } from "~/components/izin-manual-dialog";
+import {
+  dateOnlySortValue,
+  formatDateOnly,
+  normalizeDateOnly,
+} from "~/lib/date-utils";
 
 // Helper function to format date
 const formatDate = (dateString: string | Date) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat("id-ID", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
+  return formatDateOnly(dateString);
 };
 
 const formatCompactDate = (dateString: string | Date) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat("id-ID", {
+  return formatDateOnly(dateString, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date);
+  });
 };
 
 const getDateSortValue = (value: string | Date) => {
-  if (value instanceof Date) return value.getTime();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-").map(Number);
-    return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).getTime();
-  }
-  return new Date(value).getTime();
+  return dateOnlySortValue(value);
 };
 
 const formatInputDate = (value: string | Date) => {
-  const date = value instanceof Date ? value : new Date(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return normalizeDateOnly(value) ?? "";
 };
 
 // Helper to determine badge variant based on status
@@ -164,6 +155,7 @@ export default function PerizinanPage() {
             </CardDescription>
           </div>
           <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
+            <IzinManualDialog />
             <DownloadExcelButton
               href="/api/export/perizinan"
               filename="perizinan.xlsx"

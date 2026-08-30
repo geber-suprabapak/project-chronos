@@ -1,13 +1,18 @@
 import { signOut } from "@logto/next/server-actions";
-import type { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { logtoConfig } from "~/lib/logto/config";
+import { getPostLogoutRedirectUri } from "~/lib/logto/post-logout-redirect";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const postLogoutRedirectUri =
-    searchParams.get("redirect") ?? `${logtoConfig.baseUrl}/login`;
+export async function GET() {
+  const postLogoutRedirectUri = getPostLogoutRedirectUri(
+    logtoConfig.baseUrl,
+    process.env.LOGTO_POST_LOGOUT_REDIRECT_URI,
+  );
+
+  const cookieStore = await cookies();
+  cookieStore.delete(`logto_${logtoConfig.appId}`);
 
   await signOut(logtoConfig, postLogoutRedirectUri);
 }
