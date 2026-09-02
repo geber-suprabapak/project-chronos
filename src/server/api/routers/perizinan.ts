@@ -8,6 +8,7 @@ import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
 import { astraRequest } from "~/lib/astra/client";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { buildPendingLeaveRequestReset } from "~/server/api/routers/perizinan-contract";
+import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -97,7 +98,7 @@ export const perizinanRouter = createTRPCRouter({
     .input(
       z
         .object({
-          userId: z.string().uuid().optional(),
+          userId: z.string().trim().min(1).max(255).optional(),
           kategoriIzin: z.enum(["sakit", "pergi"]).optional(),
           approvalStatus: z.string().optional(),
           status: z.boolean().optional(),
@@ -116,7 +117,7 @@ export const perizinanRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const leaveRequests = await astraRequest<AstraLeaveRequest[]>(
-        "/v1/admin/leave-requests",
+        buildLeaveRequestsListPath("leave-requests", input?.userId),
       );
 
       let filtered = leaveRequests;

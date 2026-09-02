@@ -711,7 +711,7 @@ export default function ConfigurationPage() {
                       .sort((a, b) => a.id - b.id)
                       .map((location, _index) => (
                         <TableRow
-                          key={location.id}
+                          key={location.astraId}
                           className="hover:bg-muted/50 transition-colors"
                         >
                           <TableCell>

@@ -7,6 +7,10 @@ import {
 import { astraRequest } from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
 import { normalizeDateOnly } from "~/lib/date-utils";
+import {
+  buildAttendanceDateListPath,
+  buildAttendanceListPath,
+} from "~/server/api/routers/history-query";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -189,8 +193,8 @@ export const absencesRouter = createTRPCRouter({
     .input(
       z
         .object({
-          userId: z.string().uuid().optional(),
-          userIds: z.array(z.string().uuid()).optional(),
+          userId: z.string().trim().min(1).max(255).optional(),
+          userIds: z.array(z.string().trim().min(1).max(255)).optional(),
           limit: z.number().int().min(1).max(1500).default(20),
           offset: z.number().int().min(0).default(0),
           status: z.string().optional(),
@@ -215,10 +219,10 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const [attendances, students] = await Promise.all([
         astraRequest<AstraAttendanceRecord[]>(
-          "/v1/admin/attendance?limit=100",
+          buildAttendanceListPath("attendance", input?.userId),
         ).catch(() =>
           astraRequest<AstraAttendanceRecord[]>(
-            "/v1/admin/attendances?limit=100",
+            buildAttendanceListPath("attendances", input?.userId),
           ).catch(() => []),
         ),
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
@@ -321,10 +325,10 @@ export const absencesRouter = createTRPCRouter({
   listRaw: protectedProcedure.query(async () => {
     const [attendances, students] = await Promise.all([
       astraRequest<AstraAttendanceRecord[]>(
-        "/v1/admin/attendance?limit=100",
+        buildAttendanceListPath("attendance"),
       ).catch(() =>
         astraRequest<AstraAttendanceRecord[]>(
-          "/v1/admin/attendances?limit=100",
+          buildAttendanceListPath("attendances"),
         ).catch(() => []),
       ),
       astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
@@ -355,10 +359,10 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const [attendances, students] = await Promise.all([
         astraRequest<AstraAttendanceRecord[]>(
-          "/v1/admin/attendance?limit=100",
+          buildAttendanceListPath("attendance"),
         ).catch(() =>
           astraRequest<AstraAttendanceRecord[]>(
-            "/v1/admin/attendances?limit=100",
+            buildAttendanceListPath("attendances"),
           ).catch(() => []),
         ),
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
@@ -394,10 +398,10 @@ export const absencesRouter = createTRPCRouter({
           () => [],
         ),
         astraRequest<AstraAttendanceRecord[]>(
-          "/v1/admin/attendance?limit=100",
+          buildAttendanceListPath("attendance"),
         ).catch(() =>
           astraRequest<AstraAttendanceRecord[]>(
-            "/v1/admin/attendances?limit=100",
+            buildAttendanceListPath("attendances"),
           ).catch(() => []),
         ),
         astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
@@ -496,10 +500,10 @@ export const absencesRouter = createTRPCRouter({
           () => [],
         ),
         astraRequest<AstraAttendanceRecord[]>(
-          `/v1/admin/attendance?date=${date}&limit=100`,
+          buildAttendanceDateListPath("attendance", date),
         ).catch(() =>
           astraRequest<AstraAttendanceRecord[]>(
-            `/v1/admin/attendances?date=${date}&limit=100`,
+            buildAttendanceDateListPath("attendances", date),
           ).catch(() => []),
         ),
         astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
@@ -575,10 +579,10 @@ export const absencesRouter = createTRPCRouter({
           () => [],
         ),
         astraRequest<AstraAttendanceRecord[]>(
-          `/v1/admin/attendance?date=${input.date}&limit=100`,
+          buildAttendanceDateListPath("attendance", input.date),
         ).catch(() =>
           astraRequest<AstraAttendanceRecord[]>(
-            `/v1/admin/attendances?date=${input.date}&limit=100`,
+            buildAttendanceDateListPath("attendances", input.date),
           ).catch(() => []),
         ),
         astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(

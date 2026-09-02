@@ -22,6 +22,7 @@ export const env = createEnv({
       .default("complex_password_at_least_32_characters_long_12345"),
     LOGTO_BASE_URL: z.string().url().default("http://localhost:3000"),
     LOGTO_RESOURCE: z.string().optional(),
+    LOGTO_POST_LOGOUT_REDIRECT_URI: z.string().url(),
     ASTRA_API_URL: z.string().url().default("http://localhost:3000"),
   },
 
@@ -46,6 +47,8 @@ export const env = createEnv({
     LOGTO_COOKIE_SECRET: process.env["LOGTO_COOKIE_SECRET"],
     LOGTO_BASE_URL: process.env["LOGTO_BASE_URL"],
     LOGTO_RESOURCE: process.env["LOGTO_RESOURCE"],
+    LOGTO_POST_LOGOUT_REDIRECT_URI:
+      process.env["LOGTO_POST_LOGOUT_REDIRECT_URI"],
     ASTRA_API_URL: process.env["ASTRA_API_URL"],
   },
   /**

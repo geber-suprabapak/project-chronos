@@ -5,35 +5,19 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { astraRequest } from "~/lib/astra/client";
+import {
+  getAstraDefaultLocation,
+  findAstraLocationByUiId,
+  getAstraLocationUiId,
+  getAstraPrimaryLocation,
+  isAstraDefaultLocation,
+  mapAstraLocation,
+  mapAstraLocations,
+  sortAstraLocations,
+  type AstraLocation,
+} from "~/server/api/routers/location-mapping";
 
-export interface AstraLocation {
-  id: string;
-  school_id?: string | null;
-  name: string;
-  latitude: number;
-  longitude: number;
-  radius_meters: number;
-  is_active: boolean;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export function mapAstraLocation(loc: AstraLocation, indexFallback?: number) {
-  const numericId = parseInt(loc.id, 10);
-  const safeId = !Number.isNaN(numericId) ? numericId : (indexFallback ?? 1);
-
-  return {
-    id: safeId,
-    astraId: loc.id,
-    name: loc.name,
-    latitude: loc.latitude,
-    longitude: loc.longitude,
-    distance: loc.radius_meters,
-    isActive: loc.is_active,
-    createdAt: loc.created_at ? new Date(loc.created_at) : new Date(),
-    updatedAt: loc.updated_at ? new Date(loc.updated_at) : new Date(),
-  };
-}
+export type { AstraLocation } from "~/server/api/routers/location-mapping";
 
 /**
  * Router tRPC untuk konfigurasi lokasi yang di-route melalui Astra API contract v1.
@@ -43,10 +27,14 @@ export const locationRouter = createTRPCRouter({
   get: protectedProcedure.query(async () => {
     try {
       const locations = await astraRequest<AstraLocation[]>(
-        "/v1/admin/locations?isActive=true",
+        "/v1/admin/locations",
       );
-      const active = locations.find((loc) => loc.is_active) ?? locations[0];
-      return active ? mapAstraLocation(active, 1) : null;
+      const ordered = sortAstraLocations(locations);
+      const active = getAstraPrimaryLocation(ordered);
+      if (!active) return null;
+
+      const uiId = ordered.findIndex((loc) => loc.id === active.id) + 1;
+      return mapAstraLocation(active, uiId);
     } catch {
       return null;
     }
@@ -58,7 +46,7 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      return locations.map((loc, idx) => mapAstraLocation(loc, idx + 1));
+      return mapAstraLocations(locations);
     } catch {
       return [];
     }
@@ -68,11 +56,11 @@ export const locationRouter = createTRPCRouter({
   getActive: protectedProcedure.query(async () => {
     try {
       const locations = await astraRequest<AstraLocation[]>(
-        "/v1/admin/locations?isActive=true",
+        "/v1/admin/locations",
       );
-      return locations
-        .filter((loc) => loc.is_active)
-        .map((loc, idx) => mapAstraLocation(loc, idx + 1));
+      return mapAstraLocations(locations).filter(
+        (location) => location.isActive,
+      );
     } catch {
       return [];
     }
@@ -86,11 +74,9 @@ export const locationRouter = createTRPCRouter({
         const locations = await astraRequest<AstraLocation[]>(
           "/v1/admin/locations",
         );
-        const idStr = String(input.id);
-        const loc = locations.find(
-          (l, idx) => l.id === idStr || idx + 1 === input.id,
-        );
-        return loc ? mapAstraLocation(loc, input.id) : null;
+        const loc = findAstraLocationByUiId(locations, input.id);
+        const uiId = loc ? getAstraLocationUiId(locations, loc.id) : undefined;
+        return loc ? mapAstraLocation(loc, uiId) : null;
       } catch {
         return null;
       }
@@ -141,14 +127,17 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      const idStr = String(input.id);
-      const target = locations.find(
-        (l, idx) => l.id === idStr || idx + 1 === input.id,
-      );
-      const targetId = target ? target.id : idStr;
+      const target = findAstraLocationByUiId(locations, input.id);
+      if (!target) {
+        throw new Error("Location not found");
+      }
+      if (isAstraDefaultLocation(locations, target.id)) {
+        throw new Error("Default location cannot be modified");
+      }
+      const targetUiId = getAstraLocationUiId(locations, target.id) ?? input.id;
 
       const updated = await astraRequest<AstraLocation>(
-        `/v1/admin/locations/${targetId}`,
+        `/v1/admin/locations/${target.id}`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -161,7 +150,7 @@ export const locationRouter = createTRPCRouter({
         },
       );
 
-      return mapAstraLocation(updated, input.id);
+      return mapAstraLocation(updated, targetUiId);
     }),
 
   // Toggle location active status
@@ -171,14 +160,15 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      const idStr = String(input.id);
-      const target = locations.find(
-        (l, idx) => l.id === idStr || idx + 1 === input.id,
-      );
+      const target = findAstraLocationByUiId(locations, input.id);
 
       if (!target) {
         throw new Error("Location not found");
       }
+      if (isAstraDefaultLocation(locations, target.id)) {
+        throw new Error("Default location cannot be modified");
+      }
+      const targetUiId = getAstraLocationUiId(locations, target.id) ?? input.id;
 
       const updated = await astraRequest<AstraLocation>(
         `/v1/admin/locations/${target.id}`,
@@ -190,7 +180,7 @@ export const locationRouter = createTRPCRouter({
         },
       );
 
-      return mapAstraLocation(updated, input.id);
+      return mapAstraLocation(updated, targetUiId);
     }),
 
   // Delete location
@@ -200,17 +190,20 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      const idStr = String(input.id);
-      const target = locations.find(
-        (l, idx) => l.id === idStr || idx + 1 === input.id,
-      );
-      const targetId = target ? target.id : idStr;
+      const target = findAstraLocationByUiId(locations, input.id);
+      if (!target) {
+        throw new Error("Location not found");
+      }
+      if (isAstraDefaultLocation(locations, target.id)) {
+        throw new Error("Default location cannot be modified");
+      }
+      const targetUiId = getAstraLocationUiId(locations, target.id) ?? input.id;
 
-      await astraRequest<{ id: string }>(`/v1/admin/locations/${targetId}`, {
+      await astraRequest<{ id: string }>(`/v1/admin/locations/${target.id}`, {
         method: "DELETE",
       });
 
-      return target ? mapAstraLocation(target, input.id) : null;
+      return mapAstraLocation(target, targetUiId);
     }),
 
   // Update single field quickly
@@ -226,11 +219,14 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      const idStr = String(input.id);
-      const target = locations.find(
-        (l, idx) => l.id === idStr || idx + 1 === input.id,
-      );
-      const targetId = target ? target.id : idStr;
+      const target = findAstraLocationByUiId(locations, input.id);
+      if (!target) {
+        throw new Error("Location not found");
+      }
+      if (isAstraDefaultLocation(locations, target.id)) {
+        throw new Error("Default location cannot be modified");
+      }
+      const targetUiId = getAstraLocationUiId(locations, target.id) ?? input.id;
 
       const payload: Record<string, string | number> = {};
       if (input.field === "distance") {
@@ -240,14 +236,14 @@ export const locationRouter = createTRPCRouter({
       }
 
       const updated = await astraRequest<AstraLocation>(
-        `/v1/admin/locations/${targetId}`,
+        `/v1/admin/locations/${target.id}`,
         {
           method: "PUT",
           body: JSON.stringify(payload),
         },
       );
 
-      return mapAstraLocation(updated, input.id);
+      return mapAstraLocation(updated, targetUiId);
     }),
 
   // Upsert location (for primary location management)
@@ -264,7 +260,7 @@ export const locationRouter = createTRPCRouter({
       const locations = await astraRequest<AstraLocation[]>(
         "/v1/admin/locations",
       );
-      const existing = locations[0];
+      const existing = getAstraDefaultLocation(locations);
 
       if (existing) {
         const updated = await astraRequest<AstraLocation>(
@@ -310,7 +306,7 @@ export const locationRouter = createTRPCRouter({
     const locations = await astraRequest<AstraLocation[]>(
       "/v1/admin/locations",
     );
-    const existing = locations[0];
+    const existing = getAstraDefaultLocation(locations);
 
     if (existing) {
       const updated = await astraRequest<AstraLocation>(

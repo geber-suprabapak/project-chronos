@@ -27,6 +27,17 @@ function isPublicPath(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+
+  if (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/assets") ||
+    pathname.startsWith("/public")
+  ) {
+    return NextResponse.next();
+  }
+
   // Keep the Logto client request-scoped. Its adapter owns mutable cookie
   // storage, so sharing one edge client across concurrent requests can make an
   // authenticated request observe another request's empty cookie state.

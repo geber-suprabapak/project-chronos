@@ -31,6 +31,7 @@ Wajib diisi saat container dijalankan (dapat melalui `.env` atau compose environ
 - `LOGTO_COOKIE_SECRET` (secret cookie minimal 32 karakter)
 - `LOGTO_BASE_URL` (misal: `https://admin.skanida.sch.id` atau `http://localhost:3000`)
 - `LOGTO_RESOURCE` (misal: `https://api.skanida.sch.id`)
+- `LOGTO_POST_LOGOUT_REDIRECT_URI` (misal: `https://admin.skanida.sch.id` atau `http://localhost:3000`)
 - `ASTRA_API_URL` (misal: `http://astra:3000` atau `https://api.skanida.sch.id`)
 
 Catatan: aplikasi memvalidasi env lewat `src/env.js` saat startup server.
