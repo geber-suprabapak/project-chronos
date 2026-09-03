@@ -37,9 +37,7 @@ export async function requireExportAccess(
   const requiredRoles = EXPORT_ROLE_MAP[resource];
 
   try {
-    const logtoContext = await getLogtoContext(logtoConfig, {
-      fetchUserInfo: true,
-    });
+    const logtoContext = await getLogtoContext(logtoConfig);
 
     if (!logtoContext.isAuthenticated || !logtoContext.claims) {
       return {
@@ -78,7 +76,8 @@ export async function requireExportAccess(
     const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
     const email = claims?.email ?? fallbackEmail ?? "";
     // SAFETY: Logto user info name is the optional OIDC display-name claim.
-    const fullName = logtoContext.userInfo?.name as string | undefined;
+    const fallbackName = logtoContext.userInfo?.name as string | undefined;
+    const fullName = claims?.name ?? fallbackName;
     const user: AuthenticatedUser = {
       id: claims?.sub ?? "",
       email,

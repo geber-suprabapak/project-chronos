@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   callbackUrl.search = request.nextUrl.search;
   await handleSignIn(logtoConfig, callbackUrl);
 
-  const context = await getLogtoContext(logtoConfig, { fetchUserInfo: true });
+  const context = await getLogtoContext(logtoConfig);
   if (!context.isAuthenticated || !context.claims) {
     redirect("/login?error=unauthorized");
   }

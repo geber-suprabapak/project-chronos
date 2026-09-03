@@ -5,6 +5,6 @@ import { logtoConfig } from "~/lib/logto/config";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const context = await getLogtoContext(logtoConfig, { fetchUserInfo: true });
+  const context = await getLogtoContext(logtoConfig);
   return NextResponse.json(context);
 }

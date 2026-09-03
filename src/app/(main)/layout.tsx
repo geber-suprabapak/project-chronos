@@ -28,9 +28,7 @@ export default async function DashLayout({
   children: ReactNode;
 }) {
   try {
-    const logtoContext = await getLogtoContext(logtoConfig, {
-      fetchUserInfo: true,
-    });
+    const logtoContext = await getLogtoContext(logtoConfig);
 
     if (!logtoContext.isAuthenticated || !logtoContext.claims) {
       redirect("/login");

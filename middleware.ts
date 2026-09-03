@@ -10,6 +10,7 @@ import {
 } from "~/lib/logto/claims";
 
 const PUBLIC_PATHS = new Set(["/login", "/ganti-password", "/auth/callback"]);
+const STATIC_ASSET = /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|xml)$/;
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -18,7 +19,8 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/assets") ||
-    pathname.startsWith("/public")
+    pathname.startsWith("/public") ||
+    STATIC_ASSET.test(pathname)
   ) {
     return true;
   }
@@ -33,9 +35,14 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/assets") ||
-    pathname.startsWith("/public")
+    pathname.startsWith("/public") ||
+    STATIC_ASSET.test(pathname)
   ) {
-    return NextResponse.next();
+    return NextResponse.next({
+      request: {
+        headers: req.headers,
+      },
+    });
   }
 
   // Keep the Logto client request-scoped. Its adapter owns mutable cookie
@@ -44,7 +51,9 @@ export async function middleware(req: NextRequest) {
   const edgeLogtoClient = new LogtoClient(logtoConfig);
 
   try {
-    const logtoContext = await edgeLogtoClient.getLogtoContext(req);
+    const logtoContext = await edgeLogtoClient.getLogtoContext(req, {
+      fetchUserInfo: false,
+    });
 
     if (logtoContext.isAuthenticated && logtoContext.claims) {
       const claims = extractExtendedClaims(logtoContext.claims);
@@ -54,7 +63,11 @@ export async function middleware(req: NextRequest) {
 
       if (pathname === "/login") {
         if (!userRole || !isPrivilegedRole(userRole)) {
-          return NextResponse.next();
+          return NextResponse.next({
+            request: {
+              headers: req.headers,
+            },
+          });
         }
         const url = req.nextUrl.clone();
         url.pathname = mustChangePassword ? "/ganti-password" : "/dashboard";
@@ -67,7 +80,11 @@ export async function middleware(req: NextRequest) {
           url.pathname = "/ganti-password";
           return NextResponse.redirect(url);
         }
-        return NextResponse.next();
+        return NextResponse.next({
+          request: {
+            headers: req.headers,
+          },
+        });
       }
 
       if (pathname === "/ganti-password") {
@@ -85,7 +102,11 @@ export async function middleware(req: NextRequest) {
         }
       }
 
-      return NextResponse.next();
+      return NextResponse.next({
+        request: {
+          headers: req.headers,
+        },
+      });
     }
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
@@ -96,11 +117,18 @@ export async function middleware(req: NextRequest) {
   if (!isPublicPath(pathname)) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
+    const redirectTarget = req.nextUrl.search
+      ? `${pathname}${req.nextUrl.search}`
+      : pathname;
+    url.searchParams.set("redirect", redirectTarget);
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return NextResponse.next({
+    request: {
+      headers: req.headers,
+    },
+  });
 }
 
 export const config = {

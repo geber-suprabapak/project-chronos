@@ -100,9 +100,7 @@ export const createTRPCRouter = t.router;
  * Authentication middleware - resolves user role and adds to context
  */
 const isAuthed = t.middleware(async ({ ctx, next }) => {
-  const logtoContext = await getLogtoContext(logtoConfig, {
-    fetchUserInfo: true,
-  });
+  const logtoContext = await getLogtoContext(logtoConfig);
 
   if (!logtoContext.isAuthenticated || !logtoContext.claims) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -128,7 +126,8 @@ const isAuthed = t.middleware(async ({ ctx, next }) => {
   const fallbackEmail = logtoContext.userInfo?.email as string | undefined;
   const email = claims?.email ?? fallbackEmail ?? "";
   // SAFETY: Logto user info name is the optional OIDC display-name claim.
-  const fullName = logtoContext.userInfo?.name as string | undefined;
+  const fallbackName = logtoContext.userInfo?.name as string | undefined;
+  const fullName = claims?.name ?? fallbackName;
   const user: AuthenticatedUser = {
     id: claims?.sub ?? "",
     email,

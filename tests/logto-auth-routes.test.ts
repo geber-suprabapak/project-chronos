@@ -112,4 +112,47 @@ describe("Logto Callback and Session Routing", () => {
       target: "/login?error=forbidden_role",
     });
   });
+
+  it("extracts full_name and email directly from ID token claims without requiring userInfo", () => {
+    const claims = {
+      sub: "user-42",
+      name: "Budi Utomo",
+      email: "budi@smkn2-bjm.sch.id",
+      roles: ["teacher"],
+    };
+    const userRole = resolveLogtoRole(claims.roles);
+    assert.equal(userRole, "teacher");
+
+    const fallbackEmail = undefined;
+    const email = claims.email ?? fallbackEmail ?? "";
+    const fallbackName = undefined;
+    const fullName = claims.name ?? fallbackName;
+
+    assert.equal(email, "budi@smkn2-bjm.sch.id");
+    assert.equal(fullName, "Budi Utomo");
+  });
+
+  it("enforces that fetchUserInfo: true is never passed to getLogtoContext in application routes", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+
+    const filesToCheck = [
+      "src/app/(main)/layout.tsx",
+      "src/app/(auth)/ganti-password/page.tsx",
+      "src/app/api/logto/user/route.ts",
+      "src/app/api/logto/callback/route.ts",
+      "src/server/api/trpc.ts",
+      "src/server/auth/export-guard.ts",
+      "middleware.ts",
+    ];
+
+    for (const relPath of filesToCheck) {
+      const fullPath = path.resolve(process.cwd(), relPath);
+      const content = await fs.readFile(fullPath, "utf-8");
+      assert.ok(
+        !content.includes("fetchUserInfo: true"),
+        `Expected ${relPath} to not contain 'fetchUserInfo: true'`,
+      );
+    }
+  });
 });

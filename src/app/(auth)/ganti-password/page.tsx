@@ -9,9 +9,7 @@ import { ChangePasswordForm } from "~/components/change-password-form";
 
 export default async function ChangePasswordPage() {
   try {
-    const logtoContext = await getLogtoContext(logtoConfig, {
-      fetchUserInfo: true,
-    });
+    const logtoContext = await getLogtoContext(logtoConfig);
     if (!logtoContext.isAuthenticated || !logtoContext.claims) {
       redirect("/login");
     }
