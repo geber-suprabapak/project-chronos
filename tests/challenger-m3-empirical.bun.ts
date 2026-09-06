@@ -548,7 +548,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
       const validDigestRef =
         "ghcr.io/skanida/chronos@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
       const output = execSync(
-        `env CHRONOS_IMAGE_REF="${validDigestRef}" docker compose config --no-env-resolution`,
+        `env CHRONOS_IMAGE_REF="${validDigestRef}" CHRONOS_ENV_FILE=.env.example docker compose config`,
         {
           encoding: "utf-8",
         },

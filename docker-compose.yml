@@ -12,7 +12,7 @@ services:
     ports:
       - "13000:3000"
     env_file:
-      - .env
+      - ${CHRONOS_ENV_FILE:-.env}
     restart: unless-stopped
     healthcheck:
       test: curl -f http://localhost:3000/api/health/live || exit 1
