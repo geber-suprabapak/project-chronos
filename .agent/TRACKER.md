@@ -34,7 +34,7 @@ Technical implementation and local settlement verification are complete as of 20
 - `pnpm contract:check` passed (no Astra contract drift).
 - `pnpm test` passed: 300 tests across 74 suites.
 - `RUN_A11Y_TESTS=1 pnpm test:e2e` passed 117/117: 99 desktop plus 9 tablet and 9 mobile tests.
-- `pnpm test:empirical` runs each Bun-backed suite in isolation and passed 106/106 tests; CI now enforces it.
+- `pnpm test:empirical` runs each Bun-backed suite in isolation and passed 105/105 tests; CI now enforces it. Astra's own CI separately covers its contract manifest.
 - Astra passed lint, formatting, typecheck, build, 378 unit tests, and 222 integration tests.
 - `pnpm build` passed.
 - `pnpm audit --audit-level=high` exited successfully; the sole reported advisory remains Moderate, outside the high/critical CI threshold and is covered by the existing formal risk acceptance.

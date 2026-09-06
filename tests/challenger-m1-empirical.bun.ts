@@ -867,11 +867,14 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
   // ==========================================================================
   describe("Task 4: Contract Synchronization (Issue 03)", () => {
     it("4.1 Chronos and Astra contracts are structurally identical", () => {
+      const astraContractPath =
+        process.env.ASTRA_CONTRACT_PATH ??
+        "../project-astra/contracts/astra-v1.json";
       const chronosContract = JSON.parse(
         readFileSync("contracts/astra-v1.json", "utf8"),
       ) as unknown;
       const astraContract = JSON.parse(
-        readFileSync("../project-astra/contracts/astra-v1.json", "utf8"),
+        readFileSync(astraContractPath, "utf8"),
       ) as unknown;
 
       assert.deepEqual(chronosContract, astraContract);
@@ -918,24 +921,6 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
           `Missing student lifecycle route: ${r}`,
         );
       }
-    });
-
-    it("4.4 Astra integration manifest test verifies all 61 published routes", () => {
-      const output = execSync(
-        "bun test tests/integration/contract-manifest.test.ts 2>&1",
-        {
-          cwd: "../project-astra",
-          encoding: "utf8",
-        },
-      );
-      assert.ok(
-        output.includes("1 pass"),
-        `Astra manifest test failed:\n${output}`,
-      );
-      assert.ok(
-        output.includes("61 expect() calls"),
-        `Expected 61 expect() calls in manifest test, got:\n${output}`,
-      );
     });
   });
 

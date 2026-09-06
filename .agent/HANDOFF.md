@@ -28,11 +28,11 @@ Fix every Chronos settlement P0/P1 issue, use AGY workers through Herdr for boun
 
 # In Progress
 
-The CI E2E job previously ran only the desktop Playwright project because `RUN_A11Y_TESTS` was unset. The workflow now sets it. Full local verification passes: Chronos check, contract drift, 300 unit tests, 106 isolated Bun empirical tests, high-severity audit gate, build, and 117 Playwright tests across desktop/tablet/mobile; Astra lint, formatting, typecheck, build, 378 unit tests, and 222 integration tests also pass.
+The CI E2E job previously ran only the desktop Playwright project because `RUN_A11Y_TESTS` was unset. The workflow now sets it. Full local verification passes: Chronos check, contract drift, 300 unit tests, 105 isolated Bun empirical tests, high-severity audit gate, build, and 117 Playwright tests across desktop/tablet/mobile; Astra lint, formatting, typecheck, build, 378 unit tests, and 222 integration tests also pass.
 
 # Exact Next Action
 
-Review and commit both dirty worktrees, publish the paired release candidates, then prepare a digest-pinned deployment and authenticated production smoke. Obtain explicit approval immediately before the production mutation.
+Push the CI checkout-order correction, wait for the Chronos verify/publish run, capture its immutable digest, then prepare the paired digest-pinned deployment and authenticated production smoke. Obtain explicit approval immediately before the production mutation.
 
 # Important Decisions
 
@@ -67,5 +67,5 @@ Review and commit both dirty worktrees, publish the paired release candidates, t
 
 # Git State
 
-- Chronos: branch `master`, release-candidate commit `f3b4ea0` plus this documentation correction pending amend; not yet pushed.
+- Chronos: branch `master`; settlement implementation is committed and pushed, with a CI checkout-order correction in progress.
 - Astra: branch `main`, settlement commit `bf1ff91`, pushed to `origin/main`.

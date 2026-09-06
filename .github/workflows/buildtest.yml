@@ -25,13 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Checkout canonical Astra contract
-        uses: actions/checkout@v4
-        with:
-          repository: geber-suprabapak/project-astra
-          path: .contract-source/project-astra
-          sparse-checkout: contracts
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -86,7 +79,16 @@ jobs:
           ASTRA_API_URL: http://localhost:3000
         run: pnpm test
 
+      - name: Checkout canonical Astra contract
+        uses: actions/checkout@v4
+        with:
+          repository: geber-suprabapak/project-astra
+          path: .contract-source/project-astra
+          sparse-checkout: contracts
+
       - name: Run empirical settlement tests
+        env:
+          ASTRA_CONTRACT_PATH: .contract-source/project-astra/contracts/astra-v1.json
         run: pnpm test:empirical
 
       - name: Check Astra contract drift
