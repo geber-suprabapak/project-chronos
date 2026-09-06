@@ -488,10 +488,13 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
       let threw = false;
       let stderrOutput = "";
       try {
-        execSync("env -u CHRONOS_IMAGE_REF docker compose config -q", {
-          encoding: "utf-8",
-          stdio: ["pipe", "pipe", "pipe"],
-        });
+        execSync(
+          "env -u CHRONOS_IMAGE_REF docker compose config --no-env-resolution -q",
+          {
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+          },
+        );
       } catch (err: any) {
         threw = true;
         assert.equal(err.status, 1, "Expected exit code 1");
@@ -515,10 +518,13 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
       let threw = false;
       let stderrOutput = "";
       try {
-        execSync('env CHRONOS_IMAGE_REF="" docker compose config -q', {
-          encoding: "utf-8",
-          stdio: ["pipe", "pipe", "pipe"],
-        });
+        execSync(
+          'env CHRONOS_IMAGE_REF="" docker compose config --no-env-resolution -q',
+          {
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+          },
+        );
       } catch (err: any) {
         threw = true;
         assert.equal(err.status, 1, "Expected exit code 1");
@@ -542,7 +548,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
       const validDigestRef =
         "ghcr.io/skanida/chronos@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
       const output = execSync(
-        `env CHRONOS_IMAGE_REF="${validDigestRef}" docker compose config`,
+        `env CHRONOS_IMAGE_REF="${validDigestRef}" docker compose config --no-env-resolution`,
         {
           encoding: "utf-8",
         },
