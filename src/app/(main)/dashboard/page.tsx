@@ -65,52 +65,54 @@ function PendingPermissionsTable({
   }
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col min-w-0 overflow-hidden">
       <CardHeader>
         <CardTitle>Perizinan Tertunda</CardTitle>
         <CardDescription>
           Daftar perizinan yang menunggu persetujuan
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama</TableHead>
-              <TableHead>Kategori</TableHead>
-              <TableHead>Tanggal Izin</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {permissions.map((permission) => (
-              <TableRow key={permission.id}>
-                <TableCell className="font-medium">
-                  {permission.userProfile?.fullName ?? "N/A"}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      permission.kategoriIzin === "sakit"
-                        ? "destructive"
-                        : "default"
-                    }
-                  >
-                    {permission.kategoriIzin}
-                  </Badge>
-                </TableCell>
-                <TableCell>{formatDate(permission.tanggal)}</TableCell>
-                <TableCell className="text-right">
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/perizinan/show/${permission.id}`}>
-                      Detail
-                    </Link>
-                  </Button>
-                </TableCell>
+      <CardContent className="flex-1 min-w-0 px-3 sm:px-6">
+        <div className="w-full overflow-x-auto min-w-0">
+          <Table className="w-full min-w-0">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Tanggal Izin</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {permissions.map((permission) => (
+                <TableRow key={permission.id}>
+                  <TableCell className="font-medium">
+                    {permission.userProfile?.fullName ?? "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        permission.kategoriIzin === "sakit"
+                          ? "destructive"
+                          : "default"
+                      }
+                    >
+                      {permission.kategoriIzin}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDate(permission.tanggal)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/perizinan/show/${permission.id}`}>
+                        Detail
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         {permissions.length === 5 && (
           <div className="mt-4 text-center">
             <Button asChild variant="info">
@@ -140,26 +142,26 @@ async function DashboardContent() {
   ]);
 
   // Pending permissions only for today
-  const pendingPermissions = perizinanToday.slice(0, 5);
+  const pendingPermissions = perizinanToday.rows.slice(0, 5);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0 w-full">
       {/* Top Section: Statistics & Actions */}
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 min-w-0 xl:grid-cols-2">
         {/* Left Column: Statistik Kehadiran (Red Box) */}
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0 w-full">
           <StatistikPieChart />
         </div>
 
         {/* Right Column: Actions & Pending Permissions */}
-        <div className="flex flex-col gap-4 lg:h-full">
+        <div className="flex flex-col gap-4 min-w-0 w-full xl:h-full">
           {/* Top Right: Actions (Blue Box) */}
-          <div className="lg:flex-1">
+          <div className="min-w-0 w-full xl:flex-1">
             <DashboardActionCard />
           </div>
 
           {/* Bottom Right: Pending Permissions (Yellow Box) */}
-          <div className="lg:flex-1">
+          <div className="min-w-0 w-full xl:flex-1">
             <PendingPermissionsTable permissions={pendingPermissions} />
           </div>
         </div>
@@ -173,7 +175,7 @@ async function DashboardContent() {
  */
 export default async function DashboardPage() {
   return (
-    <div className="p-4 md:p-6 lg:p-8">
+    <div className="p-4 md:p-6 lg:p-8 min-w-0 w-full">
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard Admin</h1>
         <p className="text-muted-foreground">

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -158,6 +159,9 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
             <UserPlus />
             Absen Manual
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Formulir pencatatan absensi siswa secara manual
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

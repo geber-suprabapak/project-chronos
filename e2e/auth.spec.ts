@@ -112,7 +112,7 @@ test.describe("Authentication, Session & Route Protection", () => {
       await page.goto("/profiles");
       await expect(page).toHaveURL(/\/profiles/);
       await expect(
-        page.getByRole("heading", { name: "User Profiles" }),
+        page.getByRole("heading", { name: /Profil Pengguna|User Profiles/i }),
       ).toBeVisible();
 
       // Navigate to Konfigurasi Lokasi
@@ -140,6 +140,90 @@ test.describe("Authentication, Session & Route Protection", () => {
         page.getByRole("heading", { name: /Absensi/i }),
       ).toBeVisible();
     });
+
+    test("authenticates as staff and verifies access to operational routes", async ({
+      page,
+    }) => {
+      await loginAs(page, "staff");
+
+      await page.goto("/dashboard");
+      await expect(page).toHaveURL(/\/dashboard/);
+      await expect(
+        page.getByRole("heading", { name: /Dashboard/i }),
+      ).toBeVisible();
+
+      await page.goto("/absensi");
+      await expect(page).toHaveURL(/\/absensi/);
+      await expect(
+        page.getByRole("heading", { name: /Absensi/i }),
+      ).toBeVisible();
+    });
+
+    test("redirects teacher from admin-only routes (/konfigurasi/lokasi, /profiles) to /dashboard", async ({
+      page,
+    }) => {
+      await loginAs(page, "teacher");
+
+      await page.goto("/konfigurasi/lokasi");
+      await expect(page).toHaveURL(/\/dashboard/);
+
+      await page.goto("/profiles");
+      await expect(page).toHaveURL(/\/dashboard/);
+    });
+
+    test("enforces sidebar navigation visibility between teacher and admin", async ({
+      page,
+    }) => {
+      // Teacher sidebar check
+      await loginAs(page, "teacher");
+      await page.goto("/dashboard");
+      const sidebar = page.locator('[data-slot="sidebar"]');
+      await expect(
+        sidebar.getByText(/(?:Profil Pengguna|Profiles)/i),
+      ).not.toBeVisible();
+      await expect(sidebar.getByText("Konfigurasi")).not.toBeVisible();
+      await expect(sidebar.getByText("Data Siswa")).toBeVisible();
+      await expect(
+        sidebar.getByRole("link", { name: "Absensi", exact: true }),
+      ).toBeVisible();
+
+      // Platform admin sidebar check
+      await loginAs(page, "platform_admin");
+      await page.goto("/dashboard");
+      await expect(
+        sidebar.getByText(/(?:Profil Pengguna|Profiles)/i),
+      ).toBeVisible();
+      await expect(sidebar.getByText("Konfigurasi")).toBeVisible();
+    });
+
+    test("verifies absensi page hides manual attendance and delete actions for teacher", async ({
+      page,
+    }) => {
+      await loginAs(page, "teacher");
+      await page.goto("/absensi");
+      await expect(page).toHaveURL(/\/absensi/);
+
+      // Manual attendance button should NOT be visible
+      await expect(
+        page.getByRole("button", { name: /Absen Manual/i }),
+      ).not.toBeVisible();
+
+      // Hapus column header should NOT be visible
+      await expect(
+        page.getByRole("columnheader", { name: /Aksi/i }),
+      ).not.toBeVisible();
+    });
+
+    test("authenticates legacy admin role and grants access to admin routes", async ({
+      page,
+    }) => {
+      await loginAs(page, "admin");
+      await page.goto("/konfigurasi/lokasi");
+      await expect(page).toHaveURL(/\/konfigurasi\/lokasi/);
+      await expect(
+        page.getByRole("heading", { name: /Lokasi/i }),
+      ).toBeVisible();
+    });
   });
 
   test.describe("Role Isolation & Forbidden Student Access", () => {
@@ -147,6 +231,20 @@ test.describe("Authentication, Session & Route Protection", () => {
       page,
     }) => {
       await loginAs(page, "student");
+
+      await page.goto("/dashboard");
+      await expect(page).toHaveURL(/\/login\?error=forbidden_role/);
+      const alert = page.locator('p[role="alert"]');
+      await expect(alert).toBeVisible();
+      await expect(alert).toContainText(
+        "Akun Anda tidak memiliki hak akses istimewa",
+      );
+    });
+
+    test("redirects unprivileged legacy siswa account to /login?error=forbidden_role", async ({
+      page,
+    }) => {
+      await loginAs(page, "siswa");
 
       await page.goto("/dashboard");
       await expect(page).toHaveURL(/\/login\?error=forbidden_role/);

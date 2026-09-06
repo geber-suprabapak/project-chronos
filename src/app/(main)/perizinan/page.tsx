@@ -3,6 +3,7 @@ import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 
 import Link from "next/link";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { useState } from "react";
 import {
@@ -104,7 +105,7 @@ export default function PerizinanPage() {
   const activeError = isSearchingByName ? rawError : error;
   const sourceRows = isSearchingByName
     ? (perizinanRaw ?? [])
-    : (perizinan ?? []);
+    : (perizinan?.rows ?? []);
 
   const rows = isSearchingByName
     ? sourceRows
@@ -123,16 +124,14 @@ export default function PerizinanPage() {
         .sort(
           (a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal),
         )
-    : sourceRows.sort(
-        (a, b) => getDateSortValue(b.tanggal) - getDateSortValue(a.tanggal),
-      );
+    : sourceRows;
 
   const pagedRows = isSearchingByName
     ? rows.slice(offset, offset + limit)
     : rows;
   const hasMore = isSearchingByName
     ? offset + limit < rows.length
-    : rows.length === limit;
+    : (perizinan?.hasMore ?? false);
   const loadingState = isSearchingByName ? isLoadingRaw : isLoading;
   const hasVisibleRows = pagedRows.length > 0;
 
@@ -154,7 +153,7 @@ export default function PerizinanPage() {
               Berikut adalah daftar semua perizinan yang tercatat.
             </CardDescription>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
             <IzinManualDialog />
             <DownloadExcelButton
               href="/api/export/perizinan"
@@ -162,7 +161,7 @@ export default function PerizinanPage() {
               disabled={loadingState || !hasVisibleRows}
             />
             <DownloadPdfButton
-              tableId="perizinan-table"
+              href="/api/export/perizinan?format=pdf"
               filename="perizinan.pdf"
               title="Data Perizinan"
               disabled={loadingState || !hasVisibleRows}
@@ -177,7 +176,11 @@ export default function PerizinanPage() {
               setPage(1); // Reset to page 1 when filter changes
             }}
             statuses={["approved", "rejected", "pending"]}
-            labels={{ query: "Cari Nama", status: "Approval", date: "Tanggal" }}
+            labels={{
+              query: "Cari Nama",
+              status: "Status Persetujuan",
+              date: "Tanggal",
+            }}
             placeholders={{ query: "Nama...", status: "Pilih status" }}
             fieldOrder={["query", "date", "status"]}
             showSort={false}
@@ -198,7 +201,7 @@ export default function PerizinanPage() {
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
-                    Prev
+                    Sebelumnya
                   </Button>
                   <Button
                     variant="outline"
@@ -206,14 +209,14 @@ export default function PerizinanPage() {
                     disabled={!hasMore}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next
+                    Berikutnya
                   </Button>
                 </div>
               </div>
 
               {/* Visible table for UI */}
-              <div className="w-full">
-                <Table className="w-full table-fixed">
+              <div className="w-full overflow-x-auto min-w-0">
+                <Table className="w-full min-w-[700px] table-fixed">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[46px]">No</TableHead>
@@ -310,21 +313,30 @@ export default function PerizinanPage() {
                           <TableCell>
                             <Badge
                               variant={getBadgeVariant(item.approvalStatus)}
-                              className="rounded-full px-2.5 py-1 capitalize"
+                              className={cn(
+                                "rounded-full px-2.5 py-1 capitalize",
+                                item.approvalStatus === "approved" &&
+                                  "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white",
+                              )}
                             >
-                              {item.approvalStatus ?? "pending"}
+                              {item.approvalStatus === "approved"
+                                ? "Disetujui"
+                                : item.approvalStatus === "rejected"
+                                  ? "Ditolak"
+                                  : "Menunggu"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link href={`/perizinan/show/${item.id}`} passHref>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="px-2"
-                              >
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="px-2"
+                            >
+                              <Link href={`/perizinan/show/${item.id}`}>
                                 Detail
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -372,7 +384,11 @@ export default function PerizinanPage() {
                             <TableCell>{item.kategoriIzin ?? "-"}</TableCell>
                             <TableCell>{item.deskripsi}</TableCell>
                             <TableCell>
-                              {item.approvalStatus ?? "pending"}
+                              {item.approvalStatus === "approved"
+                                ? "Disetujui"
+                                : item.approvalStatus === "rejected"
+                                  ? "Ditolak"
+                                  : "Menunggu"}
                             </TableCell>
                           </TableRow>
                         );
@@ -392,7 +408,10 @@ export default function PerizinanPage() {
               <div className="flex items-center justify-between text-sm text-muted-foreground mt-3">
                 <span>
                   Halaman {page} - Menampilkan {pagedRows.length} dari{" "}
-                  {rows.length} data
+                  {isSearchingByName
+                    ? rows.length
+                    : (perizinan?.total ?? pagedRows.length)}{" "}
+                  data
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -401,7 +420,7 @@ export default function PerizinanPage() {
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
-                    Prev
+                    Sebelumnya
                   </Button>
                   <Button
                     variant="outline"
@@ -409,7 +428,7 @@ export default function PerizinanPage() {
                     disabled={!hasMore}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next
+                    Berikutnya
                   </Button>
                 </div>
               </div>

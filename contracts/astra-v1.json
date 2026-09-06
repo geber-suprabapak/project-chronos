@@ -2,14 +2,22 @@
   "contract": "skanida-astra",
   "version": "v1",
   "published_at": "2026-08-21",
+  "source_of_truth": {
+    "repository": "geber-suprabapak/project-astra",
+    "path": "contracts/astra-v1.json"
+  },
   "request": {
     "required_headers": [
       "Authorization",
       "X-Request-ID",
       "X-Astra-Contract-Version"
     ],
-    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" },
-    "authorization": "Logto OIDC access token"
+    "contract_header": {
+      "name": "X-Astra-Contract-Version",
+      "value": "v1"
+    },
+    "authorization": "Logto OIDC access token",
+    "admin_scopes": ["mobile:access", "admin:read"]
   },
   "response": {
     "content_type": "application/json",
@@ -19,7 +27,105 @@
       "message": "string",
       "meta": "object"
     },
-    "contract_header": { "name": "X-Astra-Contract-Version", "value": "v1" }
+    "contract_header": {
+      "name": "X-Astra-Contract-Version",
+      "value": "v1"
+    }
+  },
+  "errors": {
+    "envelope": {
+      "success": false,
+      "error": {
+        "code": "string",
+        "message": "string",
+        "details": "object|optional"
+      },
+      "meta": {
+        "request_id": "string",
+        "timestamp": "ISO-8601 string"
+      }
+    },
+    "common_codes": [
+      "AUTH_REQUIRED",
+      "AUTH_INVALID",
+      "FORBIDDEN",
+      "VALIDATION_ERROR",
+      "RESOURCE_NOT_FOUND",
+      "CONFLICT",
+      "RATE_LIMITED",
+      "DEPENDENCY_UNAVAILABLE",
+      "INTERNAL_ERROR",
+      "CONTRACT_VERSION_UNSUPPORTED"
+    ]
+  },
+  "pagination": {
+    "strategy": "offset",
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
+    "query": {
+      "limit": "integer 1..100",
+      "offset": "integer >= 0",
+      "start_date": "string YYYY-MM-DD optional",
+      "end_date": "string YYYY-MM-DD optional"
+    },
+    "response_meta": {
+      "pagination": {
+        "limit": "integer",
+        "offset": "integer",
+        "has_more": "boolean"
+      }
+    },
+    "stable_order_required": true
+  },
+  "attendance_query": {
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
+    "parameters": {
+      "limit": "integer 1..100 optional (default 50)",
+      "offset": "integer >= 0 optional (default 0)",
+      "start_date": "string YYYY-MM-DD optional",
+      "end_date": "string YYYY-MM-DD optional",
+      "user_id": "string UUID optional",
+      "status": "string optional",
+      "action_type": "string optional"
+    },
+    "validation": {
+      "date_format": "strict YYYY-MM-DD",
+      "date_order": "start_date <= end_date (reversed bounds rejected with VALIDATION_ERROR)"
+    }
+  },
+  "backup_audit": {
+    "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
+    "allowed_roles": ["platform_admin", "school_admin"],
+    "entity_type": "backup",
+    "entity_id": "year_month",
+    "post_fields": {
+      "year_month": "strict real YYYY-MM required",
+      "scope": ["absences"],
+      "format": ["xlsx", "pdf"],
+      "start_date": "YYYY-MM-DD within month required",
+      "end_date": "YYYY-MM-DD within month required, start_date <= end_date",
+      "checksum": "sha256 lowercase 64-character hex required for both completed and failed results",
+      "record_count": "integer >= 0",
+      "byte_length": "integer > 0",
+      "result": ["completed", "failed"]
+    },
+    "status_query": {
+      "year_month": "strict real YYYY-MM required",
+      "scope": ["absences", "optional"]
+    },
+    "status_response": {
+      "http_status": 200,
+      "shape": {
+        "completed": "boolean",
+        "record": "object or null"
+      },
+      "rule": "completed=true only when a persisted matching details.result=completed log exists, using latest completed record and strictly validating canonical completed fields without fabricating defaults. No completed record, including failed-only, returns completed=false and record=null. Backend failure or corrupted log details still throws."
+    }
+  },
+  "idempotency": {
+    "safe_methods": ["GET"],
+    "delete_by_id": "Repeated deletion leaves the resource absent; a later call may return RESOURCE_NOT_FOUND.",
+    "leave_reopen": "Repeated reopen leaves the request pending and clears rejection state.",
+    "other_mutations": "Not retryable unless an operation-specific idempotency key is documented."
   },
   "mobile_routes": [
     "GET /v1/mobile/health",
@@ -45,25 +151,43 @@
   "admin_routes": [
     "GET /v1/admin/students",
     "GET /v1/admin/students/{user_id}",
+    "POST /v1/admin/students/{userId}/approve",
+    "POST /v1/admin/students/{userId}/reject",
+    "POST /v1/admin/students/{userId}/disable",
+    "POST /v1/admin/students/{userId}/reset-code",
+    "PATCH /v1/admin/students/{userId}/email",
+    "DELETE /v1/admin/students/{userId}/face-enrollment",
     "GET /v1/admin/staff",
     "GET /v1/admin/staff/{user_id}",
     "GET /v1/admin/classes",
     "GET /v1/admin/locations",
     "POST /v1/admin/locations",
+    "PUT /v1/admin/locations/{id}",
     "PATCH /v1/admin/locations/{id}",
     "DELETE /v1/admin/locations/{id}",
     "GET /v1/admin/schedules",
     "POST /v1/admin/schedules",
+    "PUT /v1/admin/schedules/{id}",
     "PATCH /v1/admin/schedules/{id}",
     "DELETE /v1/admin/schedules/{id}",
     "GET /v1/admin/leave-requests",
     "POST /v1/admin/leave-requests",
+    "GET /v1/admin/leave-requests/{id}",
     "PATCH /v1/admin/leave-requests/{id}",
     "POST /v1/admin/leave-requests/{id}/approve",
     "POST /v1/admin/leave-requests/{id}/reject",
+    "POST /v1/admin/leave-requests/{id}/reopen",
+    "DELETE /v1/admin/leave-requests/{id}",
     "GET /v1/admin/attendance",
+    "GET /v1/admin/attendances",
+    "GET /v1/admin/attendance/{id}",
+    "GET /v1/admin/attendances/{id}",
     "POST /v1/admin/attendance/manual",
-    "GET /v1/admin/attendance/attempts"
+    "DELETE /v1/admin/attendance/bulk",
+    "DELETE /v1/admin/attendance/{id}",
+    "GET /v1/admin/attendance/attempts",
+    "POST /v1/admin/backups",
+    "GET /v1/admin/backups/status"
   ],
   "identity_routes": [
     "POST /v1/auth/student/signup",

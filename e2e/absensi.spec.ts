@@ -20,10 +20,10 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
 
       // Export buttons
       await expect(
-        page.getByRole("button", { name: /Download Excel/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) Excel/i }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: /Download PDF/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) PDF/i }),
       ).toBeVisible();
 
       // Absen Manual button
@@ -136,7 +136,7 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
 
     test("triggers Excel data export download", async ({ page }) => {
       const exportButton = page.getByRole("button", {
-        name: /Download Excel/i,
+        name: /(?:Unduh|Download) Excel/i,
       });
       await expect(exportButton).toBeVisible();
       await expect(exportButton).toBeEnabled();

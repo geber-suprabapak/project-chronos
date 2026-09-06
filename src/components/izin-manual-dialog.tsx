@@ -4,9 +4,11 @@ import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { cn } from "~/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -61,6 +63,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -126,6 +129,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     setLinkFoto("");
     setDate(new Date().toISOString().split("T")[0] ?? "");
     setShowDropdown(false);
+    setActiveIndex(-1);
     setUploadFile(null);
     setUploadPreview(null);
     setIsUploading(false);
@@ -202,6 +206,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     });
     setSearchQuery(`${siswa.nama ?? "Tanpa Nama"} - ${siswa.nis}`);
     setShowDropdown(false);
+    setActiveIndex(-1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -267,6 +272,9 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
             <ClipboardPlus />
             Izin Manual
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Form pembuatan izin manual
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -275,20 +283,75 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
             <Label htmlFor="search-siswa">Cari Nama / NIS Siswa</Label>
             <div className="relative">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <Input
                   ref={inputRef}
                   id="search-siswa"
                   type="text"
+                  role="combobox"
+                  aria-expanded={
+                    showDropdown && searchQuery.length >= 2 && !selectedSiswa
+                  }
+                  aria-controls="siswa-search-results"
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    activeIndex >= 0 && searchResults?.data?.[activeIndex]
+                      ? `siswa-option-${searchResults.data[activeIndex]?.nis}`
+                      : undefined
+                  }
                   placeholder="Ketik nama atau NIS siswa..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
                     setSelectedSiswa(null);
+                    setActiveIndex(-1);
                     if (e.target.value.length >= 2) {
                       setShowDropdown(true);
                     } else {
                       setShowDropdown(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    const results = searchResults?.data ?? [];
+                    if (e.key === "Escape") {
+                      setShowDropdown(false);
+                      setActiveIndex(-1);
+                      return;
+                    }
+                    if (
+                      !showDropdown &&
+                      (e.key === "ArrowDown" || e.key === "ArrowUp")
+                    ) {
+                      if (searchQuery.length >= 2 && results.length > 0) {
+                        setShowDropdown(true);
+                        setActiveIndex(0);
+                        e.preventDefault();
+                      }
+                      return;
+                    }
+                    if (showDropdown && results.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setActiveIndex((prev) =>
+                          prev + 1 >= results.length ? 0 : prev + 1,
+                        );
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setActiveIndex((prev) =>
+                          prev <= 0 ? results.length - 1 : prev - 1,
+                        );
+                      } else if (e.key === "Enter") {
+                        if (activeIndex >= 0 && activeIndex < results.length) {
+                          e.preventDefault();
+                          const selected = results[activeIndex];
+                          if (selected) {
+                            handleSelectSiswa(selected);
+                          }
+                        }
+                      }
                     }
                   }}
                   onFocus={() => {
@@ -301,7 +364,10 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                 />
                 {isSearching && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2
+                      className="h-4 w-4 animate-spin text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   </div>
                 )}
               </div>
@@ -310,21 +376,36 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
               {showDropdown && searchQuery.length >= 2 && !selectedSiswa && (
                 <div
                   ref={dropdownRef}
+                  id="siswa-search-results"
+                  role="listbox"
+                  aria-label="Hasil pencarian siswa"
                   className="absolute z-[9999] top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg"
                 >
                   {isSearching ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <Loader2
+                        className="h-4 w-4 animate-spin mr-2"
+                        aria-hidden="true"
+                      />
                       <span className="text-sm text-muted-foreground">
                         Mencari...
                       </span>
                     </div>
                   ) : searchResults?.data && searchResults.data.length > 0 ? (
-                    searchResults.data.map((siswa) => (
-                      <button
+                    searchResults.data.map((siswa, idx) => (
+                      <div
                         key={siswa.nis.toString()}
-                        type="button"
-                        className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-b-0 cursor-pointer"
+                        id={`siswa-option-${siswa.nis}`}
+                        role="option"
+                        tabIndex={-1}
+                        aria-selected={idx === activeIndex}
+                        className={cn(
+                          "w-full text-left px-3 py-2 transition-colors border-b last:border-b-0 cursor-pointer select-none",
+                          idx === activeIndex
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-accent hover:text-accent-foreground",
+                        )}
+                        onMouseEnter={() => setActiveIndex(idx)}
                         onClick={() => handleSelectSiswa(siswa)}
                       >
                         <div className="font-medium text-sm">
@@ -334,7 +415,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                           NIS: {siswa.nis.toString()} • Kelas{" "}
                           {siswa.kelas ?? "-"} • No. Absen {siswa.absen ?? "-"}
                         </div>
-                      </button>
+                      </div>
                     ))
                   ) : (
                     <div className="px-3 py-4 text-sm text-muted-foreground text-center">
@@ -353,9 +434,9 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
 
           {/* Selected Siswa Info */}
           {selectedSiswa && (
-            <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-              <CheckCircle2 className="text-green-600" />
-              <AlertDescription className="text-green-700 dark:text-green-400">
+            <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800">
+              <CheckCircle2 className="text-emerald-700 dark:text-emerald-400" />
+              <AlertDescription className="text-emerald-800 dark:text-emerald-300">
                 <div className="font-semibold">
                   {selectedSiswa.nama ?? "Nama tidak tersedia"}
                 </div>
@@ -434,16 +515,27 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
 
                 {/* File Upload Area */}
                 {!uploadFile && !linkFoto && (
-                  <div
-                    className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors"
+                  <button
+                    type="button"
+                    className="w-full border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    aria-label="Upload Foto Surat Izin"
                   >
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <Upload
+                      className="h-8 w-8 mx-auto mb-2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm font-medium">Upload Foto</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Klik untuk pilih gambar (maks 5MB)
+                      Klik atau tekan Enter untuk pilih gambar (maks 5MB)
                     </p>
-                  </div>
+                  </button>
                 )}
 
                 <input
@@ -460,7 +552,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                   <div className="relative rounded-lg border overflow-hidden">
                     <img
                       src={uploadPreview}
-                      alt="Preview"
+                      alt="Preview Foto Surat Izin"
                       className="w-full max-h-40 object-cover"
                     />
                     <div className="absolute top-2 right-2">
@@ -468,11 +560,13 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                         type="button"
                         variant="destructive"
                         size="icon"
+                        aria-label="Hapus foto"
                         className="h-6 w-6 rounded-full"
                         onClick={removeFile}
                         disabled={createIzin.isPending || isUploading}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3" aria-hidden="true" />
+                        <span className="sr-only">Hapus foto</span>
                       </Button>
                     </div>
                     <div className="p-2 bg-muted/50 text-xs truncate">

@@ -139,7 +139,7 @@ export function StatistikPieChart() {
   }
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col min-w-0">
       <CardHeader className="items-center pb-2">
         <CardTitle>Statistik Kehadiran</CardTitle>
       </CardHeader>

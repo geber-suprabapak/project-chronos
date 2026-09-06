@@ -9,7 +9,7 @@ import {
   Monitor,
   Mail,
 } from "lucide-react";
-import { NavMain } from "~/components/nav-main";
+import { NavMain, type NavItem } from "~/components/nav-main";
 import { NavUser } from "~/components/nav-user";
 import {
   Sidebar,
@@ -19,18 +19,27 @@ import {
   SidebarRail,
 } from "~/components/ui/sidebar";
 import Image from "next/image";
+import {
+  type AppRole,
+  canAccessConfiguration,
+  canAccessDashboard,
+  canAccessProfiles,
+  isAdminRole,
+  resolveLogtoRole,
+} from "~/server/auth/rbac";
 
 // Update icons to match each link
-const navItems = [
+const navItems: NavItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: Monitor,
   },
   {
-    title: "Profiles",
+    title: "Profil Pengguna",
     url: "/profiles",
     icon: Users,
+    adminOnly: true,
   },
   {
     title: "Data Siswa",
@@ -61,6 +70,7 @@ const navItems = [
     title: "Konfigurasi",
     url: "/konfigurasi/lokasi",
     icon: Settings,
+    adminOnly: true,
     items: [
       {
         title: "Lokasi",
@@ -83,8 +93,12 @@ type ChronosUser = {
   };
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  role: initialRole,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { role?: AppRole | null }) {
   const [user, setUser] = React.useState<ChronosUser | null>(null);
+  const [role, setRole] = React.useState<AppRole | null>(initialRole ?? null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -95,10 +109,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         // SAFETY: /api/logto/user returns the documented Logto context envelope.
         const context = (await response.json()) as {
           isAuthenticated?: boolean;
-          claims?: { sub?: string; email?: string; name?: string } | null;
-          userInfo?: { email?: string; name?: string } | null;
+          claims?: {
+            sub?: string;
+            email?: string;
+            name?: string;
+            roles?: string[];
+          } | null;
+          userInfo?: { email?: string; name?: string; roles?: string[] } | null;
         };
         if (!context.isAuthenticated || !context.claims?.sub) return null;
+        const resolvedRole = resolveLogtoRole(
+          context.claims.roles ?? context.userInfo?.roles ?? [],
+        );
+        if (resolvedRole && active) {
+          setRole(resolvedRole);
+        }
         return {
           id: context.claims.sub,
           email: context.claims.email ?? context.userInfo?.email,
@@ -121,6 +146,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     };
   }, []);
 
+  const isAdmin = role ? isAdminRole(role) : false;
+  const filteredNavItems = React.useMemo(() => {
+    if (!canAccessDashboard(role)) {
+      return [];
+    }
+    return navItems.filter((item) => {
+      if (item.url.startsWith("/konfigurasi")) {
+        return canAccessConfiguration(role);
+      }
+      if (item.url.startsWith("/profiles")) {
+        return canAccessProfiles(role);
+      }
+      if (item.adminOnly) {
+        return isAdmin;
+      }
+      return true;
+    });
+  }, [isAdmin, role]);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -138,7 +182,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain items={filteredNavItems} role={role} isAdmin={isAdmin} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} loading={loading} />

@@ -130,23 +130,40 @@ test.describe("Konfigurasi (Location & Schedule) Workflows", () => {
   });
 
   test.describe("Monthly Attendance Backup Banner", () => {
+    test.beforeEach(async ({ request }) => {
+      const astraPort = process.env.MOCK_ASTRA_PORT || "23500";
+      try {
+        await request.delete(`http://127.0.0.1:${astraPort}/v1/admin/backups`);
+      } catch {
+        // ignore if mock server is unreachable
+      }
+    });
+
     test("renders monthly backup banner when query parameter ?showBackupBanner=true is present", async ({
       page,
     }) => {
       await page.goto("/dashboard?showBackupBanner=true");
 
       const banner = page.locator(
-        'div[role="alert"]:has-text("Backup Bulanan"), .border-orange-200',
+        'div[role="alert"]:has-text("Backup Bulanan")',
       );
       await expect(banner).toBeVisible();
       await expect(banner.getByText("Backup Bulanan")).toBeVisible();
       await expect(banner.getByRole("button", { name: "Excel" })).toBeVisible();
       await expect(banner.getByRole("button", { name: "PDF" })).toBeVisible();
 
-      // Dismiss banner via "Selesai"
+      // Verify fake "Selesai" button is removed
       const selesaiButton = banner.getByRole("button", { name: /Selesai/i });
-      await selesaiButton.click();
-      await expect(banner).not.toBeVisible();
+      await expect(selesaiButton).not.toBeVisible();
+
+      // Trigger audited Excel download and verify banner auto-dismisses upon persisted completion
+      const downloadPromise = page.waitForEvent("download");
+      await banner.getByRole("button", { name: "Excel" }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toMatch(/^backup-absensi-.*\.xlsx$/);
+
+      // Once audited backup completes on Astra, the banner refetches status and hides
+      await expect(banner).not.toBeVisible({ timeout: 15000 });
     });
   });
 });

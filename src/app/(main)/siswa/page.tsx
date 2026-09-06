@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { api } from "~/trpc/server";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -127,7 +126,7 @@ export default async function SiswaPage({
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-lg sm:text-xl font-semibold">Data Siswa</h1>
-          <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
             <DownloadExcelButton
               href="/api/export/siswa"
               filename="data-siswa.xlsx"
@@ -135,7 +134,7 @@ export default async function SiswaPage({
               disabled={rows.length === 0}
             />
             <DownloadPdfButton
-              tableId="siswa-table"
+              href="/api/export/siswa?format=pdf"
               filename="data-siswa.pdf"
               title="Data Siswa"
               className="px-4 py-2"
@@ -162,10 +161,10 @@ export default async function SiswaPage({
               <CardTitle className="text-sm font-medium">
                 Siswa Laki-laki
               </CardTitle>
-              <User className="h-4 w-4 text-blue-600" />
+              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {statistics.laki.toLocaleString()}
               </div>
             </CardContent>
@@ -175,10 +174,10 @@ export default async function SiswaPage({
               <CardTitle className="text-sm font-medium">
                 Siswa Perempuan
               </CardTitle>
-              <User className="h-4 w-4 text-pink-600" />
+              <User className="h-4 w-4 text-pink-600 dark:text-pink-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-pink-600">
+              <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
                 {statistics.perempuan.toLocaleString()}
               </div>
             </CardContent>
@@ -188,10 +187,10 @@ export default async function SiswaPage({
               <CardTitle className="text-sm font-medium">
                 Sudah Diaktifkan
               </CardTitle>
-              <UserCheck className="h-4 w-4 text-green-600" />
+              <UserCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
                 {statistics.activated.toLocaleString()}
               </div>
             </CardContent>
@@ -225,27 +224,27 @@ export default async function SiswaPage({
           <div className="flex gap-2">
             {page <= 1 ? (
               <Button variant="outline" size="sm" disabled>
-                Prev
+                Sebelumnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
                 >
-                  Prev
+                  Sebelumnya
                 </Link>
               </Button>
             )}
             {!hasMore ? (
               <Button variant="outline" size="sm" disabled>
-                Next
+                Berikutnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
                 >
-                  Next
+                  Berikutnya
                 </Link>
               </Button>
             )}
@@ -255,8 +254,18 @@ export default async function SiswaPage({
         {/* Data Table */}
         <Card className="overflow-hidden">
           <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
-              <Table id="siswa-table">
+            <div
+              data-slot="table-container"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabel Data Siswa"
+              className="relative w-full overflow-x-auto min-w-0"
+            >
+              <table
+                id="siswa-table"
+                data-slot="table"
+                className="w-full caption-bottom text-sm min-w-[650px]"
+              >
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">NIS</TableHead>
@@ -285,14 +294,14 @@ export default async function SiswaPage({
                             {siswa.kelamin === "L" ? (
                               <Badge
                                 variant="outline"
-                                className="text-blue-600 border-blue-600"
+                                className="text-blue-600 border-blue-600 dark:text-blue-400 dark:border-blue-400"
                               >
                                 Laki-laki
                               </Badge>
                             ) : siswa.kelamin === "P" ? (
                               <Badge
                                 variant="outline"
-                                className="text-pink-600 border-pink-600"
+                                className="text-pink-600 border-pink-600 dark:text-pink-400 dark:border-pink-400"
                               >
                                 Perempuan
                               </Badge>
@@ -304,7 +313,7 @@ export default async function SiswaPage({
                             {siswa.activated ? (
                               <Badge
                                 variant="default"
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white"
                               >
                                 Aktif
                               </Badge>
@@ -317,13 +326,16 @@ export default async function SiswaPage({
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell
+                        colSpan={6}
+                        className="h-24 text-center text-muted-foreground"
+                      >
                         Tidak ada data siswa ditemukan.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
-              </Table>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -337,27 +349,27 @@ export default async function SiswaPage({
           <div className="flex gap-2">
             {page <= 1 ? (
               <Button variant="outline" size="sm" disabled>
-                Prev
+                Sebelumnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page - 1)}`}
                 >
-                  Prev
+                  Sebelumnya
                 </Link>
               </Button>
             )}
             {!hasMore ? (
               <Button variant="outline" size="sm" disabled>
-                Next
+                Berikutnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/siswa?${createQueryString(nama, kelas, kelamin, activated, page + 1)}`}
                 >
-                  Next
+                  Berikutnya
                 </Link>
               </Button>
             )}

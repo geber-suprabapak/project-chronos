@@ -225,9 +225,7 @@ export function FilterBar({
       {showSort && (
         <div className="flex justify-start md:justify-end mt-3">
           <div className="flex flex-col w-auto">
-            <Label className="mb-2 text-sm font-medium invisible">
-              Sort Order
-            </Label>
+            <Label className="mb-2 text-sm font-medium invisible">Urutan</Label>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -238,8 +236,8 @@ export function FilterBar({
                     className="h-9 w-9"
                     aria-label={
                       sort === "desc"
-                        ? "Sedang: Newest. Klik untuk Oldest"
-                        : "Sedang: Oldest. Klik untuk Newest"
+                        ? "Urutan: Terbaru. Klik untuk Terlama"
+                        : "Urutan: Terlama. Klik untuk Terbaru"
                     }
                     onClick={() =>
                       onChange({
@@ -257,8 +255,8 @@ export function FilterBar({
                 </TooltipTrigger>
                 <TooltipContent>
                   {sort === "desc"
-                    ? "Sedang: Newest. Klik untuk Oldest"
-                    : "Sedang: Oldest. Klik untuk Newest"}
+                    ? "Urutan: Terbaru. Klik untuk Terlama"
+                    : "Urutan: Terlama. Klik untuk Terbaru"}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

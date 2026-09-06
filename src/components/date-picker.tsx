@@ -43,8 +43,8 @@ export function DatePicker({
   label, // no default -> undefined means no label rendered
   value,
   onChange,
-  placeholder = "Select a date",
-  locale = "en-US",
+  placeholder = "Pilih tanggal",
+  locale = "id-ID",
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [month, setMonth] = React.useState<Date | undefined>(value);
@@ -66,6 +66,7 @@ export function DatePicker({
       <div className="relative flex gap-2">
         <Input
           id={id}
+          aria-label={label ?? placeholder}
           value={text}
           placeholder={placeholder}
           className="bg-background pr-10"
@@ -90,10 +91,11 @@ export function DatePicker({
             <Button
               id={`${id}-picker`}
               variant="ghost"
+              aria-label="Pilih tanggal dari kalender"
               className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
             >
               <CalendarIcon className="size-3.5" />
-              <span className="sr-only">Select date</span>
+              <span className="sr-only">Pilih tanggal</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent

@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04T15:17:52Z",
+  "title": "Design System: Skanida Chronos",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Clear Canvas",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Primary Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Structured Surface",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "action": {
+        "role": "primary",
+        "displayName": "Operational Ink",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "action-contrast": {
+        "role": "neutral",
+        "displayName": "Action Contrast",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "quiet-surface": {
+        "role": "secondary",
+        "displayName": "Quiet Utility",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "quiet-ink": {
+        "role": "neutral",
+        "displayName": "Supporting Ink",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Quiet Divider",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Visible Focus",
+        "canonical": "oklch(0.708 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Critical Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.15 0.12 27.325)",
+          "oklch(0.26 0.16 27.325)",
+          "oklch(0.38 0.2 27.325)",
+          "oklch(0.5 0.23 27.325)",
+          "oklch(0.62 0.22 27.325)",
+          "oklch(0.74 0.18 27.325)",
+          "oklch(0.86 0.1 27.325)",
+          "oklch(0.95 0.04 27.325)"
+        ]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Confirmed Success",
+        "canonical": "oklch(0.6 0.18 152)",
+        "tonalRamp": [
+          "oklch(0.15 0.09 152)",
+          "oklch(0.26 0.12 152)",
+          "oklch(0.38 0.15 152)",
+          "oklch(0.5 0.18 152)",
+          "oklch(0.62 0.17 152)",
+          "oklch(0.74 0.14 152)",
+          "oklch(0.86 0.08 152)",
+          "oklch(0.95 0.03 152)"
+        ]
+      },
+      "info": {
+        "role": "tertiary",
+        "displayName": "Clear Information",
+        "canonical": "oklch(0.6 0.18 240)",
+        "tonalRamp": [
+          "oklch(0.15 0.09 240)",
+          "oklch(0.26 0.12 240)",
+          "oklch(0.38 0.15 240)",
+          "oklch(0.5 0.18 240)",
+          "oklch(0.62 0.17 240)",
+          "oklch(0.74 0.14 240)",
+          "oklch(0.86 0.08 240)",
+          "oklch(0.95 0.03 240)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "oklch(0.75 0.18 85)",
+        "tonalRamp": [
+          "oklch(0.15 0.09 85)",
+          "oklch(0.26 0.12 85)",
+          "oklch(0.38 0.15 85)",
+          "oklch(0.5 0.18 85)",
+          "oklch(0.62 0.17 85)",
+          "oklch(0.74 0.14 85)",
+          "oklch(0.86 0.08 85)",
+          "oklch(0.95 0.03 85)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page Headline",
+        "purpose": "Top-level page title on layouts with adequate space."
+      },
+      "title": {
+        "displayName": "Operational Title",
+        "purpose": "Compact page, card, section, and dialog titles."
+      },
+      "body": {
+        "displayName": "Working Text",
+        "purpose": "Tables, forms, values, and operational copy."
+      },
+      "label": {
+        "displayName": "Supporting Label",
+        "purpose": "Badges, compact labels, and secondary metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "control-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Subtle separation for buttons and inputs."
+      },
+      {
+        "name": "surface-lift",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "Light separation for cards and raised surfaces."
+      },
+      {
+        "name": "floating-layer",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Menus and popovers that float over content."
+      },
+      {
+        "name": "modal-layer",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Dialogs and modal layers only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "150ms ease",
+        "purpose": "Hover, active, color, and focus transitions."
+      },
+      {
+        "name": "layer-standard",
+        "value": "200ms ease",
+        "purpose": "Dialog, popover, and sheet entry or exit."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "40rem" },
+      { "name": "md", "value": "48rem" },
+      { "name": "lg", "value": "64rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action for one bounded operational context.",
+      "html": "<button class=\"ds-btn-primary\">Simpan perubahan</button>",
+      "css": ".ds-btn-primary { height: 2.25rem; border: 0; border-radius: var(--radius-md, .5rem); padding: .5rem 1rem; background: var(--primary, oklch(.205 0 0)); color: var(--primary-foreground, oklch(.985 0 0)); box-shadow: 0 1px 2px rgb(0 0 0 / .05); font: 500 .875rem/1.25 Geist, ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms ease, box-shadow 150ms ease; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary, oklch(.205 0 0)) 90%, transparent); } .ds-btn-primary:focus-visible { outline: 3px solid color-mix(in oklch, var(--ring, oklch(.708 0 0)) 50%, transparent); outline-offset: 2px; } .ds-btn-primary:active { box-shadow: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Visible but quiet secondary action.",
+      "html": "<button class=\"ds-btn-outline\">Batal</button>",
+      "css": ".ds-btn-outline { height: 2.25rem; border: 1px solid var(--border, oklch(.922 0 0)); border-radius: var(--radius-md, .5rem); padding: .5rem 1rem; background: var(--background, oklch(1 0 0)); color: var(--foreground, oklch(.145 0 0)); box-shadow: 0 1px 2px rgb(0 0 0 / .05); font: 500 .875rem/1.25 Geist, ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms ease, box-shadow 150ms ease; } .ds-btn-outline:hover { background: var(--accent, oklch(.97 0 0)); } .ds-btn-outline:focus-visible { outline: 3px solid color-mix(in oklch, var(--ring, oklch(.708 0 0)) 50%, transparent); outline-offset: 2px; } .ds-btn-outline:active { box-shadow: none; }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Explicitly labeled irreversible or dangerous action.",
+      "html": "<button class=\"ds-btn-danger\">Hapus data</button>",
+      "css": ".ds-btn-danger { height: 2.25rem; border: 0; border-radius: var(--radius-md, .5rem); padding: .5rem 1rem; background: var(--destructive, oklch(.577 .245 27.325)); color: white; box-shadow: 0 1px 2px rgb(0 0 0 / .05); font: 500 .875rem/1.25 Geist, ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms ease, box-shadow 150ms ease; } .ds-btn-danger:hover { background: color-mix(in oklch, var(--destructive, oklch(.577 .245 27.325)) 90%, transparent); } .ds-btn-danger:focus-visible { outline: 3px solid color-mix(in oklch, var(--destructive, oklch(.577 .245 27.325)) 25%, transparent); outline-offset: 2px; } .ds-btn-danger:active { box-shadow: none; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Compact field with an unmistakable keyboard focus state.",
+      "html": "<label class=\"ds-field\"><span>Nama siswa</span><input class=\"ds-input\" placeholder=\"Cari nama siswa\"></label>",
+      "css": ".ds-field { display: grid; gap: .5rem; color: var(--foreground, oklch(.145 0 0)); font: 500 .875rem/1.25 Geist, ui-sans-serif, system-ui, sans-serif; } .ds-input { width: 100%; height: 2.25rem; border: 1px solid var(--input, oklch(.922 0 0)); border-radius: var(--radius-md, .5rem); padding: .25rem .75rem; background: transparent; color: var(--foreground, oklch(.145 0 0)); box-shadow: 0 1px 2px rgb(0 0 0 / .05); font: 400 .875rem/1.5 Geist, ui-sans-serif, system-ui, sans-serif; transition: border-color 150ms ease, box-shadow 150ms ease; } .ds-input::placeholder { color: var(--muted-foreground, oklch(.556 0 0)); } .ds-input:hover { border-color: var(--ring, oklch(.708 0 0)); } .ds-input:focus-visible { border-color: var(--ring, oklch(.708 0 0)); outline: 3px solid color-mix(in oklch, var(--ring, oklch(.708 0 0)) 50%, transparent); outline-offset: 0; }"
+    },
+    {
+      "name": "Operational Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Structured surface for one coherent operational group.",
+      "html": "<section class=\"ds-card\"><div><h3>Ringkasan absensi</h3><p>Data hari ini</p></div><strong>428</strong></section>",
+      "css": ".ds-card { display: flex; align-items: start; justify-content: space-between; gap: 1rem; border: 1px solid var(--border, oklch(.922 0 0)); border-radius: var(--radius-xl, .875rem); padding: 1.5rem; background: var(--card, oklch(1 0 0)); color: var(--card-foreground, oklch(.145 0 0)); box-shadow: 0 1px 3px rgb(0 0 0 / .1), 0 1px 2px -1px rgb(0 0 0 / .1); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-card h3 { margin: 0; font-size: 1rem; font-weight: 600; } .ds-card p { margin: .375rem 0 0; color: var(--muted-foreground, oklch(.556 0 0)); font-size: .875rem; } .ds-card strong { font-size: 1.5rem; line-height: 1; } .ds-card:hover { border-color: var(--ring, oklch(.708 0 0)); } .ds-card:focus-within { outline: 3px solid color-mix(in oklch, var(--ring, oklch(.708 0 0)) 50%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "description": "Compact semantic status that remains understandable through text.",
+      "html": "<span class=\"ds-badge-success\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M13.3 4.3a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4 0l-3-3a1 1 0 1 1 1.4-1.4L6.6 9.6l5.3-5.3a1 1 0 0 1 1.4 0Z\"/></svg>Disetujui</span>",
+      "css": ".ds-badge-success { display: inline-flex; align-items: center; gap: .25rem; width: fit-content; border: 1px solid transparent; border-radius: var(--radius-md, .5rem); padding: .125rem .5rem; background: var(--success, oklch(.6 .18 152)); color: var(--success-foreground, white); font: 500 .75rem/1.4 Geist, ui-sans-serif, system-ui, sans-serif; } .ds-badge-success svg { width: .75rem; height: .75rem; fill: currentColor; } .ds-badge-success:hover { filter: brightness(.96); } .ds-badge-success:focus-visible { outline: 3px solid color-mix(in oklch, var(--success, oklch(.6 .18 152)) 30%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Sidebar Navigation Item",
+      "kind": "nav",
+      "description": "Predictable compact navigation with explicit active state.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Navigasi utama\"><a class=\"ds-nav-item\" href=\"#\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M2 2h5v5H2V2Zm7 0h5v5H9V2ZM2 9h5v5H2V9Zm7 0h5v5H9V9Z\"/></svg>Dashboard</a><a class=\"ds-nav-item is-active\" href=\"#\" aria-current=\"page\">Absensi</a></nav>",
+      "css": ".ds-nav { display: grid; gap: .25rem; width: 16rem; color: var(--sidebar-foreground, oklch(.145 0 0)); font-family: Geist, ui-sans-serif, system-ui, sans-serif; } .ds-nav-item { display: flex; align-items: center; gap: .5rem; min-height: 2rem; border-radius: var(--radius-md, .5rem); padding: .5rem; color: inherit; text-decoration: none; font-size: .875rem; transition: background-color 150ms ease, color 150ms ease; } .ds-nav-item svg { width: 1rem; height: 1rem; fill: currentColor; } .ds-nav-item:hover, .ds-nav-item:active, .ds-nav-item.is-active { background: var(--sidebar-accent, oklch(.97 0 0)); color: var(--sidebar-accent-foreground, oklch(.205 0 0)); } .ds-nav-item.is-active { font-weight: 500; } .ds-nav-item:focus-visible { outline: 2px solid var(--sidebar-ring, oklch(.708 0 0)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "description": "Compact, scan-friendly table with stable action placement.",
+      "html": "<div class=\"ds-table-wrap\"><table class=\"ds-table\"><thead><tr><th>Nama</th><th>Status</th><th>Aksi</th></tr></thead><tbody><tr><td>Siti Aminah</td><td>Hadir</td><td><button>Detail</button></td></tr></tbody></table></div>",
+      "css": ".ds-table-wrap { overflow-x: auto; border: 1px solid var(--border, oklch(.922 0 0)); border-radius: var(--radius-md, .5rem); } .ds-table { width: 100%; border-collapse: collapse; color: var(--foreground, oklch(.145 0 0)); font: 400 .875rem/1.5 Geist, ui-sans-serif, system-ui, sans-serif; } .ds-table th, .ds-table td { height: 2.5rem; padding: .5rem; border-bottom: 1px solid var(--border, oklch(.922 0 0)); text-align: left; white-space: nowrap; } .ds-table th { font-weight: 500; } .ds-table tbody tr:hover { background: color-mix(in oklch, var(--muted, oklch(.97 0 0)) 50%, transparent); } .ds-table button { border: 0; border-radius: var(--radius-sm, .375rem); padding: .375rem .5rem; background: transparent; color: var(--foreground, oklch(.145 0 0)); font: inherit; } .ds-table button:hover { background: var(--accent, oklch(.97 0 0)); } .ds-table button:focus-visible { outline: 3px solid color-mix(in oklch, var(--ring, oklch(.708 0 0)) 50%, transparent); outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calm Operations Desk",
+    "overview": "Skanida Chronos terasa seperti meja kerja operasional yang profesional, tenang, dan dapat dipercaya. Informasi boleh padat dan rinci, tetapi hierarchy, alignment, spacing, serta bahasa yang konsisten harus membuat layar tetap mudah dipindai oleh admin sekolah yang bekerja cepat sepanjang hari.\n\nSistem ini mengutamakan usability di atas dekorasi. Karakter visual datang dari proporsi yang rapi, state yang tegas, warna status yang terukur, dan interaksi yang responsif—bukan gradient dekoratif, shadow berat, atau animasi yang menarik perhatian dari tugas. Pola shadcn/ui adalah fondasi; penyempurnaan harus memperkuat konsistensi dan aksesibilitas tanpa mengubahnya menjadi redesign yang tidak berhubungan.",
+    "keyCharacteristics": [
+      "Professional, calm, and operational.",
+      "Data-dense yet easy to scan.",
+      "Friendly through clear language, forgiving states, and predictable behavior.",
+      "Fast for repetitive work, with frequent actions close to their context.",
+      "Restrained and accessible rather than visually theatrical."
+    ],
+    "rules": [
+      {
+        "name": "The Meaning Before Color Rule",
+        "body": "Setiap status dan hasil aksi harus tetap dapat dipahami tanpa persepsi warna.",
+        "section": "colors"
+      },
+      {
+        "name": "The Signal Budget Rule",
+        "body": "Gunakan warna semantik hanya ketika ia menyampaikan status, feedback, atau risiko; jangan memakainya sebagai dekorasi permukaan besar.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Typeface Rule",
+        "body": "Gunakan Geist untuk seluruh antarmuka operasional; hierarchy harus berasal dari ukuran, weight, dan susunan, bukan campuran typeface dekoratif.",
+        "section": "typography"
+      },
+      {
+        "name": "The Data Legibility Rule",
+        "body": "Jangan mengecilkan teks inti untuk memaksakan lebih banyak kolom; gunakan reflow, progressive disclosure, atau scroll container yang jelas.",
+        "section": "typography"
+      },
+      {
+        "name": "The Repetition Wins Rule",
+        "body": "Optimalkan alur yang dilakukan berulang kali: urutan fokus, lokasi aksi, filter persisten, dan feedback harus dapat diprediksi dari satu layar ke layar berikutnya.",
+        "section": "layout"
+      },
+      {
+        "name": "The Subtle but Visible Rule",
+        "body": "Depth harus membantu pengguna membedakan lapisan dan state dalam sekali lihat, tetapi tidak boleh menjadi elemen visual yang paling menonjol.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Real Layers Only Rule",
+        "body": "Shadow menengah atau besar hanya untuk elemen yang secara perilaku berada di atas konten lain.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do prioritaskan alur keyboard, focus yang terlihat, reflow, kontras WCAG 2.2 AA, serta target sentuh yang memadai.",
+      "Do tempatkan quick actions repetitif dekat dengan data yang dipengaruhi dan pertahankan posisinya secara konsisten.",
+      "Do tampilkan loading, empty, error, success, dan retry state dengan Bahasa Indonesia yang jelas.",
+      "Do gunakan alignment, spacing, border, dan typography untuk membuat data rinci mudah dipindai.",
+      "Do pertahankan primitive dan pola interaksi shadcn/ui kecuali bukti usability menuntut perubahan."
+    ],
+    "donts": [
+      "Don't memakai shadow berat, gradient dekoratif, glassmorphism, atau animasi mencolok untuk membuat dashboard terasa menarik.",
+      "Don't mengandalkan warna saja untuk membedakan status, pilihan, error, atau keberhasilan.",
+      "Don't menyembunyikan aksi penting hanya di balik hover atau menu tanpa jalur keyboard dan touch yang setara.",
+      "Don't mengejar kepadatan dengan teks terlalu kecil, target klik sempit, atau informasi yang terpotong tanpa jalan menuju detail.",
+      "Don't mencampur Bahasa Indonesia dan istilah teknis internal pada tugas yang dihadapi admin."
+    ]
+  }
+}

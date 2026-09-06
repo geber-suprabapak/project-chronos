@@ -1,31 +1,37 @@
-# Create T3 App
+# Skanida Chronos
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+Portal web administrasi sekolah untuk data siswa dan profil, absensi, perizinan, lokasi, jadwal, serta ekspor operasional. Chronos memakai Logto untuk identitas/peran dan Astra sebagai otoritas API serta state domain; repository ini tidak memiliki database domain sendiri.
 
-## What's next? How do I make an app with this?
+## Local development
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+Prerequisite: Node.js 22 dan pnpm 10.15.0.
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Environment yang diperlukan didokumentasikan di `.env.example`. Jangan menyalin secret produksi ke repository atau fixture test.
 
-## Learn More
+## Quality gates
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+```bash
+pnpm check
+pnpm test
+pnpm build
+pnpm test:e2e
+```
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+E2E menyalakan mock Astra dan Logto melalui `e2e/fixtures/start-servers.ts`; test write-path tidak boleh diarahkan ke produksi.
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+## Architecture and product context
 
-## How do I deploy this?
+- `PRODUCT.md` — tujuan, pengguna, batas produk, dan prinsip settlement.
+- `DESIGN.md` — bahasa desain dan guardrail UI/UX Chronos.
+- `docs/codebase-map/` — peta modul, flow, invariant, dan decision index.
+- `docs/rbac-implementation.md` — authority boundary Logto dan Astra.
+- `contracts/astra-v1.json` — snapshot kontrak integrasi; harus tetap sinkron dengan Astra.
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+## Deployment
 
-Test Commit
+Image standalone Next.js dibangun oleh `Dockerfile`. Workflow `.github/workflows/buildtest.yml` menerbitkan image GHCR. Deployment produksi dan perubahan shared infrastructure harus mengikuti runbook workspace dan safety gate; status container sehat saja tidak cukup sebagai verifikasi end-to-end.

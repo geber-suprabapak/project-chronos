@@ -22,7 +22,18 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Alert, AlertDescription } from "~/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import {
   MapPin,
@@ -54,6 +65,14 @@ export default function ConfigurationPage() {
     null,
   );
   const [showForm, setShowForm] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    actionVariant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
 
   // Search location states
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,6 +89,7 @@ export default function ConfigurationPage() {
   >([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const currentSearchIdRef = useRef(0);
 
@@ -237,12 +257,15 @@ export default function ConfigurationPage() {
 
   // Search location function
   const searchLocation = async (query: string) => {
-    if (!query.trim() || query.trim().length < 2) {
+    const trimmed = query.trim();
+    if (!trimmed || trimmed.length < 3) {
       setSearchResults([]);
       setShowSearchResults(false);
+      setSearchError(null);
       return;
     }
     setIsSearching(true);
+    setSearchError(null);
     // Bump search id and create a fresh abort controller
     const searchId = ++currentSearchIdRef.current;
     // Abort any in-flight request
@@ -254,82 +277,62 @@ export default function ConfigurationPage() {
     const { signal } = controller;
 
     try {
-      const base =
-        "https://nominatim.openstreetmap.org/search?format=json&addressdetails=1";
-      const urls = [
-        `${base}&q=${encodeURIComponent(query)}&limit=3&countrycodes=id`,
-        `${base}&q=${encodeURIComponent(query)}&limit=2`,
-        ...(query.trim().length <= 10
-          ? [`${base}&q=${encodeURIComponent(query + " indonesia")}&limit=2`]
-          : []),
-      ];
-
-      const results = await Promise.allSettled(
-        urls.map(async (u) => {
-          const res = await fetch(u, { signal });
-          if (!res.ok) throw new Error(String(res.status));
-          // SAFETY: Nominatim API response format matches expected location search result array
-          return res.json() as Promise<
-            Array<{
-              display_name: string;
-              lat: string;
-              lon: string;
-              place_id: string;
-              type?: string;
-              class?: string;
-              importance?: number;
-            }>
-          >;
-        }),
-      );
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`, {
+        signal,
+      });
 
       // If a newer search started, ignore this result
       if (searchId !== currentSearchIdRef.current || signal.aborted) return;
 
-      const allResults: Array<{
-        display_name: string;
-        lat: string;
-        lon: string;
-        place_id: string;
-        type?: string;
-        class?: string;
-        importance?: number;
-      }> = [];
-      for (const r of results) {
-        if (r.status === "fulfilled" && Array.isArray(r.value))
-          allResults.push(...r.value);
+      if (!res.ok) {
+        if (res.status === 429) {
+          toast.error(
+            "Layanan pencarian sedang sibuk. Silakan tunggu sebentar.",
+          );
+          setSearchError(
+            "Layanan pencarian sedang sibuk (rate limit). Coba lagi dalam beberapa detik.",
+          );
+        } else if (res.status === 504) {
+          toast.error("Pencarian lokasi melebihi batas waktu (timeout).");
+          setSearchError(
+            "Pencarian melebihi batas waktu 5 detik. Periksa koneksi atau coba lagi.",
+          );
+        } else {
+          toast.error("Gagal mencari lokasi");
+          setSearchError("Gagal memuat hasil pencarian lokasi.");
+        }
+        setSearchResults([]);
+        setShowSearchResults(false);
+        return;
       }
 
-      const uniqueResults = allResults
-        .filter(
-          (result, index, self) =>
-            index === self.findIndex((r) => r.place_id === result.place_id),
-        )
-        .sort((a, b) => {
-          const importanceA = a.importance ?? 0;
-          const importanceB = b.importance ?? 0;
-          const isIndonesianA = a.display_name
-            ?.toLowerCase()
-            .includes("indonesia")
-            ? 1
-            : 0;
-          const isIndonesianB = b.display_name
-            ?.toLowerCase()
-            .includes("indonesia")
-            ? 1
-            : 0;
-          return isIndonesianB - isIndonesianA || importanceB - importanceA;
-        })
-        .slice(0, 6);
+      // SAFETY: Internal proxy endpoint returns structured GeocodeResponsePayload
+      const payload = (await res.json()) as {
+        success?: boolean;
+        data?: Array<{
+          display_name: string;
+          lat: string;
+          lon: string;
+          place_id: string;
+          type?: string;
+          class?: string;
+          importance?: number;
+        }>;
+      };
 
-      setSearchResults(uniqueResults);
+      if (searchId !== currentSearchIdRef.current || signal.aborted) return;
+
+      const items = Array.isArray(payload) ? payload : (payload.data ?? []);
+      setSearchResults(items);
       setShowSearchResults(true);
+      setSearchError(null);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         // Search request aborted, do nothing
       } else {
         console.error("Error searching location:", error);
         toast.error("Gagal mencari lokasi");
+        setSearchError("Terjadi kesalahan jaringan saat mencari lokasi.");
         setSearchResults([]);
       }
     } finally {
@@ -348,9 +351,10 @@ export default function ConfigurationPage() {
   // Search debounce timeout ref
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Handle search input change with debounce
+  // Handle search input change with debounce (450ms)
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setSearchError(null);
 
     // Clear previous timeout
     if (searchTimeoutRef.current) {
@@ -358,7 +362,7 @@ export default function ConfigurationPage() {
     }
 
     // If input becomes too short, abort current search and hide results quickly
-    if (!value.trim() || value.trim().length < 2) {
+    if (!value.trim() || value.trim().length < 3) {
       if (searchAbortRef.current) searchAbortRef.current.abort();
       setIsSearching(false);
       setShowSearchResults(false);
@@ -366,10 +370,10 @@ export default function ConfigurationPage() {
       return;
     }
 
-    // Set new timeout - shorter delay for better responsiveness
+    // Set new timeout - 450ms delay for rate-limit and human typing compliance
     searchTimeoutRef.current = setTimeout(() => {
       void searchLocation(value);
-    }, 300);
+    }, 450);
   };
 
   // Utility: get next available location ID (only 2 or 3 allowed)
@@ -562,17 +566,26 @@ export default function ConfigurationPage() {
   };
 
   const handleDelete = (id: number, name: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus lokasi "${name}"?`)) {
-      deleteMutation.mutate({ id });
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Hapus Lokasi",
+      description: `Apakah Anda yakin ingin menghapus lokasi "${name}"? Tindakan ini tidak dapat dibatalkan.`,
+      actionLabel: "Hapus",
+      actionVariant: "destructive",
+      onConfirm: () => deleteMutation.mutate({ id }),
+    });
   };
 
   const handleReset = () => {
-    if (
-      confirm("Apakah Anda yakin ingin mereset konfigurasi ke nilai default?")
-    ) {
-      resetMutation.mutate();
-    }
+    setConfirmDialog({
+      open: true,
+      title: "Reset Konfigurasi",
+      description:
+        "Apakah Anda yakin ingin mereset konfigurasi ke nilai default?",
+      actionLabel: "Reset",
+      actionVariant: "default",
+      onConfirm: () => resetMutation.mutate(),
+    });
   };
 
   const isLoading = locationsLoading;
@@ -611,7 +624,7 @@ export default function ConfigurationPage() {
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
       {/* Header */}
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-wrap">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <div className="p-2 rounded-lg">
@@ -691,8 +704,8 @@ export default function ConfigurationPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="overflow-x-auto min-w-0 w-full">
+                <Table className="min-w-[650px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-semibold">
@@ -758,6 +771,7 @@ export default function ConfigurationPage() {
                                   location.id === 1 ||
                                   toggleActiveMutation.isPending
                                 }
+                                aria-label={`Status aktif lokasi ${location.name}`}
                                 className={
                                   location.isActive
                                     ? "data-[state=checked]:bg-emerald-600"
@@ -768,7 +782,11 @@ export default function ConfigurationPage() {
                                 variant={
                                   location.isActive ? "success" : "destructive"
                                 }
-                                className="flex items-center gap-1.5"
+                                className={cn(
+                                  "flex items-center gap-1.5",
+                                  location.isActive &&
+                                    "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white",
+                                )}
                               >
                                 {location.isActive ? "Aktif" : "Nonaktif"}
                               </Badge>
@@ -779,6 +797,7 @@ export default function ConfigurationPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                aria-label={`${location.id === 1 ? "Lihat" : "Edit"} lokasi ${location.name}`}
                                 onClick={() => handleOpenForm(location.id)}
                               >
                                 <Edit className="h-3.5 w-3.5 mr-1.5" />
@@ -788,6 +807,7 @@ export default function ConfigurationPage() {
                                 <Button
                                   size="sm"
                                   variant="destructive"
+                                  aria-label={`Hapus lokasi ${location.name}`}
                                   onClick={() =>
                                     handleDelete(location.id, location.name)
                                   }
@@ -890,9 +910,11 @@ export default function ConfigurationPage() {
                 variant="ghost"
                 size="icon"
                 onClick={handleCloseForm}
+                aria-label="Tutup form lokasi"
                 className="hover:bg-muted transition-colors rounded-full"
               >
                 <X className="h-5 w-5" />
+                <span className="sr-only">Tutup form lokasi</span>
               </Button>
             </div>
           </CardHeader>
@@ -907,24 +929,62 @@ export default function ConfigurationPage() {
                     <h4>Pencarian Lokasi</h4>
                   </div>
                   <div className="relative search-container">
+                    {/* Screen Reader Live Announcement */}
+                    <div
+                      className="sr-only"
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      {isSearching
+                        ? "Sedang mencari lokasi..."
+                        : searchError
+                          ? searchError
+                          : showSearchResults && searchResults.length > 0
+                            ? `${searchResults.length} hasil lokasi ditemukan.`
+                            : showSearchResults &&
+                                searchQuery.trim().length >= 3
+                              ? "Lokasi tidak ditemukan."
+                              : ""}
+                    </div>
+
                     <Input
                       type="text"
+                      id="location-search-input"
                       placeholder="Cari lokasi: nama jalan, sekolah, kantor, mall..."
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       className="w-full pr-10 h-10"
+                      role="combobox"
+                      aria-expanded={
+                        showSearchResults && searchResults.length > 0
+                      }
+                      aria-autocomplete="list"
+                      aria-controls="geocoding-results-list"
+                      aria-label="Pencarian nama lokasi atau alamat"
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                       {isSearching ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2
+                          className="h-4 w-4 animate-spin text-primary"
+                          aria-hidden="true"
+                        />
                       ) : (
-                        <Search className="h-4 w-4 text-muted-foreground" />
+                        <Search
+                          className="h-4 w-4 text-muted-foreground"
+                          aria-hidden="true"
+                        />
                       )}
                     </div>
 
                     {/* Search Results */}
                     {showSearchResults && searchResults.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                      <div
+                        id="geocoding-results-list"
+                        role="listbox"
+                        aria-label="Daftar hasil pencarian lokasi"
+                        className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg max-h-64 overflow-y-auto"
+                      >
                         {searchResults.map((result, idx) => {
                           const locationName = result.display_name
                             ?.split(",")[0]
@@ -940,20 +1000,25 @@ export default function ConfigurationPage() {
                             <button
                               key={result.place_id}
                               type="button"
+                              role="option"
+                              aria-selected="false"
                               className={`w-full px-4 py-3 text-left hover:bg-muted border-b border-gray-200 dark:border-gray-700 last:border-b-0 text-sm transition-colors ${
                                 idx === 0 ? "rounded-t-lg" : ""
                               } ${idx === searchResults.length - 1 ? "rounded-b-lg" : ""}`}
                               onClick={() => handleSearchResultSelect(result)}
                             >
                               <div className="flex items-start gap-3">
-                                <div className="p-2 bg-muted rounded-lg flex-shrink-0">
+                                <div
+                                  className="p-2 bg-muted rounded-lg flex-shrink-0"
+                                  aria-hidden="true"
+                                >
                                   <MapPin className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="font-semibold truncate flex items-center gap-2">
                                     {locationName}
                                     {locationType && (
-                                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                                      <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-normal">
                                         {locationType}
                                       </span>
                                     )}
@@ -961,7 +1026,7 @@ export default function ConfigurationPage() {
                                   <div className="text-muted-foreground text-xs mt-1 line-clamp-1 break-words">
                                     {locationDetails}
                                   </div>
-                                  <div className="text-xs mt-1.5 font-mono">
+                                  <div className="text-xs mt-1.5 font-mono text-muted-foreground">
                                     {parseFloat(result.lat).toFixed(6)},{" "}
                                     {parseFloat(result.lon).toFixed(6)}
                                   </div>
@@ -973,22 +1038,32 @@ export default function ConfigurationPage() {
                       </div>
                     )}
 
-                    {/* No Results */}
+                    {/* No Results or Error State */}
                     {showSearchResults &&
                       searchResults.length === 0 &&
                       !isSearching &&
-                      searchQuery.trim() &&
-                      searchQuery.trim().length >= 2 && (
-                        <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg p-4 text-sm">
+                      searchQuery.trim().length >= 3 && (
+                        <div
+                          role="status"
+                          aria-live="polite"
+                          className="absolute top-full left-0 right-0 z-50 mt-2 bg-white dark:bg-gray-800 border rounded-lg shadow-lg p-4 text-sm"
+                        >
                           <div className="text-center text-muted-foreground">
-                            <div className="p-2 bg-muted rounded-full w-fit mx-auto mb-2">
+                            <div
+                              className="p-2 bg-muted rounded-full w-fit mx-auto mb-2"
+                              aria-hidden="true"
+                            >
                               <Search className="h-5 w-5" />
                             </div>
                             <div className="font-semibold mb-1 text-xs">
-                              Lokasi tidak ditemukan
+                              {searchError
+                                ? "Pencarian Bermasalah"
+                                : "Lokasi tidak ditemukan"}
                             </div>
                             <div className="text-xs">
-                              Coba kata kunci yang lebih umum
+                              {searchError
+                                ? searchError
+                                : "Coba kata kunci yang lebih umum atau periksa ejaan alamat."}
                             </div>
                           </div>
                         </div>
@@ -1200,6 +1275,41 @@ export default function ConfigurationPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* AlertDialog for Confirmations */}
+      <AlertDialog
+        open={Boolean(confirmDialog?.open)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDialog(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialog?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog?.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmDialog(null)}>
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                confirmDialog?.actionVariant === "destructive"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              onClick={() => {
+                confirmDialog?.onConfirm();
+                setConfirmDialog(null);
+              }}
+            >
+              {confirmDialog?.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import {
 import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
 import { astraRequest } from "~/lib/astra/client";
 import { normalizeDateOnly } from "~/lib/date-utils";
-import { buildPendingLeaveRequestReset } from "~/server/api/routers/perizinan-contract";
 import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
 
 interface AstraStudentProfile {
@@ -42,6 +41,26 @@ interface AstraLeaveRequest {
   updated_at?: string | null;
 }
 
+/**
+ * Normalizes leave category from database enum to canonical Indonesian presentation label.
+ * ADR-002: sakit -> Sakit, pergi -> Izin (Pergi), dispensasi -> Dispensasi, lainnya -> Izin (Lainnya)
+ */
+export function formatLeaveCategory(category?: string | null): string {
+  if (!category) return "-";
+  switch (category.toLowerCase()) {
+    case "sakit":
+      return "Sakit";
+    case "pergi":
+      return "Izin (Pergi)";
+    case "dispensasi":
+      return "Dispensasi";
+    case "lainnya":
+      return "Izin (Lainnya)";
+    default:
+      return category;
+  }
+}
+
 function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
   const absenceNum = lr.absence_number ? parseInt(lr.absence_number, 10) : null;
 
@@ -52,7 +71,8 @@ function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
     // `T00:00...` to an ISO timestamp creates Invalid Date, which downstream
     // clients can coerce to 01/01/1970.
     tanggal: normalizeDateOnly(lr.date) ?? "",
-    kategoriIzin: lr.category,
+    kategoriIzin: formatLeaveCategory(lr.category),
+    category: lr.category,
     deskripsi: lr.description ?? null,
     linkFoto: lr.attachment_url ?? null,
     approvalStatus: lr.approval_status,
@@ -99,7 +119,9 @@ export const perizinanRouter = createTRPCRouter({
       z
         .object({
           userId: z.string().trim().min(1).max(255).optional(),
-          kategoriIzin: z.enum(["sakit", "pergi"]).optional(),
+          kategoriIzin: z
+            .enum(["sakit", "pergi", "dispensasi", "lainnya"])
+            .optional(),
           approvalStatus: z.string().optional(),
           status: z.boolean().optional(),
           tanggal: z
@@ -160,14 +182,25 @@ export const perizinanRouter = createTRPCRouter({
         if (dateComp !== 0) return dateComp;
         const createdA = a.created_at ?? "";
         const createdB = b.created_at ?? "";
-        return createdB.localeCompare(createdA);
+        const createdComp = createdB.localeCompare(createdA);
+        if (createdComp !== 0) return createdComp;
+        return b.id.localeCompare(a.id);
       });
 
+      const total = filtered.length;
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
       const paged = filtered.slice(offset, offset + limit);
+      const rows = paged.map(mapAstraLeaveRequestToPerizinan);
+      const hasMore = offset + rows.length < total;
 
-      return paged.map(mapAstraLeaveRequestToPerizinan);
+      return {
+        rows,
+        total,
+        limit,
+        offset,
+        hasMore,
+      };
     }),
 
   // Mengambil seluruh data perizinan (tanpa pagination) dari Astra.
@@ -189,7 +222,9 @@ export const perizinanRouter = createTRPCRouter({
     filtered.sort((a, b) => {
       const createdA = a.created_at ?? "";
       const createdB = b.created_at ?? "";
-      return createdB.localeCompare(createdA);
+      const createdComp = createdB.localeCompare(createdA);
+      if (createdComp !== 0) return createdComp;
+      return b.id.localeCompare(a.id);
     });
 
     return filtered.map(mapAstraLeaveRequestToPerizinan);
@@ -200,7 +235,7 @@ export const perizinanRouter = createTRPCRouter({
     .input(
       z.object({
         nis: z.string(),
-        kategoriIzin: z.enum(["sakit", "pergi"]),
+        kategoriIzin: z.enum(["sakit", "pergi", "dispensasi", "lainnya"]),
         deskripsi: z.string().optional(),
         linkFoto: z.string().optional(),
         tanggal: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
@@ -286,11 +321,8 @@ export const perizinanRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       if (input.approvalStatus === "pending") {
         const reset = await astraRequest<AstraLeaveRequest>(
-          `/v1/admin/leave-requests/${input.id}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify(buildPendingLeaveRequestReset()),
-          },
+          `/v1/admin/leave-requests/${input.id}/reopen`,
+          { method: "POST" },
         );
         return mapAstraLeaveRequestToPerizinan(reset);
       }

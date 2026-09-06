@@ -6,9 +6,11 @@ import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
   isPasswordChangeRequired,
-  isPrivilegedRole,
+  canAccessDashboard,
+  canPerformMonthlyBackup,
   resolveLogtoRole,
-} from "~/lib/logto/claims";
+  type AppRole,
+} from "~/server/auth/rbac";
 import { AppSidebar } from "~/components/app-sidebar";
 import {
   SidebarProvider,
@@ -27,6 +29,7 @@ export default async function DashLayout({
 }: {
   children: ReactNode;
 }) {
+  let userRole: AppRole | null = null;
   try {
     const logtoContext = await getLogtoContext(logtoConfig);
 
@@ -40,8 +43,8 @@ export default async function DashLayout({
     }
 
     const rawRoles = claims?.roles ?? [];
-    const userRole = resolveLogtoRole(rawRoles);
-    if (!userRole || !isPrivilegedRole(userRole)) {
+    userRole = resolveLogtoRole(rawRoles);
+    if (!canAccessDashboard(userRole)) {
       redirect("/login?error=forbidden_role");
     }
   } catch (err) {
@@ -54,13 +57,14 @@ export default async function DashLayout({
   // Persist default open state for collapsible sidebar via cookie (shadcn pattern)
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+  const canBackup = canPerformMonthlyBackup(userRole);
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar />
+      <AppSidebar role={userRole} />
       <SidebarInset>
-        {/* Banner backup bulanan (tgl 25) */}
-        <MonthlyBackupBanner />
+        {/* Banner backup bulanan (tgl 25) - Admin only via canPerformMonthlyBackup */}
+        {canBackup && <MonthlyBackupBanner role={userRole} />}
         {/* Top toolbar with trigger */}
         <div className="flex h-12 items-center gap-3 border-b px-3">
           <SidebarTrigger />

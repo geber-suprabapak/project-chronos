@@ -2,6 +2,7 @@
 
 import { Button } from "~/components/ui/button";
 import { DownloadIcon } from "lucide-react";
+import { toast } from "sonner";
 
 interface DownloadExcelButtonProps {
   href: string;
@@ -48,7 +49,7 @@ export function DownloadExcelButton({
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download Excel file:", error);
-      alert("Failed to download Excel file. Please try again.");
+      toast.error("Gagal mengunduh file Excel. Silakan coba lagi.");
     }
   };
 
@@ -57,11 +58,12 @@ export function DownloadExcelButton({
       type="button"
       onClick={handleClick}
       variant="success"
+      aria-label="Unduh Excel"
       className={className}
       disabled={disabled}
     >
-      <DownloadIcon className="w-4 h-4 mr-2" />
-      Download Excel
+      <DownloadIcon className="w-4 h-4 mr-2" aria-hidden="true" />
+      <span>Unduh Excel</span>
     </Button>
   );
 }

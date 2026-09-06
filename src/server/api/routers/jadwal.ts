@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
   createTRPCRouter,
@@ -31,8 +32,13 @@ export const jadwalRouter = createTRPCRouter({
       return schedules
         .map((s, idx) => mapAstraSchedule(s, idx + 1))
         .sort((a, b) => a.id - b.id);
-    } catch {
-      return [];
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat jadwal dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
     }
   }),
 
@@ -126,8 +132,13 @@ export const jadwalRouter = createTRPCRouter({
         .filter((s) => s.is_active)
         .map((s, idx) => mapAstraSchedule(s, idx + 1))
         .sort((a, b) => a.id - b.id);
-    } catch {
-      return [];
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat jadwal aktif dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
     }
   }),
 
@@ -411,9 +422,19 @@ export const jadwalRouter = createTRPCRouter({
       },
     ];
 
-    const existingSchedules = await astraRequest<AstraSchedule[]>(
-      "/v1/admin/schedules",
-    ).catch(() => []);
+    let existingSchedules: AstraSchedule[];
+    try {
+      existingSchedules = await astraRequest<AstraSchedule[]>(
+        "/v1/admin/schedules",
+      );
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat jadwal dari Astra saat mereset jadwal: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
+    }
 
     const results = [];
 

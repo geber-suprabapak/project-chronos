@@ -12,7 +12,7 @@ export default function LoginPage() {
           </div>
           Chronos Alpha
         </a>
-        <Suspense fallback={<div className="p-4 text-center">Loading...</div>}>
+        <Suspense fallback={<div className="p-4 text-center">Memuat...</div>}>
           <LoginForm />
         </Suspense>
       </div>

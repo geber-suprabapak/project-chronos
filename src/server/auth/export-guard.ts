@@ -4,25 +4,18 @@ import { logtoConfig } from "~/lib/logto/config";
 import {
   extractExtendedClaims,
   isPasswordChangeRequired,
-  isPrivilegedRole,
   resolveLogtoRole,
 } from "~/lib/logto/claims";
 import {
-  ADMIN_ROLES,
-  PRIVILEGED_ROLES,
   type AppRole,
   type AuthenticatedUser,
-  hasRequiredRole,
+  canExportResource,
 } from "~/server/auth/rbac";
+import { getActiveRequestId } from "~/lib/astra/request-context";
+import { writeOperationalEvent } from "~/lib/observability";
 
-export type ExportResource = "absences" | "perizinan" | "profiles" | "siswa";
-
-const EXPORT_ROLE_MAP = {
-  absences: PRIVILEGED_ROLES,
-  perizinan: PRIVILEGED_ROLES,
-  profiles: ADMIN_ROLES,
-  siswa: ADMIN_ROLES,
-} as const satisfies Record<ExportResource, readonly AppRole[]>;
+export type ExportResource =
+  "absences" | "perizinan" | "profiles" | "siswa" | "backup";
 
 type ExportAccessResult =
   | { ok: true; user: AuthenticatedUser; role: AppRole }
@@ -34,12 +27,20 @@ type ExportAccessResult =
 export async function requireExportAccess(
   resource: ExportResource,
 ): Promise<ExportAccessResult> {
-  const requiredRoles = EXPORT_ROLE_MAP[resource];
+  const recordAccess = (outcome: "success" | "failure", status: number) =>
+    writeOperationalEvent({
+      event: "export.access",
+      outcome,
+      requestId: getActiveRequestId() ?? undefined,
+      path: resource,
+      status,
+    });
 
   try {
     const logtoContext = await getLogtoContext(logtoConfig);
 
     if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+      recordAccess("failure", 401);
       return {
         ok: false,
         response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -48,6 +49,7 @@ export async function requireExportAccess(
 
     const claims = extractExtendedClaims(logtoContext.claims);
     if (isPasswordChangeRequired(claims)) {
+      recordAccess("failure", 403);
       return {
         ok: false,
         response: NextResponse.json(
@@ -58,14 +60,8 @@ export async function requireExportAccess(
     }
 
     const role = resolveLogtoRole(claims?.roles ?? []);
-    if (!role || !isPrivilegedRole(role)) {
-      return {
-        ok: false,
-        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
-      };
-    }
-
-    if (!hasRequiredRole(role, requiredRoles)) {
+    if (!canExportResource(role, resource)) {
+      recordAccess("failure", 403);
       return {
         ok: false,
         response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
@@ -85,8 +81,10 @@ export async function requireExportAccess(
       user_metadata: { full_name: fullName ?? email },
     };
 
+    recordAccess("success", 200);
     return { ok: true, user, role };
   } catch {
+    recordAccess("failure", 401);
     return {
       ok: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),

@@ -9,7 +9,7 @@ import { Toaster } from "~/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Chronos",
-  description: "Project Chronos Dev",
+  description: "Sistem Presensi & Manajemen Sekolah Chronos",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
@@ -22,9 +22,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geist.variable}`}>
+    <html lang="id" suppressHydrationWarning className={`${geist.variable}`}>
       <head />
-      <body>
+      <body className="min-w-0 overflow-x-hidden antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

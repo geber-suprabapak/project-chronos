@@ -199,6 +199,9 @@ export default function AbsensiPerKelasPage() {
     exportParams.set("endDate", date);
   }
   const exportUrl = `/api/export/absences?${exportParams.toString()}`;
+  const pdfParams = new URLSearchParams(exportParams);
+  pdfParams.set("format", "pdf");
+  const pdfExportUrl = `/api/export/absences?${pdfParams.toString()}`;
 
   return (
     <div className="flex flex-1 flex-col gap-3 p-2 sm:p-3 md:p-4">
@@ -225,7 +228,7 @@ export default function AbsensiPerKelasPage() {
             }
           />
           <DownloadPdfButton
-            tableId="absensi-perkelas-table"
+            href={pdfExportUrl}
             filename={`absensi-${selectedClass ? selectedClass : "semua"}${date ? `-${date}` : ""}.pdf`}
             title={`Data Absensi Kelas ${selectedClass ?? ""}${date ? ` (${date})` : ""}`}
             disabled={
@@ -243,7 +246,8 @@ export default function AbsensiPerKelasPage() {
             <div className="w-full">
               <Input
                 id="filter-search"
-                placeholder="Search"
+                placeholder="Cari nama atau NIS"
+                aria-label="Cari nama atau NIS siswa"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -259,7 +263,11 @@ export default function AbsensiPerKelasPage() {
                 value={status || "all"}
                 onValueChange={handleStatusChange}
               >
-                <SelectTrigger id="filter-status" className="h-9 w-full">
+                <SelectTrigger
+                  id="filter-status"
+                  aria-label="Filter status absensi"
+                  className="h-9 w-full"
+                >
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -276,6 +284,7 @@ export default function AbsensiPerKelasPage() {
               <Input
                 id="filter-date"
                 type="date"
+                aria-label="Filter tanggal absensi"
                 value={date}
                 onChange={(e) => handleDateChange(e.target.value)}
                 className="h-9 w-full"
@@ -289,7 +298,11 @@ export default function AbsensiPerKelasPage() {
                 onValueChange={handleClassChange}
                 disabled={classNamesLoading}
               >
-                <SelectTrigger id="filter-class" className="h-9 w-full">
+                <SelectTrigger
+                  id="filter-class"
+                  aria-label="Filter kelas"
+                  className="h-9 w-full"
+                >
                   <SelectValue placeholder="Kelas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -476,7 +489,7 @@ export default function AbsensiPerKelasPage() {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
-                  Prev
+                  Sebelumnya
                 </Button>
                 <Button
                   variant="outline"
@@ -484,7 +497,7 @@ export default function AbsensiPerKelasPage() {
                   disabled={!hasMore}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  Berikutnya
                 </Button>
               </div>
             </div>

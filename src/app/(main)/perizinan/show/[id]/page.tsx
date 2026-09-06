@@ -72,13 +72,21 @@ export default function ShowPerizinanPage() {
       void utils.perizinan.listRaw.invalidate();
       setRejectDialogOpen(false);
       if (data) {
-        toast.success(`Status updated to ${data.approvalStatus}`);
+        toast.success(
+          `Status perizinan berhasil diperbarui menjadi ${
+            data.approvalStatus === "approved"
+              ? "Disetujui"
+              : data.approvalStatus === "rejected"
+                ? "Ditolak"
+                : "Menunggu"
+          }.`,
+        );
       } else {
-        toast.success("Status updated successfully.");
+        toast.success("Status perizinan berhasil diperbarui.");
       }
     },
     onError: (err) => {
-      toast.error(`Error updating status: ${err.message}`);
+      toast.error(`Gagal memperbarui status: ${err.message}`);
     },
   });
 
@@ -88,7 +96,7 @@ export default function ShowPerizinanPage() {
 
   const handleRejectConfirm = () => {
     if (!rejectionReason.trim()) {
-      toast.error("Rejection reason cannot be empty.");
+      toast.error("Alasan penolakan tidak boleh kosong.");
       return;
     }
     updateStatusMutation.mutate({
@@ -98,17 +106,22 @@ export default function ShowPerizinanPage() {
     });
   };
 
-  if (!id) return <div>Invalid ID.</div>;
+  if (!id) return <div className="p-8 text-destructive">ID tidak valid.</div>;
   if (isLoading) return <SkeletonLayout />;
   if (error)
-    return <div className="p-8 text-red-500">Error: {error.message}</div>;
-  if (!perizinan) return <div className="p-8">Perizinan not found.</div>;
+    return (
+      <div className="p-8 text-destructive">
+        Terjadi kesalahan: {error.message}
+      </div>
+    );
+  if (!perizinan)
+    return <div className="p-8">Data perizinan tidak ditemukan.</div>;
 
   const isActionable = perizinan.approvalStatus === "pending";
   const user = perizinan.userProfile;
 
   return (
-    <div className="h-[calc(100dvh-4rem)] overflow-hidden p-3 md:p-4 flex flex-col gap-3 md:gap-4">
+    <div className="min-h-[calc(100dvh-4rem)] overflow-y-auto p-3 md:p-4 flex flex-col gap-3 md:gap-4">
       <div className="flex items-start gap-3">
         <Button
           type="button"
@@ -178,7 +191,7 @@ export default function ShowPerizinanPage() {
                     <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
                       <Image
                         src={perizinan.linkFoto}
-                        alt="Permission Evidence"
+                        alt="Bukti Foto Izin"
                         fill
                         className="object-cover"
                       />
@@ -318,8 +331,8 @@ export default function ShowPerizinanPage() {
                       className="w-full"
                     >
                       {updateStatusMutation.isPending
-                        ? "Approving..."
-                        : "Approve"}
+                        ? "Menyetujui..."
+                        : "Setujui"}
                     </Button>
                     <Button
                       variant="destructive"
@@ -328,7 +341,7 @@ export default function ShowPerizinanPage() {
                       size="lg"
                       className="w-full"
                     >
-                      Reject
+                      Tolak
                     </Button>
                   </div>
                 </div>
@@ -391,7 +404,7 @@ export default function ShowPerizinanPage() {
               disabled={updateStatusMutation.isPending}
             >
               {updateStatusMutation.isPending
-                ? "Rejecting..."
+                ? "Menolak..."
                 : "Konfirmasi Tolak"}
             </Button>
           </DialogFooter>
@@ -399,6 +412,12 @@ export default function ShowPerizinanPage() {
       </Dialog>
       <Dialog open={isPhotoDialogOpen} onOpenChange={setPhotoDialogOpen}>
         <DialogContent className="p-0 max-w-none sm:max-w-none w-[95vw] md:w-[85vw] lg:w-[75vw] xl:w-[65vw] h-[80vh] overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto Surat Izin</DialogTitle>
+            <DialogDescription>
+              Pratinjau bukti foto surat izin
+            </DialogDescription>
+          </DialogHeader>
           <div className="relative w-full h-full bg-muted">
             <Image
               src={perizinan.linkFoto ?? ""}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
   createTRPCRouter,
@@ -47,8 +48,13 @@ export const locationRouter = createTRPCRouter({
         "/v1/admin/locations",
       );
       return mapAstraLocations(locations);
-    } catch {
-      return [];
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat lokasi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
     }
   }),
 
@@ -61,8 +67,13 @@ export const locationRouter = createTRPCRouter({
       return mapAstraLocations(locations).filter(
         (location) => location.isActive,
       );
-    } catch {
-      return [];
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat lokasi aktif dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
     }
   }),
 
@@ -386,15 +397,13 @@ export const locationRouter = createTRPCRouter({
         maxDistance,
         minDistance,
       };
-    } catch {
-      return {
-        total: 0,
-        active: 0,
-        inactive: 0,
-        avgDistance: 0,
-        maxDistance: 0,
-        minDistance: 0,
-      };
+    } catch (error) {
+      if (error instanceof TRPCError) throw error;
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Gagal memuat statistik lokasi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+        cause: error,
+      });
     }
   }),
 });

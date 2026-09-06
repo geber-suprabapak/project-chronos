@@ -24,6 +24,11 @@ import {
   type AuthenticatedUser,
   hasRequiredRole,
 } from "~/server/auth/rbac";
+import { createAstraRequestId } from "~/lib/astra/request-id";
+import {
+  getActiveRequestId,
+  runWithRequestId,
+} from "~/lib/astra/request-context";
 
 /**
  * 1. CONTEXT
@@ -37,9 +42,13 @@ import {
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => ({
-  ...opts,
-});
+export const createTRPCContext = async (opts: { headers: Headers }) => {
+  const requestId = createAstraRequestId(opts.headers.get("X-Request-ID"));
+  return {
+    ...opts,
+    requestId,
+  };
+};
 
 export type AuthenticatedContext = Awaited<
   ReturnType<typeof createTRPCContext>
@@ -62,10 +71,13 @@ const t = initTRPC
     errorFormatter(opts) {
       const formattedError = opts["shape"];
       const error = opts.error;
+      const ctx = opts.ctx;
+      const requestId = ctx?.requestId ?? getActiveRequestId() ?? "";
       return {
         ...formattedError,
         data: {
           ...formattedError.data,
+          requestId,
           zodError:
             error.cause instanceof ZodError
               ? z.flattenError(error.cause)
@@ -95,6 +107,20 @@ export const createCallerFactory = t.createCallerFactory;
  * @see https://trpc.io/docs/router
  */
 export const createTRPCRouter = t.router;
+
+/**
+ * Request correlation middleware - runs procedure within AsyncLocalStorage context
+ */
+const withCorrelation = t.middleware(async ({ ctx, next }) => {
+  return runWithRequestId(ctx.requestId, () =>
+    next({
+      ctx: {
+        ...ctx,
+        requestId: ctx.requestId,
+      },
+    }),
+  );
+});
 
 /**
  * Authentication middleware - resolves user role and adds to context
@@ -165,12 +191,14 @@ const requireRole = (allowedRoles: readonly AppRole[]) =>
 /**
  * Public (unauthenticated) procedure
  */
-export const publicProcedure = t.procedure;
+export const publicProcedure = t.procedure.use(withCorrelation);
 
 /**
  * Protected procedure - requires authentication
  */
-export const protectedProcedure = t.procedure.use(isAuthed);
+export const protectedProcedure = t.procedure
+  .use(withCorrelation)
+  .use(isAuthed);
 
 /**
  * Admin-only procedure

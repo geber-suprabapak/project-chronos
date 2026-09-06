@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  adminProcedure,
   createTRPCRouter,
   privilegedProcedure,
   protectedProcedure,
@@ -67,7 +68,7 @@ export const userProfilesRouter = createTRPCRouter({
   }),
 
   // GET BY ID: Ambil profil berdasarkan user_id dari Astra
-  getById: privilegedProcedure
+  getById: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
       try {
@@ -119,7 +120,7 @@ export const userProfilesRouter = createTRPCRouter({
     }),
 
   // LIST: ambil daftar user_profiles dengan pagination sederhana dari Astra
-  list: privilegedProcedure
+  list: adminProcedure
     .input(
       z
         .object({
@@ -199,7 +200,7 @@ export const userProfilesRouter = createTRPCRouter({
     }),
 
   // LIST RAW: semua data (hati-hati untuk dataset besar)
-  listRaw: privilegedProcedure.query(async () => {
+  listRaw: adminProcedure.query(async () => {
     const students =
       await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
     return students.map((s) => ({

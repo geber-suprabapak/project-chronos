@@ -30,6 +30,8 @@ export function CurrentPageTitle({ className }: { className?: string }) {
     case "absensi":
       if (second === "show") {
         title = "Absensi — Detail";
+      } else if (second === "perkelas") {
+        title = "Absensi — Per Kelas";
       } else {
         title = "Absensi";
       }
@@ -43,9 +45,21 @@ export function CurrentPageTitle({ className }: { className?: string }) {
       break;
     case "profiles":
       if (second === "show") {
-        title = "Profiles — Detail";
+        title = "Profil Pengguna — Detail";
       } else {
-        title = "Profiles";
+        title = "Profil Pengguna";
+      }
+      break;
+    case "siswa":
+      title = "Data Siswa";
+      break;
+    case "konfigurasi":
+      if (second === "lokasi") {
+        title = "Konfigurasi — Lokasi";
+      } else if (second === "jadwal") {
+        title = "Konfigurasi — Jadwal";
+      } else {
+        title = "Konfigurasi";
       }
       break;
     case "test":
@@ -60,7 +74,7 @@ export function CurrentPageTitle({ className }: { className?: string }) {
 
   return (
     <div
-      className={["text-sm font-medium truncate", className]
+      className={["text-sm font-medium truncate min-w-0", className]
         .filter(Boolean)
         .join(" ")}
     >

@@ -122,8 +122,8 @@ export default async function ProfilesPage({
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h1 className="text-lg sm:text-xl font-semibold">User Profiles</h1>
-          <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          <h1 className="text-lg sm:text-xl font-semibold">Profil Pengguna</h1>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
             <DownloadExcelButton
               href="/api/export/profiles"
               filename="profiles.xlsx"
@@ -131,9 +131,9 @@ export default async function ProfilesPage({
               disabled={rows.length === 0}
             />
             <DownloadPdfButton
-              tableId="profiles-table"
+              href="/api/export/profiles?format=pdf"
               filename="profiles.pdf"
-              title="Data Siswa"
+              title="Data Profil Pengguna"
               className="px-4 py-2"
               disabled={rows.length === 0}
             />
@@ -160,27 +160,27 @@ export default async function ProfilesPage({
           <div className="flex gap-2">
             {page <= 1 ? (
               <Button variant="outline" size="sm" disabled>
-                Prev
+                Sebelumnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/profiles?${createQueryString(name, className, page - 1)}`}
                 >
-                  Prev
+                  Sebelumnya
                 </Link>
               </Button>
             )}
             {!hasMore ? (
               <Button variant="outline" size="sm" disabled>
-                Next
+                Berikutnya
               </Button>
             ) : (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={`/profiles?${createQueryString(name, className, page + 1)}`}
                 >
-                  Next
+                  Berikutnya
                 </Link>
               </Button>
             )}
@@ -188,21 +188,19 @@ export default async function ProfilesPage({
         </div>
         <Card className="overflow-hidden">
           <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] md:max-w-[calc(100vw-12rem)]">
-              <Table id="profiles-table">
+            <div className="overflow-x-auto min-w-0 w-full">
+              <Table id="profiles-table" className="min-w-[800px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">ID</TableHead>
-                    <TableHead className="w-[220px]">Full Name</TableHead>
+                    <TableHead className="w-[100px]">ID</TableHead>
+                    <TableHead className="w-[220px]">Nama Lengkap</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>NIS</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Absence #</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Updated At</TableHead>
-                    <TableHead className="w-[120px] text-right">
-                      Actions
-                    </TableHead>
+                    <TableHead>Kelas</TableHead>
+                    <TableHead>No. Absen</TableHead>
+                    <TableHead>Peran</TableHead>
+                    <TableHead>Terakhir Diperbarui</TableHead>
+                    <TableHead className="w-[120px] text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -250,8 +248,11 @@ export default async function ProfilesPage({
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
-                        No results.
+                      <TableCell
+                        colSpan={9}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        Tidak ada data
                       </TableCell>
                     </TableRow>
                   )}

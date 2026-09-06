@@ -16,10 +16,10 @@ test.describe("Siswa (Student Roster) Workflows", () => {
 
     // Export buttons
     await expect(
-      page.getByRole("button", { name: /Download Excel/i }),
+      page.getByRole("button", { name: /(?:Unduh|Download) Excel/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /Download PDF/i }),
+      page.getByRole("button", { name: /(?:Unduh|Download) PDF/i }),
     ).toBeVisible();
 
     // KPI Cards
@@ -100,8 +100,12 @@ test.describe("Siswa (Student Roster) Workflows", () => {
 
   test("handles pagination controls", async ({ page }) => {
     // Top and bottom pagination buttons
-    const prevButtons = page.getByRole("button", { name: /Prev/i });
-    const nextButtons = page.getByRole("button", { name: /Next/i });
+    const prevButtons = page.getByRole("button", {
+      name: /(?:Sebelumnya|Prev)/i,
+    });
+    const nextButtons = page.getByRole("button", {
+      name: /(?:Berikutnya|Next)/i,
+    });
 
     await expect(prevButtons.first()).toBeVisible();
     await expect(nextButtons.first()).toBeVisible();
@@ -111,13 +115,17 @@ test.describe("Siswa (Student Roster) Workflows", () => {
   });
 
   test("triggers Excel data export download", async ({ page }) => {
-    const exportButton = page.getByRole("button", { name: /Download Excel/i });
+    const exportButton = page.getByRole("button", {
+      name: /(?:Unduh|Download) Excel/i,
+    });
     await expect(exportButton).toBeVisible();
     await expect(exportButton).toBeEnabled();
   });
 
   test("triggers PDF data export button", async ({ page }) => {
-    const pdfButton = page.getByRole("button", { name: /Download PDF/i });
+    const pdfButton = page.getByRole("button", {
+      name: /(?:Unduh|Download) PDF/i,
+    });
     await expect(pdfButton).toBeVisible();
     await expect(pdfButton).toBeEnabled();
   });

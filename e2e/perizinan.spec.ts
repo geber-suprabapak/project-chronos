@@ -22,10 +22,10 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
 
       // Export buttons
       await expect(
-        page.getByRole("button", { name: /Download Excel/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) Excel/i }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: /Download PDF/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) PDF/i }),
       ).toBeVisible();
 
       // Izin Manual action button
@@ -87,9 +87,9 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
       );
       if (await searchStudent.isVisible()) {
         await searchStudent.fill("Ahmad");
-        const studentOption = dialog.getByRole("button", {
-          name: /Ahmad Dahlan/,
-        });
+        const studentOption = dialog.locator(
+          '[role="option"]:has-text("Ahmad Dahlan"), button:has-text("Ahmad Dahlan")',
+        );
         await expect(studentOption).toBeVisible();
         await studentOption.click();
       }
@@ -108,7 +108,7 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
 
     test("triggers Excel export download", async ({ page }) => {
       const exportButton = page.getByRole("button", {
-        name: /Download Excel/i,
+        name: /(?:Unduh|Download) Excel/i,
       });
       await expect(exportButton).toBeVisible();
       await expect(exportButton).toBeEnabled();

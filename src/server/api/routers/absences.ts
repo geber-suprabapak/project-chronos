@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
   createTRPCRouter,
@@ -8,9 +9,9 @@ import { astraRequest } from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import {
-  buildAttendanceDateListPath,
-  buildAttendanceListPath,
-} from "~/server/api/routers/history-query";
+  fetchAllAttendanceRecords,
+  fetchAttendanceRecordById,
+} from "~/server/api/routers/attendance-source";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -64,13 +65,17 @@ function mapAstraAttendance(
   studentMap?: Map<string, AstraStudentProfile>,
 ) {
   const student = studentMap?.get(att.user_id);
+  const normalizedStatus = att.status === "Datang" ? "Hadir" : att.status;
+  const actionType =
+    att.action_type ?? (att.status === "Datang" ? "check_in" : null);
 
   return {
     id: att.id,
     userId: att.user_id,
     date: normalizeAttendanceDate(att.date),
-    status: att.status,
-    actionType: att.action_type ?? null,
+    // SAFETY: normalizedStatus is guaranteed to be a valid AstraAttendanceRecord status after mapping legacy Datang to Hadir.
+    status: normalizedStatus as AstraAttendanceRecord["status"],
+    actionType,
     latitude: att.latitude ?? null,
     longitude: att.longitude ?? null,
     createdAt: att.created_at ? new Date(att.created_at) : new Date(),
@@ -218,13 +223,12 @@ export const absencesRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const [attendances, students] = await Promise.all([
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceListPath("attendance", input?.userId),
-        ).catch(() =>
-          astraRequest<AstraAttendanceRecord[]>(
-            buildAttendanceListPath("attendances", input?.userId),
-          ).catch(() => []),
-        ),
+        fetchAllAttendanceRecords<AstraAttendanceRecord>({
+          userId: input?.userId,
+          date: input?.date,
+          startDate: input?.startDate,
+          endDate: input?.endDate,
+        }),
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
           () => null,
         ),
@@ -246,7 +250,7 @@ export const absencesRouter = createTRPCRouter({
       }
 
       if (input?.status) {
-        if (input.status === "Hadir") {
+        if (input.status === "Hadir" || input.status === "Datang") {
           filtered = filtered.filter(
             (a) => a.status === "Hadir" || a.status === "Datang",
           );
@@ -309,28 +313,34 @@ export const absencesRouter = createTRPCRouter({
         if (dateComp !== 0) return dateComp;
         const timeA = a.created_at ?? "";
         const timeB = b.created_at ?? "";
+        const timeComp =
+          input?.sort === "desc"
+            ? timeB.localeCompare(timeA)
+            : timeA.localeCompare(timeB);
+        if (timeComp !== 0) return timeComp;
         return input?.sort === "desc"
-          ? timeB.localeCompare(timeA)
-          : timeA.localeCompare(timeB);
+          ? b.id.localeCompare(a.id)
+          : a.id.localeCompare(b.id);
       });
 
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
       const paged = filtered.slice(offset, offset + limit);
+      const hasMore = offset + paged.length < filtered.length;
 
-      return paged.map((a) => mapAstraAttendance(a, studentMap));
+      return {
+        rows: paged.map((a) => mapAstraAttendance(a, studentMap)),
+        total: filtered.length,
+        limit,
+        offset,
+        hasMore,
+      };
     }),
 
   // Mengambil seluruh data absensi (tanpa pagination) dari Astra.
   listRaw: protectedProcedure.query(async () => {
     const [attendances, students] = await Promise.all([
-      astraRequest<AstraAttendanceRecord[]>(
-        buildAttendanceListPath("attendance"),
-      ).catch(() =>
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceListPath("attendances"),
-        ).catch(() => []),
-      ),
+      fetchAllAttendanceRecords<AstraAttendanceRecord>(),
       astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
         () => null,
       ),
@@ -347,7 +357,9 @@ export const absencesRouter = createTRPCRouter({
       if (dateComp !== 0) return dateComp;
       const timeA = a.created_at ?? "";
       const timeB = b.created_at ?? "";
-      return timeB.localeCompare(timeA);
+      const timeComp = timeB.localeCompare(timeA);
+      if (timeComp !== 0) return timeComp;
+      return b.id.localeCompare(a.id);
     });
 
     return sorted.map((a) => mapAstraAttendance(a, studentMap));
@@ -357,25 +369,20 @@ export const absencesRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input }) => {
-      const [attendances, students] = await Promise.all([
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceListPath("attendance"),
-        ).catch(() =>
-          astraRequest<AstraAttendanceRecord[]>(
-            buildAttendanceListPath("attendances"),
-          ).catch(() => []),
-        ),
+      const [record, students] = await Promise.all([
+        fetchAttendanceRecordById<AstraAttendanceRecord>(input.id),
         astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
           () => [],
         ),
       ]);
 
+      if (!record) return null;
+
       const studentMap = new Map<string, AstraStudentProfile>(
         normalizeStudentRows(students).map((s) => [s.user_id, s]),
       );
 
-      const record = attendances.find((a) => a.id === input.id);
-      return record ? mapAstraAttendance(record, studentMap) : null;
+      return mapAstraAttendance(record, studentMap);
     }),
 
   // Statistik kehadiran untuk dashboard dengan range waktu
@@ -393,21 +400,25 @@ export const absencesRouter = createTRPCRouter({
       startDate.setDate(startDate.getDate() - days);
       const startDateStr = startDate.toISOString().split("T")[0]!;
 
-      const [students, attendances, leaveRequests] = await Promise.all([
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
-          () => [],
-        ),
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceListPath("attendance"),
-        ).catch(() =>
-          astraRequest<AstraAttendanceRecord[]>(
-            buildAttendanceListPath("attendances"),
-          ).catch(() => []),
-        ),
-        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
-          () => [],
-        ),
-      ]);
+      let students: AstraStudentProfile[];
+      let attendances: AstraAttendanceRecord[];
+      let leaveRequests: AstraLeaveRequest[];
+      try {
+        [students, attendances, leaveRequests] = await Promise.all([
+          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+          fetchAllAttendanceRecords<AstraAttendanceRecord>({
+            startDate: startDateStr,
+          }),
+          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
+        ]);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Gagal memuat statistik kehadiran dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+          cause: error,
+        });
+      }
 
       const normalizedStudents = normalizeStudentRows(students);
       const totalUsers = normalizedStudents.length;
@@ -434,20 +445,7 @@ export const absencesRouter = createTRPCRouter({
         }
       }
 
-      attendances
-        .filter((a) => normalizeAttendanceDate(a.date) >= startDateStr)
-        .forEach((a) => {
-          const dateStr = normalizeAttendanceDate(a.date);
-          if (dateStr && dateMap[dateStr]) {
-            if (a.status === "Terlambat") {
-              dateMap[dateStr].terlambat.add(a.user_id);
-              dateMap[dateStr].hadir.add(a.user_id);
-            } else {
-              dateMap[dateStr].hadir.add(a.user_id);
-            }
-          }
-        });
-
+      // 1. Process approved leave requests first (ADR-002 precedence rule)
       leaveRequests
         .filter(
           (p) =>
@@ -458,6 +456,29 @@ export const absencesRouter = createTRPCRouter({
           const dateStr = normalizeDateOnly(p.date) ?? "";
           if (dateStr && dateMap[dateStr]) {
             dateMap[dateStr].izin.add(p.user_id);
+          }
+        });
+
+      // 2. Process attendance records with disjoint sets, leave precedence, and Pulang/Alpha exclusion
+      attendances
+        .filter((a) => normalizeAttendanceDate(a.date) >= startDateStr)
+        .forEach((a) => {
+          const dateStr = normalizeAttendanceDate(a.date);
+          if (dateStr && dateMap[dateStr]) {
+            // Precedence: Approved leave overrides physical attendance records
+            if (dateMap[dateStr].izin.has(a.user_id)) {
+              return;
+            }
+
+            if (a.status === "Terlambat") {
+              dateMap[dateStr].hadir.delete(a.user_id);
+              dateMap[dateStr].terlambat.add(a.user_id);
+            } else if (a.status === "Hadir" || a.status === "Datang") {
+              if (!dateMap[dateStr].terlambat.has(a.user_id)) {
+                dateMap[dateStr].hadir.add(a.user_id);
+              }
+            }
+            // Note: Pulang and Alpha records are strictly excluded from presence sets
           }
         });
 
@@ -495,21 +516,23 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const date = input?.date ?? new Date().toISOString().split("T")[0]!;
 
-      const [students, attendances, leaveRequests] = await Promise.all([
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
-          () => [],
-        ),
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceDateListPath("attendance", date),
-        ).catch(() =>
-          astraRequest<AstraAttendanceRecord[]>(
-            buildAttendanceDateListPath("attendances", date),
-          ).catch(() => []),
-        ),
-        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
-          () => [],
-        ),
-      ]);
+      let students: AstraStudentProfile[];
+      let attendances: AstraAttendanceRecord[];
+      let leaveRequests: AstraLeaveRequest[];
+      try {
+        [students, attendances, leaveRequests] = await Promise.all([
+          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+          fetchAllAttendanceRecords<AstraAttendanceRecord>({ date }),
+          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
+        ]);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Gagal memuat ringkasan harian absensi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+          cause: error,
+        });
+      }
 
       const totalUsers = students.length;
       const masukUserIds = new Set<string>();
@@ -518,21 +541,7 @@ export const absencesRouter = createTRPCRouter({
       let izin = 0;
       let sakit = 0;
 
-      attendances
-        .filter((row) => normalizeAttendanceDate(row.date) === date)
-        .forEach((row) => {
-          if (
-            row.status === "Hadir" ||
-            row.status === "Datang" ||
-            row.status === "Terlambat"
-          ) {
-            masukUserIds.add(row.user_id);
-          }
-          if (row.status === "Pulang") {
-            pulangUserIds.add(row.user_id);
-          }
-        });
-
+      // 1. Process leave requests first to establish precedence and category counts
       leaveRequests
         .filter(
           (row) =>
@@ -541,8 +550,32 @@ export const absencesRouter = createTRPCRouter({
         )
         .forEach((row) => {
           izinUserIds.add(row.user_id);
-          if (row.category === "pergi") izin += 1;
-          if (row.category === "sakit") sakit += 1;
+          if (row.category === "sakit") {
+            sakit += 1;
+          } else {
+            // Count pergi, dispensasi, lainnya under izin
+            izin += 1;
+          }
+        });
+
+      // 2. Process attendance rows, respecting leave precedence
+      attendances
+        .filter((row) => normalizeAttendanceDate(row.date) === date)
+        .forEach((row) => {
+          if (row.status === "Pulang") {
+            pulangUserIds.add(row.user_id);
+          }
+          // Approved leave overrides physical check-in for daily state
+          if (izinUserIds.has(row.user_id)) {
+            return;
+          }
+          if (
+            row.status === "Hadir" ||
+            row.status === "Datang" ||
+            row.status === "Terlambat"
+          ) {
+            masukUserIds.add(row.user_id);
+          }
         });
 
       const hadirAtauIzin = new Set<string>([...masukUserIds, ...izinUserIds]);
@@ -574,21 +607,25 @@ export const absencesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      const [studentPayload, attendances, leaveRequests] = await Promise.all([
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
-          () => [],
-        ),
-        astraRequest<AstraAttendanceRecord[]>(
-          buildAttendanceDateListPath("attendance", input.date),
-        ).catch(() =>
-          astraRequest<AstraAttendanceRecord[]>(
-            buildAttendanceDateListPath("attendances", input.date),
-          ).catch(() => []),
-        ),
-        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests").catch(
-          () => [],
-        ),
-      ]);
+      let studentPayload: AstraStudentProfile[];
+      let attendances: AstraAttendanceRecord[];
+      let leaveRequests: AstraLeaveRequest[];
+      try {
+        [studentPayload, attendances, leaveRequests] = await Promise.all([
+          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+          fetchAllAttendanceRecords<AstraAttendanceRecord>({
+            date: input.date,
+          }),
+          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
+        ]);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Gagal memuat ringkasan absensi kelas dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
+          cause: error,
+        });
+      }
 
       const allStudents = normalizeStudentRows(studentPayload);
 
@@ -639,16 +676,7 @@ export const absencesRouter = createTRPCRouter({
       const sakitSet = new Set<string>();
       const izinSet = new Set<string>();
 
-      for (const a of classAbsences) {
-        const userId = a.user_id;
-        if (a.status === "Hadir" || a.status === "Datang") {
-          hadirSet.add(userId);
-        } else if (a.status === "Terlambat") {
-          terlambatSet.add(userId);
-          hadirSet.add(userId);
-        }
-      }
-
+      // 1. Process approved leave requests first (ADR-002 precedence rule)
       for (const p of classPerizinan) {
         const userId = p.user_id;
         if (p.category === "sakit") {
@@ -658,7 +686,32 @@ export const absencesRouter = createTRPCRouter({
         }
       }
 
-      const allAccountedFor = new Set([...hadirSet, ...sakitSet, ...izinSet]);
+      // 2. Process attendance records with disjoint sets, leave precedence, and no double-counting
+      for (const a of classAbsences) {
+        const userId = a.user_id;
+        // Leave precedence: students with approved leave are already in sakitSet or izinSet
+        if (sakitSet.has(userId) || izinSet.has(userId)) {
+          continue;
+        }
+
+        if (a.status === "Terlambat") {
+          hadirSet.delete(userId);
+          terlambatSet.add(userId);
+        } else if (a.status === "Hadir" || a.status === "Datang") {
+          if (!terlambatSet.has(userId)) {
+            hadirSet.add(userId);
+          }
+        }
+        // Pulang and Alpha rows are excluded from presence sets
+      }
+
+      // 3. Union of all accounted for students includes terlambatSet
+      const allAccountedFor = new Set([
+        ...hadirSet,
+        ...terlambatSet,
+        ...sakitSet,
+        ...izinSet,
+      ]);
       const tidakHadirList = studentsInClass.filter(
         (s) => !allAccountedFor.has(s.user_id),
       );

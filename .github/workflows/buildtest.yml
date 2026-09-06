@@ -19,11 +19,18 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Checkout canonical Astra contract
+        uses: actions/checkout@v4
+        with:
+          repository: geber-suprabapak/project-astra
+          path: .contract-source/project-astra
+          sparse-checkout: contracts
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
@@ -38,6 +45,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+
       - name: Cache Next.js build cache
         uses: actions/cache@v4
         with:
@@ -49,17 +61,69 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run quality checks
-        run: pnpm check
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run dependency security audit
+        run: pnpm audit --audit-level=high
+
+      - name: Check code formatting and linting
+        run: pnpm lint
+
+      - name: Run TypeScript typecheck
+        run: pnpm typecheck
+
+      - name: Run unit and contract tests
+        env:
+          NODE_ENV: test
+          LOGTO_ENDPOINT: http://localhost:3001
+          LOGTO_APP_ID: chronos-app
+          LOGTO_APP_SECRET: chronos-secret-key-at-least-32-chars
+          LOGTO_COOKIE_SECRET: complex_password_at_least_32_characters_long_12345
+          LOGTO_BASE_URL: http://localhost:3000
+          LOGTO_RESOURCE: https://api.school.example/skanida
+          LOGTO_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/login
+          ASTRA_API_URL: http://localhost:3000
+        run: pnpm test
+
+      - name: Run empirical settlement tests
+        run: pnpm test:empirical
+
+      - name: Check Astra contract drift
+        env:
+          ASTRA_CONTRACT_PATH: .contract-source/project-astra/contracts/astra-v1.json
+        run: pnpm contract:check
 
       - name: Build application
         env:
           SKIP_ENV_VALIDATION: "1"
+          NODE_ENV: production
         run: pnpm run build
+
+      - name: Run E2E tests
+        env:
+          CI: "true"
+          RUN_A11Y_TESTS: "1"
+          PORT: "3055"
+          MOCK_ASTRA_PORT: "23500"
+          MOCK_LOGTO_PORT: "23501"
+          BASE_URL: http://localhost:3055
+          LOGTO_POST_LOGOUT_REDIRECT_URI: http://localhost:3055/login
+        run: pnpm test:e2e
+
+      - name: Upload Playwright failure evidence
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failure-evidence
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
 
   publish:
     needs: verify
-    if: github.event_name != 'pull_request'
+    if: needs.verify.result == 'success' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -89,7 +153,15 @@ jobs:
             type=raw,value=latest
             type=sha,prefix=sha-,format=short
 
+      - name: Resolve build metadata
+        id: build
+        shell: bash
+        run: |
+          echo "built_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
       - name: Build and push image
+        id: push
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -97,7 +169,17 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          provenance: false
-          sbom: false
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.build.outputs.built_at }}
+            APP_VERSION=${{ steps.build.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Publish immutable image reference
+        shell: bash
+        run: |
+          echo "### Published Chronos image" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"

@@ -49,7 +49,7 @@ export default function ShowProfilePage() {
   } = api.userProfiles.getById.useQuery({ id }, { enabled: !!id });
 
   // Related data (small lists) for additional context
-  const { data: allAbsences } = api.absences.list.useQuery(
+  const { data: allAbsencesData } = api.absences.list.useQuery(
     {
       userId: profile ? profile.userId : "",
       limit: 5,
@@ -58,15 +58,22 @@ export default function ShowProfilePage() {
     },
     { enabled: !!profile?.userId },
   );
-  const { data: recentLeaves } = api.perizinan.list.useQuery(
+  const { data: recentLeavesData } = api.perizinan.list.useQuery(
     { userId: profile ? profile.userId : "", limit: 5, offset: 0 },
     { enabled: !!profile?.userId },
   );
 
-  if (!id) return <div className="p-8">Invalid ID.</div>;
+  const allAbsences = allAbsencesData?.rows ?? [];
+  const recentLeaves = recentLeavesData?.rows ?? [];
+
+  if (!id) return <div className="p-8 text-destructive">ID tidak valid.</div>;
   if (isLoading) return <SkeletonLayout />;
   if (error)
-    return <div className="p-8 text-red-500">Error: {error.message}</div>;
+    return (
+      <div className="p-8 text-destructive">
+        Terjadi kesalahan: {error.message}
+      </div>
+    );
   if (!profile) return <div className="p-8">Profil tidak ditemukan.</div>;
 
   return (
@@ -98,7 +105,7 @@ export default function ShowProfilePage() {
               {profile.nis ? <Row label="NIS" value={profile.nis} /> : null}
               <Row label="Kelas" value={profile.className ?? "-"} />
               <Row label="No. Absen" value={profile.absenceNumber ?? "-"} />
-              <Row label="Role" value={profile.role ?? "-"} />
+              <Row label="Peran" value={profile.role ?? "-"} />
               <Row label="Dibuat" value={formatDate(profile.createdAt)} />
               <Row label="Diupdate" value={formatDate(profile.updatedAt)} />
             </div>
@@ -199,7 +206,11 @@ export default function ShowProfilePage() {
                           }
                           className="capitalize"
                         >
-                          {p.approvalStatus ?? "pending"}
+                          {p.approvalStatus === "approved"
+                            ? "Disetujui"
+                            : p.approvalStatus === "rejected"
+                              ? "Ditolak"
+                              : "Menunggu"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

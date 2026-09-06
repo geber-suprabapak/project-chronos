@@ -113,8 +113,8 @@ export function AutoSearchForm({
 
   if (type === "siswa") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="flex flex-col gap-2 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 min-w-0 max-w-full">
+        <div className="flex flex-col gap-2 w-full min-w-0">
           <label htmlFor="nama" className="text-sm font-medium">
             Cari Nama/NIS
           </label>
@@ -127,12 +127,16 @@ export function AutoSearchForm({
           />
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col gap-2 w-full min-w-0">
           <label htmlFor="kelas" className="text-sm font-medium">
             Kelas
           </label>
           <Select value={kelas} onValueChange={setKelas} disabled={isPending}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger
+              id="kelas"
+              aria-label="Filter Kelas"
+              className="w-full"
+            >
               <SelectValue placeholder="Semua Kelas" />
             </SelectTrigger>
             <SelectContent>
@@ -146,7 +150,7 @@ export function AutoSearchForm({
           </Select>
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col gap-2 w-full min-w-0">
           <label htmlFor="kelamin" className="text-sm font-medium">
             Jenis Kelamin
           </label>
@@ -155,7 +159,11 @@ export function AutoSearchForm({
             onValueChange={setKelamin}
             disabled={isPending}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger
+              id="kelamin"
+              aria-label="Filter Jenis Kelamin"
+              className="w-full"
+            >
               <SelectValue placeholder="Semua" />
             </SelectTrigger>
             <SelectContent>
@@ -166,7 +174,7 @@ export function AutoSearchForm({
           </Select>
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
+        <div className="flex flex-col gap-2 w-full min-w-0">
           <label htmlFor="activated" className="text-sm font-medium">
             Status Aktivasi
           </label>
@@ -175,7 +183,11 @@ export function AutoSearchForm({
             onValueChange={setActivated}
             disabled={isPending}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger
+              id="activated"
+              aria-label="Filter Status Aktivasi"
+              className="w-full"
+            >
               <SelectValue placeholder="Semua" />
             </SelectTrigger>
             <SelectContent>
@@ -186,7 +198,7 @@ export function AutoSearchForm({
           </Select>
         </div>
 
-        <div className="flex gap-2 items-end w-full">
+        <div className="flex gap-2 items-end w-full min-w-0">
           {hasActiveFilters && (
             <Button
               type="button"
@@ -210,8 +222,8 @@ export function AutoSearchForm({
 
   // Profiles form
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      <div className="flex flex-col gap-2 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-w-0 max-w-full">
+      <div className="flex flex-col gap-2 w-full min-w-0">
         <label htmlFor="name" className="text-sm font-medium">
           Cari Nama
         </label>
@@ -224,12 +236,16 @@ export function AutoSearchForm({
         />
       </div>
 
-      <div className="flex flex-col gap-2 w-full sm:col-span-1">
+      <div className="flex flex-col gap-2 w-full min-w-0 sm:col-span-1">
         <label htmlFor="className" className="text-sm font-medium">
           Jurusan
         </label>
         <Select value={kelas} onValueChange={setKelas} disabled={isPending}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger
+            id="className"
+            aria-label="Filter Jurusan"
+            className="w-full"
+          >
             <SelectValue placeholder="Semua Jurusan" />
           </SelectTrigger>
           <SelectContent>
@@ -243,7 +259,7 @@ export function AutoSearchForm({
         </Select>
       </div>
 
-      <div className="flex gap-2 items-end w-full sm:col-span-2 md:col-span-1">
+      <div className="flex gap-2 items-end w-full min-w-0 sm:col-span-2 md:col-span-1">
         {hasActiveFilters && (
           <Button
             type="button"

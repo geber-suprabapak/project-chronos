@@ -1,18 +1,21 @@
-version: '3.8'
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/geber-suprabapak/project-chronos:latest
+      args:
+        COMMIT_SHA: ${CHRONOS_COMMIT_SHA:-local}
+        BUILD_REVISION: ${CHRONOS_BUILD_REVISION:-${CHRONOS_COMMIT_SHA:-local}}
+        BUILD_TIME: ${CHRONOS_BUILD_TIME:-unknown}
+        APP_VERSION: ${CHRONOS_APP_VERSION:-0.1.0}
+    image: ${CHRONOS_IMAGE_REF:?Set CHRONOS_IMAGE_REF to an immutable digest-pinned image}
     ports:
-      - '13000:3000'
+      - "13000:3000"
     env_file:
       - .env
     restart: unless-stopped
     healthcheck:
-      test: curl -f http://localhost:3000/api/health || exit 1
+      test: curl -f http://localhost:3000/api/health/live || exit 1
       interval: 30s
       timeout: 3s
       retries: 3

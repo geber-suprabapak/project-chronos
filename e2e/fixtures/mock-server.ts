@@ -57,12 +57,22 @@ interface ParsedRequestBody {
   end_checkout?: string;
   grace_period_minutes?: number | string;
   ids?: unknown;
+  year_month?: string;
+  scope?: string;
+  format?: string;
+  start_date?: string;
+  end_date?: string;
+  checksum?: string;
+  record_count?: number;
+  byte_length?: number;
+  result?: string;
 }
 
 export class MockAstraLogtoServer {
   private astraServer: http.Server | null = null;
   private logtoServer: http.Server | null = null;
   public data = createInitialMockData();
+  public backups: Array<Record<string, unknown>> = [];
 
   private astraPort: number;
   private logtoPort: number;
@@ -74,6 +84,7 @@ export class MockAstraLogtoServer {
 
   public resetData() {
     this.data = createInitialMockData();
+    this.backups = [];
   }
 
   private sendAstraJson(
@@ -81,16 +92,25 @@ export class MockAstraLogtoServer {
     statusCode: number,
     data: unknown,
     message = "OK",
+    additionalMeta: Record<string, unknown> = {},
   ) {
-    const envelope = {
-      success: statusCode >= 200 && statusCode < 300,
+    const isSuccess = statusCode >= 200 && statusCode < 300;
+    const envelope: Record<string, unknown> = {
+      success: isSuccess,
       message,
       data,
       meta: {
+        ...additionalMeta,
         request_id: `mock-req-${Date.now()}`,
         timestamp: new Date().toISOString(),
       },
     };
+    if (!isSuccess) {
+      envelope.error = {
+        code: statusCode === 404 ? "RESOURCE_NOT_FOUND" : "INTERNAL_ERROR",
+        message,
+      };
+    }
     res.writeHead(statusCode, {
       "Content-Type": "application/json",
       "X-Astra-Contract-Version": "v1",
@@ -146,6 +166,12 @@ export class MockAstraLogtoServer {
         "X-Astra-Contract-Version": "v1",
       });
       res.end();
+      return;
+    }
+
+    // 0. HEALTH PROBES
+    if (pathname === "/ready" || pathname === "/live") {
+      this.sendJson(res, 200, { status: "ok", healthy: true });
       return;
     }
 
@@ -233,11 +259,13 @@ export class MockAstraLogtoServer {
       if (query.date) {
         result = result.filter((a) => a.date === query.date);
       }
-      if (query.startDate) {
-        result = result.filter((a) => a.date >= String(query.startDate));
+      const sDate = query.start_date ?? query.startDate;
+      if (sDate) {
+        result = result.filter((a) => a.date >= String(sDate));
       }
-      if (query.endDate) {
-        result = result.filter((a) => a.date <= String(query.endDate));
+      const eDate = query.end_date ?? query.endDate;
+      if (eDate) {
+        result = result.filter((a) => a.date <= String(eDate));
       }
       if (query.status) {
         result = result.filter((a) => a.status === query.status);
@@ -245,7 +273,19 @@ export class MockAstraLogtoServer {
       if (query.userId) {
         result = result.filter((a) => a.user_id === query.userId);
       }
-      this.sendAstraJson(res, 200, result);
+      if (query.user_id) {
+        result = result.filter((a) => a.user_id === query.user_id);
+      }
+      const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 100);
+      const offset = Math.max(Number(query.offset ?? 0), 0);
+      const page = result.slice(offset, offset + limit);
+      this.sendAstraJson(res, 200, page, "OK", {
+        pagination: {
+          limit,
+          offset,
+          has_more: offset + page.length < result.length,
+        },
+      });
       return;
     }
 
@@ -287,22 +327,35 @@ export class MockAstraLogtoServer {
     }
 
     const attendanceMatch = pathname.match(
-      /^\/v1\/admin\/attendance\/([^/]+)$/,
+      /^\/v1\/admin\/attendances?\/([^/]+)$/,
     );
     if (
       attendanceMatch &&
-      method === "DELETE" &&
-      attendanceMatch[1] !== "bulk"
+      attendanceMatch[1] &&
+      attendanceMatch[1] !== "bulk" &&
+      attendanceMatch[1] !== "manual" &&
+      attendanceMatch[1] !== "attempts"
     ) {
-      const id = attendanceMatch[1];
-      const index = this.data.attendances.findIndex((a) => a.id === id);
-      if (index === -1) {
-        this.sendAstraJson(res, 404, null, "Attendance not found");
-      } else {
-        const [removed] = this.data.attendances.splice(index, 1);
-        this.sendAstraJson(res, 200, removed, "Attendance deleted");
+      const id = decodeURIComponent(attendanceMatch[1]);
+      if (method === "GET") {
+        const att = this.data.attendances.find((a) => a.id === id);
+        if (att) {
+          this.sendAstraJson(res, 200, att);
+        } else {
+          this.sendAstraJson(res, 404, null, "Attendance not found");
+        }
+        return;
       }
-      return;
+      if (method === "DELETE") {
+        const index = this.data.attendances.findIndex((a) => a.id === id);
+        if (index === -1) {
+          this.sendAstraJson(res, 404, null, "Attendance not found");
+        } else {
+          const [removed] = this.data.attendances.splice(index, 1);
+          this.sendAstraJson(res, 200, removed, "Attendance deleted");
+        }
+        return;
+      }
     }
 
     if (pathname === "/v1/admin/attendance/bulk" && method === "DELETE") {
@@ -618,8 +671,101 @@ export class MockAstraLogtoServer {
       return;
     }
 
-    // Default fallback
-    this.sendAstraJson(res, 200, { status: "ok" });
+    // 11. ADMIN BACKUPS AUDIT
+    if (pathname === "/v1/admin/backups/status" && method === "GET") {
+      if (
+        req.headers["x-simulate-outage"] === "true" ||
+        query.outage === "true"
+      ) {
+        this.sendAstraJson(res, 503, null, "Astra backup service outage");
+        return;
+      }
+      const yearMonthQuery = query.year_month
+        ? String(query.year_month)
+        : query.month
+          ? String(query.month)
+          : null;
+      const scopeQuery = query.scope ? String(query.scope) : "absences";
+
+      const matching = this.backups.filter((b) => {
+        // SAFETY: Internal mock backup record properties.
+        const rec = b as Record<string, unknown>;
+        const bYm = rec.year_month ?? rec.month;
+        const bScope = rec.scope ?? "absences";
+        if (yearMonthQuery && bYm !== yearMonthQuery) return false;
+        if (scopeQuery && bScope !== scopeQuery) return false;
+        return true;
+      });
+
+      const record =
+        matching.length > 0 ? matching[matching.length - 1]! : null;
+      const completed = record !== null;
+
+      this.sendAstraJson(res, 200, {
+        completed,
+        record,
+      });
+      return;
+    }
+
+    if (pathname === "/v1/admin/backups" && method === "POST") {
+      if (
+        req.headers["x-simulate-failure"] === "audit_fail" ||
+        query.failAudit === "true"
+      ) {
+        this.sendAstraJson(
+          res,
+          500,
+          null,
+          "Simulated Astra audit persistence failure",
+        );
+        return;
+      }
+      void this.parseBody(req).then((body) => {
+        const yearMonth = asString(body.year_month, "2026-09");
+        const scope = asString(body.scope, "absences");
+        const format = asString(body.format, "xlsx");
+        const startDate = asString(body.start_date, `${yearMonth}-01`);
+        const endDate = asString(body.end_date, `${yearMonth}-30`);
+        const checksum = asString(body.checksum, "");
+        const recordCount =
+          typeof body.record_count === "number" ? body.record_count : 0;
+        const byteLength =
+          typeof body.byte_length === "number" ? body.byte_length : 0;
+
+        const newBackup = {
+          id: `bk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          year_month: yearMonth,
+          scope,
+          format,
+          start_date: startDate,
+          end_date: endDate,
+          checksum,
+          record_count: recordCount,
+          byte_length: byteLength,
+          result: "completed",
+          created_at: new Date().toISOString(),
+          performed_by: "system_server",
+        };
+        this.backups.push(newBackup);
+        this.sendAstraJson(res, 201, newBackup, "Backup audit created");
+      });
+      return;
+    }
+
+    if (pathname === "/v1/admin/backups" && method === "DELETE") {
+      this.backups = [];
+      this.sendAstraJson(res, 200, { cleared: true }, "Backups cleared");
+      return;
+    }
+
+    // Default fallback - unknown owned routes fail closed
+    this.sendAstraJson(
+      res,
+      404,
+      null,
+      `Route ${method} ${pathname} not found on Astra API`,
+    );
   }
 
   private handleLogtoRequest(req: IncomingMessage, res: ServerResponse) {

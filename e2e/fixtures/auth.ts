@@ -157,6 +157,22 @@ export async function authenticateContext(
       secure: false,
       sameSite: "Lax",
     },
+    {
+      name: "sidebar_state",
+      value: "true",
+      url: "http://127.0.0.1:3005",
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+    },
+    {
+      name: "sidebar_state",
+      value: "true",
+      url: "http://localhost:3005",
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+    },
   ]);
 
   const now = new Date();
@@ -172,7 +188,13 @@ export type RoleType =
   | "platform_admin"
   | "school_admin"
   | "teacher"
+  | "staff"
   | "student"
+  | "admin"
+  | "kepala_sekolah"
+  | "guru"
+  | "wali_kelas"
+  | "siswa"
   | "must_change_password";
 
 export async function loginAs(
@@ -209,12 +231,66 @@ export async function loginAs(
         must_change_password: false,
       };
       break;
+    case "staff":
+      options = {
+        sub: "10000000-0000-0000-0000-000000000004",
+        email: "staff@skanida.sch.id",
+        name: "Staf Tata Usaha",
+        roles: ["staff"],
+        must_change_password: false,
+      };
+      break;
     case "student":
       options = {
         sub: "00000000-0000-0000-0000-000000000001",
         email: "ahmad@skanida.sch.id",
         name: "Ahmad Dahlan",
         roles: ["student"],
+        must_change_password: false,
+      };
+      break;
+    case "admin":
+      options = {
+        sub: "10000000-0000-0000-0000-000000000005",
+        email: "admin_legacy@skanida.sch.id",
+        name: "Administrator Legacy",
+        roles: ["admin"],
+        must_change_password: false,
+      };
+      break;
+    case "kepala_sekolah":
+      options = {
+        sub: "10000000-0000-0000-0000-000000000006",
+        email: "kepala_sekolah@skanida.sch.id",
+        name: "Kepala Sekolah",
+        roles: ["kepala_sekolah"],
+        must_change_password: false,
+      };
+      break;
+    case "guru":
+      options = {
+        sub: "10000000-0000-0000-0000-000000000007",
+        email: "guru@skanida.sch.id",
+        name: "Guru Legacy",
+        roles: ["guru"],
+        must_change_password: false,
+      };
+      break;
+    case "wali_kelas":
+      options = {
+        sub: "10000000-0000-0000-0000-000000000008",
+        email: "wali_kelas@skanida.sch.id",
+        name: "Wali Kelas",
+        roles: ["wali_kelas"],
+        must_change_password: false,
+      };
+      break;
+    case "siswa":
+      options = {
+        sub: "00000000-0000-0000-0000-000000000002",
+        email: "siswa_legacy@skanida.sch.id",
+        name: "Siswa Legacy",
+        roles: ["siswa"],
         must_change_password: false,
       };
       break;

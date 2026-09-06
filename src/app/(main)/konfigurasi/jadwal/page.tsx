@@ -22,7 +22,18 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Alert, AlertDescription } from "~/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import {
   Clock,
@@ -57,6 +68,7 @@ function isDayKey(key: string | undefined): key is DayKey {
 
 export default function JadwalPage() {
   const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     mulaiMasuk: "",
@@ -208,11 +220,7 @@ export default function JadwalPage() {
   };
 
   const handleReset = () => {
-    if (
-      confirm("Apakah Anda yakin ingin mereset semua jadwal ke nilai default?")
-    ) {
-      resetMutation.mutate();
-    }
+    setShowResetDialog(true);
   };
 
   const isLoading = schedulesLoading;
@@ -339,8 +347,8 @@ export default function JadwalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto min-w-0 w-full">
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Hari</TableHead>
@@ -395,13 +403,18 @@ export default function JadwalPage() {
                                   handleToggleActive(schedule.id)
                                 }
                                 disabled={toggleActiveMutation.isPending}
+                                aria-label={`Status aktif jadwal ${dayInfo.label}`}
                                 className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-red-600"
                               />
                               <Badge
                                 variant={
                                   schedule.isActive ? "success" : "destructive"
                                 }
-                                className="flex items-center gap-1"
+                                className={cn(
+                                  "flex items-center gap-1",
+                                  schedule.isActive &&
+                                    "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white",
+                                )}
                               >
                                 {schedule.isActive ? (
                                   <>
@@ -421,6 +434,7 @@ export default function JadwalPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              aria-label={`Edit jadwal ${dayInfo.label}`}
                               onClick={() => setSelectedDayId(schedule.id)}
                             >
                               <Edit className="h-3 w-3 mr-1" />
@@ -574,9 +588,7 @@ export default function JadwalPage() {
 
                 {/* Actions */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium opacity-0">
-                    Actions
-                  </Label>
+                  <Label className="text-sm font-medium opacity-0">Aksi</Label>
                   <div className="flex gap-2">
                     <Button
                       type="submit"
@@ -585,7 +597,7 @@ export default function JadwalPage() {
                       variant="success"
                     >
                       <Save className="mr-1 h-3 w-3" />
-                      {updateMutation.isPending ? "Saving..." : "Simpan"}
+                      {updateMutation.isPending ? "Menyimpan..." : "Simpan"}
                     </Button>
                     <Button
                       type="button"
@@ -612,6 +624,30 @@ export default function JadwalPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* AlertDialog for Reset Confirmation */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Jadwal ke Default</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin mereset semua jadwal ke nilai default?
+              Tindakan ini akan menghapus semua penyesuaian jadwal yang ada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                resetMutation.mutate();
+                setShowResetDialog(false);
+              }}
+            >
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

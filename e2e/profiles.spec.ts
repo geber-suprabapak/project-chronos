@@ -15,15 +15,15 @@ test.describe("User Profiles Management Workflows", () => {
       page,
     }) => {
       await expect(
-        page.getByRole("heading", { name: "User Profiles" }),
+        page.getByRole("heading", { name: /Profil Pengguna|User Profiles/i }),
       ).toBeVisible();
 
       // Export buttons
       await expect(
-        page.getByRole("button", { name: /Download Excel/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) Excel/i }),
       ).toBeVisible();
       await expect(
-        page.getByRole("button", { name: /Download PDF/i }),
+        page.getByRole("button", { name: /(?:Unduh|Download) PDF/i }),
       ).toBeVisible();
 
       // Search and filter inputs
@@ -55,7 +55,9 @@ test.describe("User Profiles Management Workflows", () => {
     });
 
     test("triggers Excel profiles export download", async ({ page }) => {
-      const excelBtn = page.getByRole("button", { name: /Download Excel/i });
+      const excelBtn = page.getByRole("button", {
+        name: /(?:Unduh|Download) Excel/i,
+      });
       await expect(excelBtn).toBeVisible();
       await expect(excelBtn).toBeEnabled();
     });
