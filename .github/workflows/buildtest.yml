@@ -89,6 +89,7 @@ jobs:
       - name: Run empirical settlement tests
         env:
           ASTRA_CONTRACT_PATH: .contract-source/project-astra/contracts/astra-v1.json
+          LOGTO_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/login
         run: pnpm test:empirical
 
       - name: Check Astra contract drift
