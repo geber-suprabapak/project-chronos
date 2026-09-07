@@ -17,10 +17,7 @@
       "value": "v1"
     },
     "authorization": "Logto OIDC access token",
-    "admin_scopes": [
-      "mobile:access",
-      "admin:read"
-    ]
+    "admin_scopes": ["mobile:access", "admin:read"]
   },
   "response": {
     "content_type": "application/json",
@@ -67,10 +64,7 @@
   },
   "pagination": {
     "strategy": "offset",
-    "routes": [
-      "GET /v1/admin/attendance",
-      "GET /v1/admin/attendances"
-    ],
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
     "query": {
       "limit": "integer 1..100",
       "offset": "integer >= 0",
@@ -87,10 +81,7 @@
     "stable_order_required": true
   },
   "attendance_query": {
-    "routes": [
-      "GET /v1/admin/attendance",
-      "GET /v1/admin/attendances"
-    ],
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
     "parameters": {
       "limit": "integer 1..100 optional (default 50)",
       "offset": "integer >= 0 optional (default 0)",
@@ -129,41 +120,24 @@
     }
   },
   "backup_audit": {
-    "routes": [
-      "POST /v1/admin/backups",
-      "GET /v1/admin/backups/status"
-    ],
-    "allowed_roles": [
-      "platform_admin",
-      "school_admin"
-    ],
+    "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
+    "allowed_roles": ["platform_admin", "school_admin"],
     "entity_type": "backup",
     "entity_id": "year_month",
     "post_fields": {
       "year_month": "strict real YYYY-MM required",
-      "scope": [
-        "absences"
-      ],
-      "format": [
-        "xlsx",
-        "pdf"
-      ],
+      "scope": ["absences"],
+      "format": ["xlsx", "pdf"],
       "start_date": "YYYY-MM-DD within month required",
       "end_date": "YYYY-MM-DD within month required, start_date <= end_date",
       "checksum": "sha256 lowercase 64-character hex required for both completed and failed results",
       "record_count": "integer >= 0",
       "byte_length": "integer > 0",
-      "result": [
-        "completed",
-        "failed"
-      ]
+      "result": ["completed", "failed"]
     },
     "status_query": {
       "year_month": "strict real YYYY-MM required",
-      "scope": [
-        "absences",
-        "optional"
-      ]
+      "scope": ["absences", "optional"]
     },
     "status_response": {
       "http_status": 200,
@@ -175,9 +149,7 @@
     }
   },
   "idempotency": {
-    "safe_methods": [
-      "GET"
-    ],
+    "safe_methods": ["GET"],
     "delete_by_id": "Repeated deletion leaves the resource absent; a later call may return RESOURCE_NOT_FOUND.",
     "leave_reopen": "Repeated reopen leaves the request pending and clears rejection state.",
     "other_mutations": "Not retryable unless an operation-specific idempotency key is documented."

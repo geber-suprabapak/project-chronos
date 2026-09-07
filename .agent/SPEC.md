@@ -7,6 +7,7 @@ Expose Astra ticket 06 force-finish through Chronos's existing leave-management 
 - Only the existing privileged leave-management seam can force-finish an approved Leave Period.
 - Send selected last excused date and required reason to Astra; return mapped period fields.
 - Map Astra `ATTENDANCE_BLOCKED` manual Attendance failures to an actionable tRPC conflict.
+- Restrict the force-finish tRPC action to the canonical `school_admin` role before forwarding to Astra.
 
 # Constraints
 

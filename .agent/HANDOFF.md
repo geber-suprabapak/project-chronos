@@ -1,6 +1,6 @@
 # Current Objective
 
-Implement the Chronos client portion of ticket 06.
+Harden the integrated Chronos client portion of ticket 06.
 
 # Completed
 
@@ -9,6 +9,8 @@ Implement the Chronos client portion of ticket 06.
 - Added a School Administrator-facing force-finish form to the Leave detail page, including date bounds, reason validation, optimistic loading state, and cache invalidation.
 - Mapped Astra `ATTENDANCE_BLOCKED` from manual Attendance to an actionable tRPC `CONFLICT`, preserving Astra's error as the cause.
 - Synchronized `contracts/astra-v1.json` with the paired Astra ticket manifest (`ATTENDANCE_BLOCKED` and force-finish route).
+- Restricted `perizinan.forceFinish` to `school_admin`; Astra remains the authoritative cross-repository guard.
+- Reverted unrelated contract snapshot formatter churn while retaining the Ticket 06 route/error entries.
 
 # In Progress
 
@@ -16,7 +18,7 @@ Implement the Chronos client portion of ticket 06.
 
 # Exact Next Action
 
-Commit this Chronos worktree and return the commit SHA plus validation evidence.
+Commit this Chronos worktree and return the new commit SHA plus validation evidence.
 
 # Important Decisions
 
@@ -46,4 +48,4 @@ Commit this Chronos worktree and return the commit SHA plus validation evidence.
 
 # Git State
 
-- Branch `codex/ticket-06-attendance-gate`; base `0ac4e18`; uncommitted implementation ready to commit.
+- Branch `codex/ticket-06-hardening`; base `cc86c57`; uncommitted hardening ready to commit.
