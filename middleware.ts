@@ -39,7 +39,7 @@ const CANONICAL_SECURITY_HEADERS = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://images.unsplash.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "connect-src 'self' https://*.tile.openstreetmap.org",
     "frame-ancestors 'none'",

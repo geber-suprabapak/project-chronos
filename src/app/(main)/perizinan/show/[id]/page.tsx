@@ -20,9 +20,15 @@ import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { ArrowLeft, Terminal, User, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Image as ImageIcon,
+  RefreshCw,
+  Terminal,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
-import Image from "next/image";
 import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
 
 // Helper function to format date
@@ -47,6 +53,122 @@ const formatDate = (input: string | Date | null | undefined) => {
     // timeZone: "Asia/Jakarta",
   }).format(date);
 };
+
+function safeAttachmentHref(src: string): string | null {
+  try {
+    const protocol = new URL(src, "http://localhost").protocol;
+    return protocol === "http:" || protocol === "https:" ? src : null;
+  } catch {
+    return null;
+  }
+}
+
+function AttachmentFallback({
+  src,
+  onRetry,
+}: {
+  src: string;
+  onRetry: () => void;
+}) {
+  const href = safeAttachmentHref(src);
+
+  return (
+    <div
+      role="status"
+      className="flex h-full min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded bg-slate-50 p-4 text-center text-muted-foreground"
+    >
+      <ImageIcon aria-hidden="true" className="h-5 w-5" />
+      <p className="text-sm">Bukti foto tidak dapat ditampilkan.</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" />
+          Coba lagi
+        </Button>
+        {href ? (
+          <Button asChild type="button" variant="outline" size="sm">
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              <ExternalLink aria-hidden="true" />
+              Buka lampiran langsung
+            </a>
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentImage({
+  src,
+  alt,
+  className,
+  onLoad,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  onLoad?: () => void;
+  onError?: () => void;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <AttachmentFallback
+        src={src}
+        onRetry={() => {
+          setHasError(false);
+          setAttempt((current) => current + 1);
+        }}
+      />
+    );
+  }
+
+  return (
+    <img
+      key={attempt}
+      src={src}
+      alt={alt}
+      className={className}
+      onLoad={onLoad}
+      onError={() => {
+        setHasError(true);
+        onError?.();
+      }}
+    />
+  );
+}
+
+function AttachmentThumbnail({
+  src,
+  onOpen,
+}: {
+  src: string;
+  onOpen: () => void;
+}) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded bg-slate-50 p-2">
+      <AttachmentImage
+        src={src}
+        alt="Bukti Foto Izin"
+        className="h-full w-full rounded object-cover"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setIsLoaded(false)}
+      />
+      {isLoaded ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-2 rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+          aria-label="Lihat bukti foto ukuran penuh"
+        />
+      ) : null}
+    </div>
+  );
+}
 
 export default function ShowPerizinanPage() {
   const params = useParams();
@@ -214,21 +336,10 @@ export default function ShowPerizinanPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Bukti Foto</p>
                 {perizinan.linkFoto ? (
-                  <button
-                    type="button"
-                    onClick={() => setPhotoDialogOpen(true)}
-                    className="w-full rounded-md bg-slate-50 p-2"
-                    aria-label="Lihat bukti foto ukuran penuh"
-                  >
-                    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
-                      <Image
-                        src={perizinan.linkFoto}
-                        alt="Bukti Foto Izin"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  </button>
+                  <AttachmentThumbnail
+                    src={perizinan.linkFoto}
+                    onOpen={() => setPhotoDialogOpen(true)}
+                  />
                 ) : (
                   <div className="w-full rounded-md bg-slate-50 p-2">
                     <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
@@ -472,13 +583,13 @@ export default function ShowPerizinanPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="relative w-full h-full bg-muted">
-            <Image
-              src={perizinan.linkFoto ?? ""}
-              alt="Bukti Perizinan"
-              fill
-              className="object-contain"
-              priority
-            />
+            {perizinan.linkFoto ? (
+              <AttachmentImage
+                src={perizinan.linkFoto}
+                alt="Bukti Perizinan"
+                className="h-full w-full object-contain"
+              />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
