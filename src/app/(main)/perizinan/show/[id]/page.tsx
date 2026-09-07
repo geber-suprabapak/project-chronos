@@ -58,6 +58,7 @@ export default function ShowPerizinanPage() {
   const [isRejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [durationDays, setDurationDays] = useState(1);
 
   const utils = api.useUtils();
   const {
@@ -91,7 +92,11 @@ export default function ShowPerizinanPage() {
   });
 
   const handleApprove = () => {
-    updateStatusMutation.mutate({ id, approvalStatus: "approved" });
+    updateStatusMutation.mutate({
+      id,
+      approvalStatus: "approved",
+      durationDays,
+    });
   };
 
   const handleRejectConfirm = () => {
@@ -172,8 +177,35 @@ export default function ShowPerizinanPage() {
                     Tanggal Izin
                   </p>
                   <p className="mt-1 text-sm">
-                    {formatDate(perizinan.tanggal)}
+                    {formatDate(
+                      perizinan.requestedStartDate ?? perizinan.tanggal,
+                    )}
                   </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Mulai diminta
+                  </p>
+                  <p>
+                    {formatDate(
+                      perizinan.requestedStartDate ?? perizinan.tanggal,
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Akhir asli
+                  </p>
+                  <p>{formatDate(perizinan.originalEndDate)}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Akhir efektif
+                  </p>
+                  <p>{formatDate(perizinan.effectiveEndDate)}</p>
                 </div>
               </div>
 
@@ -322,6 +354,27 @@ export default function ShowPerizinanPage() {
                   <p className="text-sm text-muted-foreground">
                     Setujui atau tolak permintaan ini.
                   </p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      Durasi (hari kalender)
+                    </span>
+                    <select
+                      value={durationDays}
+                      onChange={(event) =>
+                        setDurationDays(Number(event.target.value))
+                      }
+                      className="rounded-md border bg-background px-2 py-1"
+                      aria-label="Durasi cuti dalam hari kalender"
+                    >
+                      {Array.from({ length: 30 }, (_, index) => index + 1).map(
+                        (days) => (
+                          <option key={days} value={days}>
+                            {days}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleApprove}

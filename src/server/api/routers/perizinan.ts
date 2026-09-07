@@ -33,6 +33,10 @@ interface AstraLeaveRequest {
   description?: string | null;
   status: boolean;
   date: string;
+  requested_start_date?: string | null;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   approval_status: "approved" | "rejected" | "pending";
   attachment_url?: string | null;
   rejection_reason?: string | null;
@@ -71,6 +75,16 @@ function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
     // `T00:00...` to an ISO timestamp creates Invalid Date, which downstream
     // clients can coerce to 01/01/1970.
     tanggal: normalizeDateOnly(lr.date) ?? "",
+    requestedStartDate:
+      normalizeDateOnly(lr.requested_start_date ?? lr.date) ?? "",
+    originalEndDate:
+      normalizeDateOnly(lr.original_end_date) ??
+      (lr.approval_status === "approved" ? normalizeDateOnly(lr.date) : null),
+    effectiveEndDate:
+      normalizeDateOnly(lr.effective_end_date) ??
+      (lr.approval_status === "approved" ? normalizeDateOnly(lr.date) : null),
+    durationDays:
+      lr.duration_days ?? (lr.approval_status === "approved" ? 1 : null),
     kategoriIzin: formatLeaveCategory(lr.category),
     category: lr.category,
     deskripsi: lr.description ?? null,
@@ -271,7 +285,7 @@ export const perizinanRouter = createTRPCRouter({
               `Izin ${input.kategoriIzin} dicatat oleh administrator.`,
             date: input.tanggal,
             file_id: input.linkFoto,
-            approval_status: "approved",
+            approval_status: "pending",
           }),
         },
       );
@@ -316,6 +330,7 @@ export const perizinanRouter = createTRPCRouter({
         id: z.string().uuid(),
         approvalStatus: z.enum(["approved", "rejected", "pending"]),
         rejectionReason: z.string().optional(),
+        durationDays: z.number().int().min(1).max(30).optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -330,7 +345,10 @@ export const perizinanRouter = createTRPCRouter({
       if (input.approvalStatus === "approved") {
         const approved = await astraRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/approve`,
-          { method: "POST" },
+          {
+            method: "POST",
+            body: JSON.stringify({ duration_days: input.durationDays ?? 1 }),
+          },
         );
         return mapAstraLeaveRequestToPerizinan(approved);
       }
