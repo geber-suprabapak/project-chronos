@@ -396,6 +396,28 @@ export const perizinanRouter = createTRPCRouter({
       );
       return mapAstraLeaveRequestToPerizinan(current);
     }),
+
+  forceFinish: privilegedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        effectiveEndDate: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/),
+        reason: z.string().trim().min(1).max(500),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const finished = await astraLeaveMutationRequest<AstraLeaveRequest>(
+        `/v1/admin/leave-requests/${input.id}/force-finish`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            effective_end_date: input.effectiveEndDate,
+            reason: input.reason,
+          }),
+        },
+      );
+      return mapAstraLeaveRequestToPerizinan(finished);
+    }),
 });
 
 export type PerizinanRouter = typeof perizinanRouter;

@@ -149,6 +149,16 @@ export function isLeaveConflictError(error: AstraRequestError): boolean {
   return error.code !== undefined && LEAVE_CONFLICT_CODES.has(error.code);
 }
 
+export function actionableAttendanceBlockedMessage(
+  error: AstraRequestError,
+): string {
+  const details = asRecord(error.details);
+  const end = details?.effective_end_date;
+  return end
+    ? `Presensi diblokir sampai ${String(end)} karena Leave Period yang disetujui.`
+    : "Presensi diblokir karena Leave Period yang disetujui.";
+}
+
 type AstraEnvelope<T> = {
   success: boolean;
   data?: T;

@@ -17,6 +17,7 @@ import {
   DialogClose,
 } from "~/components/ui/dialog";
 import { Textarea } from "~/components/ui/textarea";
+import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -181,6 +182,8 @@ export default function ShowPerizinanPage() {
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [durationDays, setDurationDays] = useState(1);
+  const [forceFinishDate, setForceFinishDate] = useState("");
+  const [forceFinishReason, setForceFinishReason] = useState("");
 
   const utils = api.useUtils();
   const {
@@ -213,6 +216,19 @@ export default function ShowPerizinanPage() {
     },
   });
 
+  const forceFinishMutation = api.perizinan.forceFinish.useMutation({
+    onSuccess: (data) => {
+      void utils.perizinan.getById.invalidate({ id });
+      void utils.perizinan.listRaw.invalidate();
+      setForceFinishDate(data.effectiveEndDate ?? "");
+      setForceFinishReason("");
+      toast.success("Leave Period berhasil diakhiri lebih awal.");
+    },
+    onError: (err) => {
+      toast.error(`Gagal mengakhiri Leave Period: ${err.message}`);
+    },
+  });
+
   const handleApprove = () => {
     updateStatusMutation.mutate({
       id,
@@ -230,6 +246,27 @@ export default function ShowPerizinanPage() {
       id,
       approvalStatus: "rejected",
       rejectionReason,
+    });
+  };
+
+  const handleForceFinish = () => {
+    const effectiveEndDate =
+      forceFinishDate ||
+      perizinan?.effectiveEndDate ||
+      perizinan?.originalEndDate ||
+      perizinan?.tanggal;
+    if (!effectiveEndDate) {
+      toast.error("Tanggal terakhir yang diizinkan tidak tersedia.");
+      return;
+    }
+    if (!forceFinishReason.trim()) {
+      toast.error("Alasan force-finish tidak boleh kosong.");
+      return;
+    }
+    forceFinishMutation.mutate({
+      id,
+      effectiveEndDate,
+      reason: forceFinishReason.trim(),
     });
   };
 
@@ -528,6 +565,60 @@ export default function ShowPerizinanPage() {
                     {updateStatusMutation.isPending
                       ? "Membatalkan..."
                       : "Batalkan Penolakan"}
+                  </Button>
+                </div>
+              ) : perizinan.approvalStatus === "approved" ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Akhiri periode lebih awal bila siswa sudah dapat kembali
+                    hadir. Presensi dibuka pada hari WIB berikutnya.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="force-finish-date">
+                      Hari terakhir yang tetap diizinkan
+                    </Label>
+                    <Input
+                      id="force-finish-date"
+                      type="date"
+                      min={perizinan.requestedStartDate ?? perizinan.tanggal}
+                      max={
+                        perizinan.effectiveEndDate ??
+                        perizinan.originalEndDate ??
+                        perizinan.tanggal
+                      }
+                      value={
+                        forceFinishDate ||
+                        perizinan.effectiveEndDate ||
+                        perizinan.originalEndDate ||
+                        perizinan.tanggal
+                      }
+                      onChange={(event) =>
+                        setForceFinishDate(event.target.value)
+                      }
+                      disabled={forceFinishMutation.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="force-finish-reason">Alasan</Label>
+                    <Textarea
+                      id="force-finish-reason"
+                      value={forceFinishReason}
+                      onChange={(event) =>
+                        setForceFinishReason(event.target.value)
+                      }
+                      placeholder="Contoh: Siswa telah kembali sehat."
+                      disabled={forceFinishMutation.isPending}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleForceFinish}
+                    disabled={forceFinishMutation.isPending}
+                  >
+                    {forceFinishMutation.isPending
+                      ? "Mengakhiri..."
+                      : "Force-finish Leave Period"}
                   </Button>
                 </div>
               ) : (

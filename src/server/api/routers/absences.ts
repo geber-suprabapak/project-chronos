@@ -5,7 +5,11 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import {
+  actionableAttendanceBlockedMessage,
+  AstraRequestError,
+  astraRequest,
+} from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import {
@@ -157,16 +161,30 @@ export const absencesRouter = createTRPCRouter({
         }
       })();
 
-      return astraRequest("/v1/admin/attendance/manual", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: student.user_id,
-          status: statusAndAction.status,
-          action_type: statusAndAction.action_type,
-          date: input.date,
-          reason: "Manual attendance recorded by Chronos administrator.",
-        }),
-      });
+      try {
+        return await astraRequest("/v1/admin/attendance/manual", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: student.user_id,
+            status: statusAndAction.status,
+            action_type: statusAndAction.action_type,
+            date: input.date,
+            reason: "Manual attendance recorded by Chronos administrator.",
+          }),
+        });
+      } catch (error) {
+        if (
+          error instanceof AstraRequestError &&
+          error.code === "ATTENDANCE_BLOCKED"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: actionableAttendanceBlockedMessage(error),
+            cause: error,
+          });
+        }
+        throw error;
+      }
     }),
 
   // DELETE: Hapus data absensi berdasarkan ID
