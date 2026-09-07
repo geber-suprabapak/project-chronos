@@ -169,7 +169,11 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
               data: mockAttendances,
               meta: {
                 request_id: "req-1",
-                pagination: { limit: 100, offset: 0, has_more: false },
+                pagination: {
+                  limit: mockAttendances.length,
+                  offset: 0,
+                  has_more: false,
+                },
               },
             }),
             { status: 200, headers },
@@ -411,7 +415,11 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
               data: attendances,
               meta: {
                 request_id: "req-3",
-                pagination: { limit: 100, offset: 0, has_more: false },
+                pagination: {
+                  limit: attendances.length,
+                  offset: 0,
+                  has_more: false,
+                },
               },
             }),
             { status: 200, headers },
@@ -574,7 +582,11 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
               data: attendances,
               meta: {
                 request_id: "req-4",
-                pagination: { limit: 100, offset: 0, has_more: false },
+                pagination: {
+                  limit: attendances.length,
+                  offset: 0,
+                  has_more: false,
+                },
               },
             }),
             { status: 200, headers },
