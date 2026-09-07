@@ -1,7 +1,7 @@
 {
   "contract": "skanida-astra",
   "version": "v1",
-  "published_at": "2026-08-21",
+  "published_at": "2026-09-07",
   "source_of_truth": {
     "repository": "geber-suprabapak/project-astra",
     "path": "contracts/astra-v1.json"
@@ -92,6 +92,29 @@
       "date_order": "start_date <= end_date (reversed bounds rejected with VALIDATION_ERROR)"
     }
   },
+  "attendance_collection": {
+    "routes": [
+      "GET /v1/admin/attendance/export",
+      "GET /v1/admin/attendances/export"
+    ],
+    "purpose": "Return a complete server-authoritative attendance snapshot for trusted clients and exports without requiring unbounded client pagination.",
+    "parameters": {
+      "date": "string YYYY-MM-DD optional",
+      "start_date": "string YYYY-MM-DD optional",
+      "end_date": "string YYYY-MM-DD optional",
+      "user_id": "string optional",
+      "status": "string optional",
+      "action_type": "string optional"
+    },
+    "safety_limit": "50000 rows; requests reaching the limit fail with VALIDATION_ERROR",
+    "response_meta": {
+      "pagination": {
+        "limit": "integer equal to returned row count",
+        "offset": 0,
+        "has_more": false
+      }
+    }
+  },
   "backup_audit": {
     "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
     "allowed_roles": ["platform_admin", "school_admin"],
@@ -180,6 +203,8 @@
     "DELETE /v1/admin/leave-requests/{id}",
     "GET /v1/admin/attendance",
     "GET /v1/admin/attendances",
+    "GET /v1/admin/attendance/export",
+    "GET /v1/admin/attendances/export",
     "GET /v1/admin/attendance/{id}",
     "GET /v1/admin/attendances/{id}",
     "POST /v1/admin/attendance/manual",

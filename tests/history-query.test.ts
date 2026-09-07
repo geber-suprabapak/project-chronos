@@ -2,12 +2,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildAttendanceExportPath,
   buildAttendanceDateListPath,
   buildAttendanceGetPath,
   buildAttendanceListPath,
   buildLeaveRequestGetPath,
   buildLeaveRequestsListPath,
 } from "../src/server/api/routers/history-query.ts";
+
+test("complete attendance collection forwards supported filters", () => {
+  assert.equal(
+    buildAttendanceExportPath("attendance", {
+      startDate: "2026-09-01",
+      endDate: "2026-09-04",
+      userId: "user/id",
+    }),
+    "/v1/admin/attendance/export?user_id=user%2Fid&start_date=2026-09-01&end_date=2026-09-04",
+  );
+});
 
 test("attendance history forwards Astra's non-UUID user id", () => {
   assert.equal(

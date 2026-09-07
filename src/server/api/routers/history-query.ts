@@ -40,6 +40,24 @@ export function buildAttendanceListPath(
   return `/v1/admin/${resource}?${params.toString()}`;
 }
 
+/**
+ * Build the server-authoritative attendance collection path. Unlike the
+ * ordinary paginated route, Astra materializes the complete bounded result in
+ * one request so large exports do not exhaust the per-user admin rate limit.
+ */
+export function buildAttendanceExportPath(
+  resource: "attendance" | "attendances",
+  filter?: AttendanceListFilter,
+): string {
+  const params = new URLSearchParams();
+  if (filter?.userId) params.set("user_id", filter.userId);
+  if (filter?.date) params.set("date", filter.date);
+  if (filter?.startDate) params.set("start_date", filter.startDate);
+  if (filter?.endDate) params.set("end_date", filter.endDate);
+  const query = params.toString();
+  return `/v1/admin/${resource}/export${query ? `?${query}` : ""}`;
+}
+
 export function buildAttendanceDateListPath(
   resource: "attendance" | "attendances",
   date: string,
