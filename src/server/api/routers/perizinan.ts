@@ -4,8 +4,14 @@ import {
   privilegedProcedure,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
-import { astraRequest } from "~/lib/astra/client";
+import {
+  AstraRequestError,
+  actionableLeaveErrorMessage,
+  astraRequest,
+  isLeaveConflictError,
+} from "~/lib/astra/client";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
 
@@ -43,6 +49,24 @@ interface AstraLeaveRequest {
   rejected_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+async function astraLeaveMutationRequest<T>(
+  path: string,
+  init: RequestInit,
+): Promise<T> {
+  try {
+    return await astraRequest<T>(path, init);
+  } catch (error) {
+    if (error instanceof AstraRequestError && isLeaveConflictError(error)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: actionableLeaveErrorMessage(error),
+        cause: error,
+      });
+    }
+    throw error;
+  }
 }
 
 /**
@@ -273,7 +297,7 @@ export const perizinanRouter = createTRPCRouter({
         );
       }
 
-      const created = await astraRequest<AstraLeaveRequest>(
+      const created = await astraLeaveMutationRequest<AstraLeaveRequest>(
         "/v1/admin/leave-requests",
         {
           method: "POST",
@@ -335,7 +359,7 @@ export const perizinanRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       if (input.approvalStatus === "pending") {
-        const reset = await astraRequest<AstraLeaveRequest>(
+        const reset = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/reopen`,
           { method: "POST" },
         );
@@ -343,7 +367,7 @@ export const perizinanRouter = createTRPCRouter({
       }
 
       if (input.approvalStatus === "approved") {
-        const approved = await astraRequest<AstraLeaveRequest>(
+        const approved = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/approve`,
           {
             method: "POST",
@@ -354,7 +378,7 @@ export const perizinanRouter = createTRPCRouter({
       }
 
       if (input.approvalStatus === "rejected") {
-        const rejected = await astraRequest<AstraLeaveRequest>(
+        const rejected = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/reject`,
           {
             method: "POST",
@@ -366,8 +390,9 @@ export const perizinanRouter = createTRPCRouter({
         return mapAstraLeaveRequestToPerizinan(rejected);
       }
 
-      const current = await astraRequest<AstraLeaveRequest>(
+      const current = await astraLeaveMutationRequest<AstraLeaveRequest>(
         `/v1/admin/leave-requests/${input.id}`,
+        {},
       );
       return mapAstraLeaveRequestToPerizinan(current);
     }),
