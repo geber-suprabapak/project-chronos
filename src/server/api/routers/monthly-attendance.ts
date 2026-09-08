@@ -31,32 +31,22 @@ type ListEnvelope<T> = {
   results?: readonly T[] | null;
 };
 
-function hasListArray(value: unknown): boolean {
-  if (Array.isArray(value)) return true;
-  if (value === null || typeof value !== "object") return false;
-  return ["data", "items", "rows", "results"].some((key) =>
-    Array.isArray((value as Record<string, unknown>)[key]),
-  );
-}
-
-function listRows<T>(value: readonly T[] | ListEnvelope<T> | null): T[] {
+function listRows<T>(value: readonly T[] | ListEnvelope<T> | null): T[] | null {
   if (Array.isArray(value)) return value;
-  if (!value) return [];
-  if (Object(value) !== value) return [];
+  if (value === null) return null;
   if (!(
     "data" in value ||
     "items" in value ||
     "rows" in value ||
     "results" in value
-  )) {
-    return [];
-  }
+  ))
+    return null;
   const envelope = value;
   if (Array.isArray(envelope.data)) return envelope.data;
   if (Array.isArray(envelope.items)) return envelope.items;
   if (Array.isArray(envelope.rows)) return envelope.rows;
   if (Array.isArray(envelope.results)) return envelope.results;
-  return [];
+  return null;
 }
 
 function withPagination(path: string, limit: number, offset: number): string {
@@ -67,16 +57,16 @@ function withPagination(path: string, limit: number, offset: number): string {
 async function fetchCompleteList<T>(path: string): Promise<T[]> {
   const first = await astraRequestEnvelope<T[] | ListEnvelope<T>>(path);
   const firstRows = listRows(first.data);
+  if (firstRows === null) {
+    throw new AstraRequestError(
+      `Astra returned a non-list response for ${path}.`,
+      502,
+      first.requestId,
+      "CONTRACT_RESPONSE_INVALID",
+    );
+  }
   const pagination = first.meta.pagination;
   if (!pagination) {
-    if (!hasListArray(first.data)) {
-      throw new AstraRequestError(
-        `Astra returned a non-list response for ${path}.`,
-        502,
-        first.requestId,
-        "CONTRACT_RESPONSE_INVALID",
-      );
-    }
     return firstRows;
   }
 
@@ -108,6 +98,14 @@ async function fetchCompleteList<T>(path: string): Promise<T[]> {
         withPagination(path, limit, offset),
       );
       const rows = listRows(response.data);
+      if (rows === null) {
+        throw new AstraRequestError(
+          `Astra returned a non-list response for ${path}.`,
+          502,
+          response.requestId,
+          "CONTRACT_RESPONSE_INVALID",
+        );
+      }
       return { ...response, data: rows };
     },
     { pageSize: completePageSize },

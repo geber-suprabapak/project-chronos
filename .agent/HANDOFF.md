@@ -7,21 +7,24 @@ published contract additions for existing Astra routes if required.
 
 - Read repository, applicable AGENTS, RTK, TDD/continuity guidance, CONTEXT,
   ADR-0013, issue/spec, testing/domain docs, and codebase map.
-- Created isolated Chronos worktree `/home/robin/worktrees/ticket-07/chronos`
-  on branch `codex/ticket-07-monthly-recap` from integrated HEAD
-  `672ff6f121d11df45ea6c3de3c1b8939b8b658e1`.
-- Confirmed integrated Astra HEAD `37623cc30bfd2a07d493bb75783e766cd65e7c71`
-  already implements enrollment and calendar-exception GET routes, while the
-  published contract snapshot omits those routes.
+- Created isolated Chronos worktree `/home/robin/worktrees/ticket-07-finish/chronos`
+  on branch `codex/ticket-07-finish` from integrated HEAD
+  `6758e17c246c29498655e80c34c2826d5a4132f7`.
+- Confirmed Astra HEAD `37623cc30bfd2a07d493bb75783e766cd65e7c71` publishes
+  the existing enrollment/calendar-exception routes and the monthly source
+  manifest; Chronos checks this canonical snapshot without drift.
+- Replaced the four anti-slop violations in the monthly source collector with
+  typed list-envelope handling that fails closed on non-list responses.
+- Added a source-collector regression for complete multi-page collection and
+  malformed incomplete-page metadata.
 
 # In Progress
 
-Monthly aggregation and source boundary are not yet implemented.
+Implementation and verification are complete; commit and parent handoff remain.
 
 # Exact Next Action
 
-Implement one red→green pure aggregation slice covering scheduled dates,
-leave/attendance precedence, cutoff, and totals.
+Commit the Chronos worktree and return the SHA plus validation evidence.
 
 # Important Decisions
 
@@ -32,18 +35,27 @@ leave/attendance precedence, cutoff, and totals.
 
 # Changed Files
 
-Only continuity files so far.
+`src/server/api/routers/monthly-attendance.ts`
+`tests/monthly-attendance-collector.bun.ts`
+Continuity files under `.agent/`
 
 # Validation
 
-No Ticket 07 implementation checks run yet.
+`bun test tests/monthly-attendance.test.ts ./tests/monthly-attendance-collector.bun.ts` passed.
+`LOGTO_POST_LOGOUT_REDIRECT_URI=http://localhost:3000/login bun run test` passed: 321 tests.
+`bun run typecheck` passed with the required local environment variable.
+`bun run lint` passed.
+`LOGTO_POST_LOGOUT_REDIRECT_URI=http://localhost:3000/login bun run build` passed.
+`e2e/absensi.spec.ts` passed twice in dev and once in production.
+`ASTRA_CONTRACT_PATH=/home/robin/worktrees/ticket-07-finish/astra/contracts/astra-v1.json pnpm contract:check` passed.
 
 # Known Issues / Blockers
 
-Chronos contract snapshot currently omits existing GET `/enrollments` and
-`/calendar-exceptions` routes; decide whether minimal publication is needed
-after implementing the collector.
+The monthly heading regression did not reproduce: full `e2e/absensi.spec.ts`
+passed in dev twice and in production once.
+The worktree uses locally installed dependencies; generated `.next` and
+`node_modules` are ignored.
 
 # Git State
 
-Branch `codex/ticket-07-monthly-recap`; worktree clean before implementation.
+Branch `codex/ticket-07-finish`; base `6758e17`; uncommitted router/test changes ready to commit.
