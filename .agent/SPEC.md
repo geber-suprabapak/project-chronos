@@ -1,37 +1,44 @@
 # Objective
 
-Implement Chronos Ticket 02: upload the official roster workbook, parse and
-normalize it server-side, preview the complete staged report, and accept it
-atomically through Astra without creating identities.
+Reject invalid and unsafe roster workbooks with a complete bounded report in
+Chronos and prevent Astra staging/acceptance for locally invalid input.
 
 # Requirements
 
-- Parse the first official `No`, `NIS`, `Nama Siswa`, `L/P` block per worksheet.
-- Preserve cached formula values, normalize source text, and map class metadata.
-- Stage through Astra, show rows/errors/provenance before writing, and accept only a valid report.
-- Restrict the workflow to School Administrators and preserve `/siswa` directory behavior.
+- Parse only `.xlsx` workbooks within 5 MiB, 50 worksheets, 100 rows/sheet,
+  and 2,000 rows/workbook.
+- Report corrupt, encrypted, macro-enabled, malformed, structurally unknown,
+  incomplete, duplicate, unsafe, or mismatched roster data with worksheet and
+  row provenance.
+- Preserve valid rows in invalid reports when available; never partially
+  accept a report.
 
 # Acceptance Criteria
 
-- Variable header/data-row position, multiple sheets, cached formula NIS, and mirrored-column exclusion are covered at the parser seam.
-- Preview and accept are public tRPC/API seams with no persistence before explicit accept.
-- Browser flow proves upload -> preview -> accept.
+- Every ticket-03 checklist item is covered by focused parser, tRPC, and UI/E2E
+  behavior where applicable.
+- Invalid local reports make no Astra stage/accept request; Astra-invalid
+  reports keep accept disabled.
+- Existing valid Ticket02 flow remains green.
 
 # Constraints
 
-- Use installed ExcelJS; server-only parsing; no new dependency.
-- Ticket 02 only. Do not implement Ticket 03 invalid-case matrix or unrelated roster/export work.
-- Astra remains owner of persistence. Correct the Astra public contract only if required to expose an already implemented academic-period read route.
+- Chronos owns workbook parsing/presentation; Astra remains authoritative for
+  canonical validation and persistence.
+- Reuse ExcelJS and existing roster flow; no new dependencies or Astra edits.
+- Work only in ticket-03 isolated worktree and branch.
 
 # Relevant Areas
 
-- `src/app/(main)/siswa/page.tsx`
-- `src/server/api/routers/biodata-siswa.ts`
-- `src/lib/astra/client.ts`
-- `e2e/fixtures/mock-server.ts`, `e2e/fixtures/data.ts`, `e2e/siswa.spec.ts`
+- `src/server/roster/parser.ts`
+- `src/server/api/routers/roster-import.ts`
+- `src/components/roster-import-panel.tsx`
+- `tests/roster-workbook.test.ts`
+- `e2e/siswa.spec.ts`, `e2e/fixtures/mock-server.ts`
 
 # Implementation Notes
 
-Add a pure exported workbook parser and focused Node test first, then the
-server tRPC adapter and school-admin UI, extending existing mock and browser
-seams. Keep the report in Astra; Chronos holds no import persistence.
+Extend the existing parser report with bounded validation/provenance and keep
+the router's local-failure short circuit. Normalize/validate source cells at
+the parser boundary, add duplicate checks and workbook safeguards, then make
+the panel show both local and Astra rejected rows and guard acceptance.

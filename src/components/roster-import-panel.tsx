@@ -30,8 +30,12 @@ export function RosterImportPanel() {
   const canAccept =
     Boolean(
       report?.id &&
+      report.status === "staged" &&
+      report.review_state === "pending" &&
       report.rejected_rows === 0 &&
+      report.rejected_items.length === 0 &&
       parse &&
+      parse.totalRows > 0 &&
       parse.errors.length === 0,
     ) &&
     !accept.isPending &&
@@ -41,6 +45,7 @@ export function RosterImportPanel() {
     if (!file || !periodId) return;
     setResult(null);
     setAccepted(false);
+    accept.reset();
     const bytes = new Uint8Array(await file.arrayBuffer());
     preview.mutate(
       {
@@ -58,6 +63,13 @@ export function RosterImportPanel() {
       { reportId: report.id },
       { onSuccess: () => setAccepted(true) },
     );
+  }
+
+  function resetImportState() {
+    setResult(null);
+    setAccepted(false);
+    preview.reset();
+    accept.reset();
   }
 
   return (
@@ -78,7 +90,10 @@ export function RosterImportPanel() {
             <select
               id="roster-academic-period"
               value={periodId}
-              onChange={(event) => setPeriodId(event.target.value)}
+              onChange={(event) => {
+                setPeriodId(event.target.value);
+                resetImportState();
+              }}
               className="h-10 rounded-md border bg-background px-3 font-normal"
               disabled={
                 periods.isPending || preview.isPending || accept.isPending
@@ -101,7 +116,10 @@ export function RosterImportPanel() {
               id="roster-import-file"
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                resetImportState();
+              }}
               className="h-10 rounded-md border bg-background px-3 py-2 text-sm font-normal"
               disabled={preview.isPending || accept.isPending}
             />
@@ -152,6 +170,24 @@ export function RosterImportPanel() {
                 Astra menolak {report.rejected_rows} baris. Perbaiki workbook
                 lalu tinjau ulang.
               </p>
+            ) : null}
+            {report && report.rejected_items.length > 0 ? (
+              <ul
+                aria-label="Error validasi Astra"
+                className="list-disc space-y-1 pl-5 text-sm text-destructive"
+              >
+                {report.rejected_items.map((error) => {
+                  const row = parse.rows[error.row_index];
+                  const provenance = row
+                    ? `${row.worksheet}:${row.worksheetRow}`
+                    : `baris ${error.row_index + 1}`;
+                  return (
+                    <li key={`${error.row_index}-${error.reason}`}>
+                      {provenance} — {error.reason}
+                    </li>
+                  );
+                })}
+              </ul>
             ) : null}
             <div className="overflow-x-auto rounded-md border">
               <table

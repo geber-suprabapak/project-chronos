@@ -29,10 +29,20 @@ interface AstraRosterReport {
   status: string;
   review_state: string;
   rows: unknown[];
-  rejected_items: unknown[];
+  rejected_items: AstraRejectedRosterItem[];
   accepted_at?: string | null;
   accepted_by?: string | null;
 }
+
+interface AstraRejectedRosterItem {
+  row_index: number;
+  reason: string;
+}
+
+const astraRejectedRosterItemSchema = z.object({
+  row_index: z.number(),
+  reason: z.string(),
+});
 
 function decodeBase64(value: string): Uint8Array {
   try {
@@ -68,28 +78,31 @@ async function listAcademicPeriods(): Promise<AcademicPeriod[]> {
   return astraRequest<AcademicPeriod[]>("/v1/admin/academic-periods");
 }
 
-function assertWorkbookBounds(report: RosterParseReport) {
+function appendWorkbookError(report: RosterParseReport, message: string) {
+  report.errors.push({
+    worksheet: "Workbook",
+    worksheetRow: null,
+    field: "workbook",
+    message,
+  });
+}
+
+function appendWorkbookBounds(report: RosterParseReport) {
   if (report.worksheetCount > MAX_WORKSHEETS) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Workbook has too many worksheets.",
-    });
+    appendWorkbookError(report, "Workbook has too many worksheets.");
   }
-  if (
-    report.sheets.some(
-      (sheet) => sheet.rowCount > MAX_ROWS_PER_WORKSHEET + sheet.headerRow,
-    )
-  ) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Workbook has too many Student rows in one worksheet.",
-    });
+  for (const sheet of report.sheets) {
+    if (sheet.studentRowCount > MAX_ROWS_PER_WORKSHEET) {
+      report.errors.push({
+        worksheet: sheet.worksheet,
+        worksheetRow: null,
+        field: "workbook",
+        message: "Worksheet has too many Student rows.",
+      });
+    }
   }
-  if (report.rows.length > MAX_ROWS_PER_WORKBOOK) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Workbook has too many Student rows.",
-    });
+  if (report.totalRows > MAX_ROWS_PER_WORKBOOK) {
+    appendWorkbookError(report, "Workbook has too many Student rows.");
   }
 }
 
@@ -125,13 +138,16 @@ export const rosterImportRouter = createTRPCRouter({
       let parsed: RosterParseReport;
       try {
         parsed = await parseOfficialRosterWorkbook(bytes);
-      } catch {
+      } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Workbook could not be read.",
+          message:
+            error instanceof Error && error.message
+              ? error.message
+              : "Workbook could not be read.",
         });
       }
-      assertWorkbookBounds(parsed);
+      appendWorkbookBounds(parsed);
 
       const periods = await listAcademicPeriods();
       const period = periods.find(
@@ -144,16 +160,22 @@ export const rosterImportRouter = createTRPCRouter({
         });
       }
       const expectedYear = academicYear(period);
-      if (
-        !parsed.workbookYear ||
-        (expectedYear && parsed.workbookYear !== expectedYear)
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Workbook year ${parsed.workbookYear ?? "is missing"} does not match Academic Period ${period.name}.`,
+      if (!parsed.workbookYear) {
+        parsed.errors.push({
+          worksheet: "Workbook",
+          worksheetRow: null,
+          field: "workbook",
+          message: `Workbook year is missing for Academic Period ${period.name}.`,
+        });
+      } else if (expectedYear && parsed.workbookYear !== expectedYear) {
+        parsed.errors.push({
+          worksheet: "Workbook",
+          worksheetRow: null,
+          field: "workbook",
+          message: `Workbook year ${parsed.workbookYear} does not match Academic Period ${period.name}.`,
         });
       }
-      if (parsed.errors.length > 0 || parsed.rows.length === 0) {
+      if (parsed.errors.length > 0 || parsed.totalRows === 0) {
         return { parsed, report: null, accepted: false };
       }
 
@@ -178,12 +200,33 @@ export const rosterImportRouter = createTRPCRouter({
 
   accept: schoolAdminProcedure
     .input(z.object({ reportId: z.string().trim().min(1) }))
-    .mutation(async ({ input }) =>
-      astraRequest<AstraRosterReport>(
+    .mutation(async ({ input }) => {
+      const report = await astraRequest<AstraRosterReport>(
+        `/v1/admin/bootstrap/roster/${encodeURIComponent(input.reportId)}`,
+      );
+      const rejectedItems = Array.isArray(report.rejected_items)
+        ? report.rejected_items.filter(
+            (item): item is AstraRejectedRosterItem =>
+              astraRejectedRosterItemSchema.safeParse(item).success,
+          )
+        : [];
+      if (
+        report.rejected_rows > 0 ||
+        rejectedItems.length > 0 ||
+        report.status !== "staged" ||
+        report.review_state !== "pending"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Roster report contains validation errors and cannot be accepted.",
+        });
+      }
+      return astraRequest<AstraRosterReport>(
         `/v1/admin/bootstrap/roster/${encodeURIComponent(input.reportId)}/accept`,
         { method: "POST" },
-      ),
-    ),
+      );
+    }),
 });
 
 export type RosterImportRouter = typeof rosterImportRouter;

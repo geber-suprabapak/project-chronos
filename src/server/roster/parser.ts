@@ -7,6 +7,7 @@ const cellSchema = z.union([
   scalarCellSchema,
   z.object({ result: scalarCellSchema }).transform((cell) => cell.result),
 ]);
+const objectCellSchema = z.object({}).passthrough();
 type CellValue = z.infer<typeof scalarCellSchema>;
 
 export type RosterGender = "L" | "P";
@@ -38,14 +39,17 @@ export interface RosterParseError {
 export interface RosterSheetReport {
   worksheet: string;
   headerRow: number;
+  headerColumn: number;
   className: string | null;
   workbookYear: string | null;
   rowCount: number;
+  studentRowCount: number;
 }
 
 export interface RosterParseReport {
   workbookYear: string | null;
   worksheetCount: number;
+  totalRows: number;
   sheets: RosterSheetReport[];
   rows: ParsedRosterRow[];
   errors: RosterParseError[];
@@ -72,10 +76,18 @@ function hasValues(worksheet: Worksheet): boolean {
   let found = false;
   worksheet.eachRow((row) => {
     row.eachCell((cell) => {
-      if (normalizeText(cachedValue(cell.value))) found = true;
+      if (isPopulatedCell(cell.value)) {
+        found = true;
+      }
     });
   });
   return found;
+}
+
+function isPopulatedCell(value: ExcelJS.CellValue): boolean {
+  if (value === null || value === undefined) return false;
+  if (normalizeText(cachedValue(value)).length > 0) return true;
+  return objectCellSchema.safeParse(value).success;
 }
 
 function metadataValue(worksheet: Worksheet, label: string): string | null {
@@ -96,7 +108,9 @@ function metadataValue(worksheet: Worksheet, label: string): string | null {
   return null;
 }
 
-function findHeader(worksheet: Worksheet): number | null {
+function findHeader(
+  worksheet: Worksheet,
+): { row: number; column: number } | null {
   let best: { row: number; column: number } | null = null;
   for (let row = 1; row <= worksheet.rowCount; row += 1) {
     const current = worksheet.getRow(row);
@@ -113,15 +127,15 @@ function findHeader(worksheet: Worksheet): number | null {
       ) {
         if (
           best === null ||
-          column < best.column ||
-          (column === best.column && row < best.row)
+          row < best.row ||
+          (row === best.row && column < best.column)
         ) {
           best = { row, column };
         }
       }
     }
   }
-  return best?.row ?? null;
+  return best;
 }
 
 function isBlankSourceRow(
@@ -129,9 +143,10 @@ function isBlankSourceRow(
   row: number,
   column: number,
 ): boolean {
-  return HEADERS.every(
-    (_, offset) => cellText(worksheet, row, column + offset).length === 0,
-  );
+  return HEADERS.every((_, offset) => {
+    const value = worksheet.getRow(row).getCell(column + offset).value;
+    return !isPopulatedCell(value);
+  });
 }
 
 function isRepeatedHeader(
@@ -152,6 +167,31 @@ function numberValue(value: CellValue): number | null {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
+function isSafeIntegerText(value: string): boolean {
+  if (!/^\d+$/.test(value)) return false;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed);
+}
+
+function hasMacroPackage(input: Uint8Array): boolean {
+  const binary = Buffer.from(input).toString("latin1").toLowerCase();
+  return binary.includes("vbaproject.bin") || binary.includes("macroenabled");
+}
+
+function isOlePackage(input: Uint8Array): boolean {
+  return (
+    input.byteLength >= 8 &&
+    input[0] === 0xd0 &&
+    input[1] === 0xcf &&
+    input[2] === 0x11 &&
+    input[3] === 0xe0 &&
+    input[4] === 0xa1 &&
+    input[5] === 0xb1 &&
+    input[6] === 0x1a &&
+    input[7] === 0xe1
+  );
+}
+
 function addError(
   errors: RosterParseError[],
   worksheet: string,
@@ -166,14 +206,26 @@ export async function parseOfficialRosterWorkbook(
   input: ArrayBuffer | Uint8Array,
 ): Promise<RosterParseReport> {
   const workbook = new ExcelJS.Workbook();
-  const workbookData =
-    input instanceof ArrayBuffer ? input : Buffer.from(input);
+  const workbookData = Buffer.from(
+    input instanceof ArrayBuffer ? new Uint8Array(input) : input,
+  );
+  if (hasMacroPackage(workbookData)) {
+    throw new Error("Macro-enabled workbooks are not supported.");
+  }
+  if (isOlePackage(workbookData)) {
+    throw new Error("Encrypted or unsupported workbook.");
+  }
   // SAFETY: ExcelJS's Node declaration uses its own Buffer type for binary workbook data.
-  await workbook.xlsx.load(workbookData as never);
+  try {
+    await workbook.xlsx.load(workbookData as never);
+  } catch {
+    throw new Error("Workbook could not be read.");
+  }
 
   const report: RosterParseReport = {
     workbookYear: null,
     worksheetCount: workbook.worksheets.length,
+    totalRows: 0,
     sheets: [],
     rows: [],
     errors: [],
@@ -181,8 +233,8 @@ export async function parseOfficialRosterWorkbook(
 
   for (const worksheet of workbook.worksheets) {
     const worksheetHasValues = hasValues(worksheet);
-    const headerRow = findHeader(worksheet);
-    if (headerRow === null) {
+    const header = findHeader(worksheet);
+    if (header === null) {
       if (worksheetHasValues) {
         addError(
           report.errors,
@@ -195,15 +247,18 @@ export async function parseOfficialRosterWorkbook(
       continue;
     }
 
+    const { row: headerRow, column: headerColumn } = header;
     const className = metadataValue(worksheet, "Kelas");
     const workbookYear = metadataValue(worksheet, "Tahun Ajaran");
     const normalizedYear = workbookYear?.replace(/\s*\/\s*/g, "/") ?? null;
     report.sheets.push({
       worksheet: worksheet.name,
       headerRow,
+      headerColumn,
       className,
       workbookYear: normalizedYear,
       rowCount: worksheet.rowCount,
+      studentRowCount: 0,
     });
     if (report.workbookYear === null && normalizedYear !== null) {
       report.workbookYear = normalizedYear;
@@ -229,18 +284,33 @@ export async function parseOfficialRosterWorkbook(
         "Class metadata is missing.",
       );
     }
+    if (!normalizedYear) {
+      addError(
+        report.errors,
+        worksheet.name,
+        null,
+        "workbook",
+        "Academic Period year metadata is missing.",
+      );
+    }
 
     for (let row = headerRow + 1; row <= worksheet.rowCount; row += 1) {
       if (
-        isBlankSourceRow(worksheet, row, 1) ||
-        isRepeatedHeader(worksheet, row, 1)
+        isBlankSourceRow(worksheet, row, headerColumn) ||
+        isRepeatedHeader(worksheet, row, headerColumn)
       ) {
         continue;
       }
-      const rawNo = worksheet.getRow(row).getCell(1).value;
-      const rawNis = worksheet.getRow(row).getCell(2).value;
-      const rawName = worksheet.getRow(row).getCell(3).value;
-      const rawGender = worksheet.getRow(row).getCell(4).value;
+      // SAFETY: the current worksheet was pushed immediately before scanning its rows.
+      const sheet = report.sheets[report.sheets.length - 1]!;
+      // Every nonblank source row counts toward the per-sheet/workbook bounds,
+      // including rows that will be rejected below.
+      sheet.studentRowCount += 1;
+      report.totalRows += 1;
+      const rawNo = worksheet.getRow(row).getCell(headerColumn).value;
+      const rawNis = worksheet.getRow(row).getCell(headerColumn + 1).value;
+      const rawName = worksheet.getRow(row).getCell(headerColumn + 2).value;
+      const rawGender = worksheet.getRow(row).getCell(headerColumn + 3).value;
       const sourceValues = [rawNo, rawNis, rawName, rawGender].map((value) =>
         normalizeText(cachedValue(value)),
       );
@@ -259,7 +329,7 @@ export async function parseOfficialRosterWorkbook(
         );
       if (!nisText)
         addError(rowErrors, worksheet.name, row, "nis", "NIS is required.");
-      else if (!/^\d+$/.test(nisText))
+      else if (!isSafeIntegerText(nisText))
         addError(
           rowErrors,
           worksheet.name,

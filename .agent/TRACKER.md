@@ -1,18 +1,17 @@
 # Progress
 
-- [x] Read guidance, domain docs, ticket, and integrated base
-- [x] Isolate Chronos worktree and verify clean exact base
-- [x] Reconcile academic-period public contract
-- [x] Add parser red/green slice and official-layout fixture helper
-- [x] Add stage/preview/accept adapter
-- [x] Add `/siswa` upload UI and mock/browser seams
-- [x] Run focused and full relevant checks
-- [ ] Commit Ticket 02 changes
+- [x] Inspect instructions, task spec, base refs, and existing Ticket02 flow
+- [x] Add parser validation/report behavior
+- [x] Add router guards and Astra rejection mapping
+- [x] Add UI invalid/rejected display and state reset
+- [x] Add table-driven parser/server/E2E regressions
+- [ ] Run focused and full verification
+- [ ] Commit and hand off
 
 # Current
 
-Implementation and focused/full Chronos validation are complete; preparing final diff and commits.
+Focused parser and invalid-workflow slices pass; running full verification.
 
 # Blocked
 
-None yet.
+None.

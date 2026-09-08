@@ -76,6 +76,7 @@ export class MockAstraLogtoServer {
   public data = createInitialMockData();
   public backups: Array<Record<string, unknown>> = [];
   public rosterReports: Array<Record<string, unknown>> = [];
+  public rosterStageCount = 0;
   public rosterAcceptCount = 0;
 
   private astraPort: number;
@@ -90,6 +91,7 @@ export class MockAstraLogtoServer {
     this.data = createInitialMockData();
     this.backups = [];
     this.rosterReports = [];
+    this.rosterStageCount = 0;
     this.rosterAcceptCount = 0;
   }
 
@@ -181,6 +183,14 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    if (pathname === "/mock/roster-stats" && method === "GET") {
+      this.sendJson(res, 200, {
+        rosterStageCount: this.rosterStageCount,
+        rosterAcceptCount: this.rosterAcceptCount,
+      });
+      return;
+    }
+
     if (pathname === "/v1/admin/academic-periods" && method === "GET") {
       this.sendAstraJson(res, 200, [
         {
@@ -198,22 +208,52 @@ export class MockAstraLogtoServer {
     if (pathname === "/v1/admin/bootstrap/roster" && method === "POST") {
       void this.parseBody(req).then((body) => {
         const rows = Array.isArray(body.rows) ? body.rows : [];
+        const rejectedItems = rows.flatMap((row, rowIndex) => {
+          const serialized = JSON.stringify(row);
+          return serialized.includes('"nis":"99999"') ||
+            serialized.includes('"class_name":"Unknown class"')
+            ? [
+                {
+                  row_index: rowIndex,
+                  reason: "Roster row is rejected by Astra.",
+                },
+              ]
+            : [];
+        });
         const report = {
           id: `roster-report-${this.rosterReports.length + 1}`,
           academic_period_id: body.academic_period_id ?? null,
           total_rows: rows.length,
-          valid_rows: rows.length,
-          rejected_rows: 0,
-          status: "staged",
-          review_state: "pending",
+          valid_rows: rows.length - rejectedItems.length,
+          rejected_rows: rejectedItems.length,
+          status: rejectedItems.length > 0 ? "rejected" : "staged",
+          review_state: rejectedItems.length > 0 ? "rejected" : "pending",
           rows,
-          rejected_items: [],
+          rejected_items: rejectedItems,
           accepted_at: null,
           accepted_by: null,
         };
+        this.rosterStageCount += 1;
         this.rosterReports.push(report);
         this.sendAstraJson(res, 201, report, "Roster staged and validated.");
       });
+      return;
+    }
+
+    const rosterReportMatch = pathname.match(
+      /^\/v1\/admin\/bootstrap\/roster\/([^/]+)$/,
+    );
+    if (rosterReportMatch && method === "GET") {
+      const report = this.rosterReports.find(
+        (candidate) =>
+          candidate.id === decodeURIComponent(rosterReportMatch[1]!),
+      );
+      this.sendAstraJson(
+        res,
+        report ? 200 : 404,
+        report ?? null,
+        report ? "Roster report retrieved." : "Roster report not found",
+      );
       return;
     }
 
