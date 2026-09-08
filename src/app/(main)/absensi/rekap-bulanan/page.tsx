@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { Card } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { DownloadExcelButton } from "~/components/download-excel-button";
+import {
+  canExportResource,
+  resolveLogtoRole,
+  type AppRole,
+} from "~/server/auth/rbac";
 import {
   Table,
   TableBody,
@@ -37,6 +42,33 @@ export default function MonthlyAttendanceRecapPage() {
   const [month, setMonth] = useState(currentMonth);
   const [className, setClassName] = useState("");
   const [nis, setNis] = useState("");
+  const [role, setRole] = useState<AppRole | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/logto/user")
+      .then(async (response) => {
+        if (!response.ok) return null;
+        // SAFETY: /api/logto/user returns the documented Logto context envelope.
+        const context = (await response.json()) as {
+          claims?: { roles?: string[] } | null;
+          userInfo?: { roles?: string[] } | null;
+        };
+        return resolveLogtoRole(
+          context.claims?.roles ?? context.userInfo?.roles ?? [],
+        );
+      })
+      .then((resolvedRole) => {
+        if (active) setRole(resolvedRole);
+      })
+      .catch(() => {
+        if (active) setRole(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const classes = api.biodataSiswa.getUniqueClasses.useQuery();
   const students = api.biodataSiswa.listRaw.useQuery();
   const recap = api.monthlyAttendance.get.useQuery(
@@ -64,11 +96,13 @@ export default function MonthlyAttendanceRecapPage() {
             disetujui.
           </p>
         </div>
-        <DownloadExcelButton
-          href={exportHref}
-          filename={`rekap-absensi-bulanan-${month}.xlsx`}
-          disabled={!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month)}
-        />
+        {role && canExportResource(role, "monthlyAttendance") && (
+          <DownloadExcelButton
+            href={exportHref}
+            filename={`rekap-absensi-bulanan-${month}.xlsx`}
+            disabled={!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month)}
+          />
+        )}
       </div>
 
       <Card className="p-3 sm:p-4">

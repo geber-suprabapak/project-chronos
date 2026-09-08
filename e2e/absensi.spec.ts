@@ -208,5 +208,16 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
         "rekap-absensi-bulanan-2026-09.xlsx",
       );
     });
+
+    test("hides monthly recap export for teacher role", async ({ page }) => {
+      await loginAs(page, "teacher");
+      await page.goto("/absensi/rekap-bulanan?month=2026-09");
+      await expect(
+        page.getByRole("heading", { name: "Rekap Absensi Bulanan" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Unduh Excel" }),
+      ).not.toBeVisible();
+    });
   });
 });
