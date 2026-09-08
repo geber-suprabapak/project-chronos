@@ -1,56 +1,49 @@
 # Current Objective
 
-Complete ticket 03 invalid roster workbook handling in Chronos only.
+Complete Ticket 07 Monthly Attendance Recap in Chronos with only minimal
+published contract additions for existing Astra routes if required.
 
 # Completed
 
-- Read repository, domain, ADR0013, issue/spec, base refs, and TDD guidance.
-- Created isolated branch `codex/ticket-03-finish` from Chronos
-  `21ced06920dc52066655957917f8aa6dfdae9177`.
-- Confirmed Astra base has the canonical staged-roster rejection contract and
-  no Astra worktree is required.
+- Read repository, applicable AGENTS, RTK, TDD/continuity guidance, CONTEXT,
+  ADR-0013, issue/spec, testing/domain docs, and codebase map.
+- Created isolated Chronos worktree `/home/robin/worktrees/ticket-07/chronos`
+  on branch `codex/ticket-07-monthly-recap` from integrated HEAD
+  `672ff6f121d11df45ea6c3de3c1b8939b8b658e1`.
+- Confirmed integrated Astra HEAD `37623cc30bfd2a07d493bb75783e766cd65e7c71`
+  already implements enrollment and calendar-exception GET routes, while the
+  published contract snapshot omits those routes.
 
 # In Progress
 
-Parser lint annotation, Astra rejection provenance/accept guards, canonical
-mock rejection classes, regression coverage, and verification are complete.
+Monthly aggregation and source boundary are not yet implemented.
 
 # Exact Next Action
 
-Hand off the latest Ticket03 commit to the coordinator.
+Implement one red→green pure aggregation slice covering scheduled dates,
+leave/attendance precedence, cutoff, and totals.
 
 # Important Decisions
 
-- Keep valid rows visible when the report contains invalid rows.
-- Local parser failures return the full report without Astra stage calls.
-- Astra stays authoritative for existing NIS/class/period and canonical
-  rejection details.
-- Astra rejection items are normalized with source worksheet/row provenance;
-  malformed acceptance reports fail closed.
+- Keep aggregation pure and expose one dataset for UI and future export.
+- Use complete attendance collection plus complete/validated list sources;
+  never call a capped result complete.
+- Use effective enrollment timelines and approved leave periods only.
 
 # Changed Files
 
-- `src/server/roster/parser.ts`
-- `src/server/api/routers/roster-import.ts`
-- `src/components/roster-import-panel.tsx`
-- `e2e/fixtures/mock-server.ts`
-- `e2e/siswa.spec.ts`
-- `tests/roster-workbook.test.ts`
+Only continuity files so far.
 
 # Validation
 
-Focused parser: 15 passing. Full unit suite: 317 passing. Full lint and
-typecheck pass. Targeted `e2e/siswa.spec.ts`: 10 passing, including no accept
-counter increment for Astra-rejected input. Contract check requires
-`ASTRA_CONTRACT_PATH=/home/robin/project/project-astra/contracts/astra-v1.json`
-and then reports existing snapshot drift.
+No Ticket 07 implementation checks run yet.
 
 # Known Issues / Blockers
 
-Canonical Astra contract is outside this Chronos worktree; default contract
-check path is absent and the explicit canonical path reports snapshot drift.
+Chronos contract snapshot currently omits existing GET `/enrollments` and
+`/calendar-exceptions` routes; decide whether minimal publication is needed
+after implementing the collector.
 
 # Git State
 
-Branch `codex/ticket-03-finish`; latest commit is the Ticket03 finish commit;
-worktree is clean.
+Branch `codex/ticket-07-monthly-recap`; worktree clean before implementation.

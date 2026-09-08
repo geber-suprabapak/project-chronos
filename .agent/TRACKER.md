@@ -1,17 +1,16 @@
 # Progress
 
-- [x] Inspect instructions, task spec, base refs, and existing Ticket02 flow
-- [x] Add parser validation/report behavior
-- [x] Add router guards and Astra rejection mapping
-- [x] Add UI invalid/rejected display and state reset
-- [x] Add table-driven parser/server/E2E regressions
-- [x] Run focused and full verification
-- [x] Commit and hand off
+- [x] Read instructions, specs, domain docs, base refs, and existing flows
+- [ ] Add pure monthly aggregation seam and focused regressions
+- [ ] Add complete Astra collector and protected tRPC query
+- [ ] Add monthly recap page/navigation and Playwright regression
+- [ ] Run focused and full verification
+- [ ] Commit and hand off
 
 # Current
 
-Focused parser and invalid-workflow slices pass; full lint and unit suite pass.
-Latest Ticket03 commit is ready for handoff.
+Investigating existing Chronos/Astra source contracts and choosing the minimum
+new monthly recap surface.
 
 # Blocked
 

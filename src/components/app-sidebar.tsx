@@ -59,6 +59,10 @@ const navItems: NavItem[] = [
         title: "Per Kelas",
         url: "/absensi/perkelas",
       },
+      {
+        title: "Rekap Bulanan",
+        url: "/absensi/rekap-bulanan",
+      },
     ],
   },
   {

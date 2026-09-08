@@ -397,6 +397,16 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    if (pathname === "/v1/admin/enrollments" && method === "GET") {
+      this.sendAstraJson(res, 200, this.data.enrollments);
+      return;
+    }
+
+    if (pathname === "/v1/admin/calendar-exceptions" && method === "GET") {
+      this.sendAstraJson(res, 200, this.data.calendarExceptions);
+      return;
+    }
+
     // 4. MOBILE PROFILE
     if (pathname === "/v1/mobile/profile" && method === "GET") {
       const profile = this.data.students[0];

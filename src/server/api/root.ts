@@ -7,6 +7,7 @@ import { biodataSiswaRouter } from "~/server/api/routers/biodata-siswa";
 import { locationRouter } from "~/server/api/routers/configuration";
 import { jadwalRouter } from "~/server/api/routers/jadwal";
 import { rosterImportRouter } from "~/server/api/routers/roster-import";
+import { monthlyAttendanceRouter } from "~/server/api/routers/monthly-attendance";
 
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   location: locationRouter,
   jadwal: jadwalRouter,
   rosterImport: rosterImportRouter,
+  monthlyAttendance: monthlyAttendanceRouter,
 });
 
 // export type definition of API

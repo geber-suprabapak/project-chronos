@@ -1,44 +1,42 @@
 # Objective
 
-Reject invalid and unsafe roster workbooks with a complete bounded report in
-Chronos and prevent Astra staging/acceptance for locally invalid input.
+Build a complete Monthly Attendance Recap in Chronos for a selected calendar
+month and optional class or Student filter.
 
 # Requirements
 
-- Parse only `.xlsx` workbooks within 5 MiB, 50 worksheets, 100 rows/sheet,
-  and 2,000 rows/workbook.
-- Report corrupt, encrypted, macro-enabled, malformed, structurally unknown,
-  incomplete, duplicate, unsafe, or mismatched roster data with worksheet and
-  row provenance.
-- Preserve valid rows in invalid reports when available; never partially
-  accept a report.
+- Collect complete Astra attendance data and all required academic, class,
+  enrollment, schedule, calendar-exception, student, and leave sources.
+- Aggregate scheduled WIB dates using approved effective Leave Periods,
+  arrival-state precedence, transfer-aware enrollments, and legacy data rules.
+- Expose the dataset through a protected tRPC query and render a responsive
+  class-grouped monthly matrix in Chronos.
 
 # Acceptance Criteria
 
-- Every ticket-03 checklist item is covered by focused parser, tRPC, and UI/E2E
-  behavior where applicable.
-- Invalid local reports make no Astra stage/accept request; Astra-invalid
-  reports keep accept disabled.
-- Existing valid Ticket02 flow remains green.
+- Every Ticket 07 checklist item and spec criterion is covered by focused
+  aggregation/router/UI checks.
+- Existing roster, leave, attendance, contract, typecheck, lint, build, and
+  E2E behavior remains green.
 
 # Constraints
 
-- Chronos owns workbook parsing/presentation; Astra remains authoritative for
-  canonical validation and persistence.
-- Reuse ExcelJS and existing roster flow; no new dependencies or Astra edits.
-- Work only in ticket-03 isolated worktree and branch.
+- Astra remains the domain gateway; use existing routes and publish only the
+  minimal contract additions needed for existing enrollment/calendar routes.
+- Reuse existing pagination and attendance collection helpers; no new deps.
+- Do not implement XLSX/PDF export, roster, or unrelated refactors.
 
 # Relevant Areas
 
-- `src/server/roster/parser.ts`
-- `src/server/api/routers/roster-import.ts`
-- `src/components/roster-import-panel.tsx`
-- `tests/roster-workbook.test.ts`
-- `e2e/siswa.spec.ts`, `e2e/fixtures/mock-server.ts`
+- `src/server/attendance/monthly-recap.ts`
+- `src/server/api/routers/monthly-attendance.ts`
+- `src/app/(main)/absensi/rekap-bulanan/page.tsx`
+- `src/app/(main)/absensi/perkelas/page.tsx`
+- `src/lib/astra/pagination.ts`, `src/server/api/routers/attendance-source.ts`
+- focused tests and E2E mock fixtures
 
 # Implementation Notes
 
-Extend the existing parser report with bounded validation/provenance and keep
-the router's local-failure short circuit. Normalize/validate source cells at
-the parser boundary, add duplicate checks and workbook safeguards, then make
-the panel show both local and Astra rejected rows and guard acceptance.
+Keep pure aggregation independent of Astra calls. Normalize date-only values
+and source variants at the boundary, derive one shared dataset for UI, and
+fail closed on paginated-source metadata.

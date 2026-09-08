@@ -166,4 +166,33 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       }
     });
   });
+
+  test.describe("Monthly Attendance Recap (/absensi/rekap-bulanan)", () => {
+    test("renders filters, class-grouped matrix, totals, and optional class filter", async ({
+      page,
+    }) => {
+      await page.goto("/absensi/rekap-bulanan");
+      await expect(page).toHaveURL(/\/absensi\/rekap-bulanan/);
+      await expect(
+        page.getByRole("heading", { name: "Rekap Absensi Bulanan" }),
+      ).toBeVisible();
+      await expect(page.locator("#monthly-recap-month")).toBeVisible();
+      await expect(page.locator("#monthly-recap-class")).toBeVisible();
+      await expect(page.locator("#monthly-recap-student")).toBeVisible();
+      await expect(page.getByRole("table").first()).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: "Ahmad Dahlan", exact: true }).first(),
+      ).toBeVisible();
+
+      await page
+        .locator("#monthly-recap-class")
+        .selectOption({ label: "XII RPL 1" });
+      await expect(
+        page.getByRole("heading", { name: "XII RPL 1" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "XI TKJ 1" }),
+      ).not.toBeVisible();
+    });
+  });
 });

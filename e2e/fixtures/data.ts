@@ -84,6 +84,26 @@ export interface MockSchedule {
   updated_at?: string;
 }
 
+export interface MockEnrollment {
+  id: string;
+  student_id?: string | null;
+  user_id?: string | null;
+  class_id: string;
+  academic_period_id: string;
+  absence_number: string;
+  status: "active" | "transferred";
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MockCalendarException {
+  id: string;
+  academic_period_id: string;
+  date: string;
+  reason: string;
+  is_holiday: boolean;
+}
+
 export function getTodayDateStr(): string {
   return new Date().toISOString().split("T")[0]!;
 }
@@ -387,6 +407,17 @@ export function createInitialMockData() {
     },
   ];
 
+  const enrollments: MockEnrollment[] = students.map((student, index) => ({
+    id: `enrollment-${index + 1}`,
+    user_id: student.user_id,
+    class_id:
+      classes.find((cls) => cls.name === student.class_name)?.id ?? "class-1",
+    academic_period_id: "period-1",
+    absence_number: student.absence_number,
+    status: "active",
+    created_at: "2026-07-01T00:00:00+07:00",
+  }));
+
   return {
     students,
     staff,
@@ -395,5 +426,7 @@ export function createInitialMockData() {
     leaveRequests,
     locations,
     schedules,
+    enrollments,
+    calendarExceptions: [],
   };
 }
