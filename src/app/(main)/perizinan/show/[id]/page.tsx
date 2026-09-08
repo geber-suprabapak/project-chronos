@@ -17,12 +17,19 @@ import {
   DialogClose,
 } from "~/components/ui/dialog";
 import { Textarea } from "~/components/ui/textarea";
+import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { ArrowLeft, Terminal, User, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Image as ImageIcon,
+  RefreshCw,
+  Terminal,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
-import Image from "next/image";
 import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
 
 // Helper function to format date
@@ -48,6 +55,122 @@ const formatDate = (input: string | Date | null | undefined) => {
   }).format(date);
 };
 
+function safeAttachmentHref(src: string): string | null {
+  try {
+    const protocol = new URL(src, "http://localhost").protocol;
+    return protocol === "http:" || protocol === "https:" ? src : null;
+  } catch {
+    return null;
+  }
+}
+
+function AttachmentFallback({
+  src,
+  onRetry,
+}: {
+  src: string;
+  onRetry: () => void;
+}) {
+  const href = safeAttachmentHref(src);
+
+  return (
+    <div
+      role="status"
+      className="flex h-full min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded bg-slate-50 p-4 text-center text-muted-foreground"
+    >
+      <ImageIcon aria-hidden="true" className="h-5 w-5" />
+      <p className="text-sm">Bukti foto tidak dapat ditampilkan.</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          <RefreshCw aria-hidden="true" />
+          Coba lagi
+        </Button>
+        {href ? (
+          <Button asChild type="button" variant="outline" size="sm">
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              <ExternalLink aria-hidden="true" />
+              Buka lampiran langsung
+            </a>
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentImage({
+  src,
+  alt,
+  className,
+  onLoad,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  onLoad?: () => void;
+  onError?: () => void;
+}) {
+  const [attempt, setAttempt] = useState(0);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <AttachmentFallback
+        src={src}
+        onRetry={() => {
+          setHasError(false);
+          setAttempt((current) => current + 1);
+        }}
+      />
+    );
+  }
+
+  return (
+    <img
+      key={attempt}
+      src={src}
+      alt={alt}
+      className={className}
+      onLoad={onLoad}
+      onError={() => {
+        setHasError(true);
+        onError?.();
+      }}
+    />
+  );
+}
+
+function AttachmentThumbnail({
+  src,
+  onOpen,
+}: {
+  src: string;
+  onOpen: () => void;
+}) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded bg-slate-50 p-2">
+      <AttachmentImage
+        src={src}
+        alt="Bukti Foto Izin"
+        className="h-full w-full rounded object-cover"
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setIsLoaded(false)}
+      />
+      {isLoaded ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="absolute inset-2 rounded focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+          aria-label="Lihat bukti foto ukuran penuh"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export default function ShowPerizinanPage() {
   const params = useParams();
   const router = useRouter();
@@ -58,6 +181,9 @@ export default function ShowPerizinanPage() {
   const [isRejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [isPhotoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [durationDays, setDurationDays] = useState(1);
+  const [forceFinishDate, setForceFinishDate] = useState("");
+  const [forceFinishReason, setForceFinishReason] = useState("");
 
   const utils = api.useUtils();
   const {
@@ -90,8 +216,25 @@ export default function ShowPerizinanPage() {
     },
   });
 
+  const forceFinishMutation = api.perizinan.forceFinish.useMutation({
+    onSuccess: (data) => {
+      void utils.perizinan.getById.invalidate({ id });
+      void utils.perizinan.listRaw.invalidate();
+      setForceFinishDate(data.effectiveEndDate ?? "");
+      setForceFinishReason("");
+      toast.success("Leave Period berhasil diakhiri lebih awal.");
+    },
+    onError: (err) => {
+      toast.error(`Gagal mengakhiri Leave Period: ${err.message}`);
+    },
+  });
+
   const handleApprove = () => {
-    updateStatusMutation.mutate({ id, approvalStatus: "approved" });
+    updateStatusMutation.mutate({
+      id,
+      approvalStatus: "approved",
+      durationDays,
+    });
   };
 
   const handleRejectConfirm = () => {
@@ -103,6 +246,27 @@ export default function ShowPerizinanPage() {
       id,
       approvalStatus: "rejected",
       rejectionReason,
+    });
+  };
+
+  const handleForceFinish = () => {
+    const effectiveEndDate =
+      forceFinishDate ||
+      perizinan?.effectiveEndDate ||
+      perizinan?.originalEndDate ||
+      perizinan?.tanggal;
+    if (!effectiveEndDate) {
+      toast.error("Tanggal terakhir yang diizinkan tidak tersedia.");
+      return;
+    }
+    if (!forceFinishReason.trim()) {
+      toast.error("Alasan force-finish tidak boleh kosong.");
+      return;
+    }
+    forceFinishMutation.mutate({
+      id,
+      effectiveEndDate,
+      reason: forceFinishReason.trim(),
     });
   };
 
@@ -172,8 +336,35 @@ export default function ShowPerizinanPage() {
                     Tanggal Izin
                   </p>
                   <p className="mt-1 text-sm">
-                    {formatDate(perizinan.tanggal)}
+                    {formatDate(
+                      perizinan.requestedStartDate ?? perizinan.tanggal,
+                    )}
                   </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Mulai diminta
+                  </p>
+                  <p>
+                    {formatDate(
+                      perizinan.requestedStartDate ?? perizinan.tanggal,
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Akhir asli
+                  </p>
+                  <p>{formatDate(perizinan.originalEndDate)}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">
+                    Akhir efektif
+                  </p>
+                  <p>{formatDate(perizinan.effectiveEndDate)}</p>
                 </div>
               </div>
 
@@ -182,21 +373,10 @@ export default function ShowPerizinanPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Bukti Foto</p>
                 {perizinan.linkFoto ? (
-                  <button
-                    type="button"
-                    onClick={() => setPhotoDialogOpen(true)}
-                    className="w-full rounded-md bg-slate-50 p-2"
-                    aria-label="Lihat bukti foto ukuran penuh"
-                  >
-                    <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
-                      <Image
-                        src={perizinan.linkFoto}
-                        alt="Bukti Foto Izin"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  </button>
+                  <AttachmentThumbnail
+                    src={perizinan.linkFoto}
+                    onOpen={() => setPhotoDialogOpen(true)}
+                  />
                 ) : (
                   <div className="w-full rounded-md bg-slate-50 p-2">
                     <div className="relative h-[30dvh] min-h-[140px] max-h-[220px] w-full overflow-hidden rounded">
@@ -322,6 +502,27 @@ export default function ShowPerizinanPage() {
                   <p className="text-sm text-muted-foreground">
                     Setujui atau tolak permintaan ini.
                   </p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      Durasi (hari kalender)
+                    </span>
+                    <select
+                      value={durationDays}
+                      onChange={(event) =>
+                        setDurationDays(Number(event.target.value))
+                      }
+                      className="rounded-md border bg-background px-2 py-1"
+                      aria-label="Durasi cuti dalam hari kalender"
+                    >
+                      {Array.from({ length: 30 }, (_, index) => index + 1).map(
+                        (days) => (
+                          <option key={days} value={days}>
+                            {days}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleApprove}
@@ -364,6 +565,60 @@ export default function ShowPerizinanPage() {
                     {updateStatusMutation.isPending
                       ? "Membatalkan..."
                       : "Batalkan Penolakan"}
+                  </Button>
+                </div>
+              ) : perizinan.approvalStatus === "approved" ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Akhiri periode lebih awal bila siswa sudah dapat kembali
+                    hadir. Presensi dibuka pada hari WIB berikutnya.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="force-finish-date">
+                      Hari terakhir yang tetap diizinkan
+                    </Label>
+                    <Input
+                      id="force-finish-date"
+                      type="date"
+                      min={perizinan.requestedStartDate ?? perizinan.tanggal}
+                      max={
+                        perizinan.effectiveEndDate ??
+                        perizinan.originalEndDate ??
+                        perizinan.tanggal
+                      }
+                      value={
+                        forceFinishDate ||
+                        perizinan.effectiveEndDate ||
+                        perizinan.originalEndDate ||
+                        perizinan.tanggal
+                      }
+                      onChange={(event) =>
+                        setForceFinishDate(event.target.value)
+                      }
+                      disabled={forceFinishMutation.isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="force-finish-reason">Alasan</Label>
+                    <Textarea
+                      id="force-finish-reason"
+                      value={forceFinishReason}
+                      onChange={(event) =>
+                        setForceFinishReason(event.target.value)
+                      }
+                      placeholder="Contoh: Siswa telah kembali sehat."
+                      disabled={forceFinishMutation.isPending}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleForceFinish}
+                    disabled={forceFinishMutation.isPending}
+                  >
+                    {forceFinishMutation.isPending
+                      ? "Mengakhiri..."
+                      : "Force-finish Leave Period"}
                   </Button>
                 </div>
               ) : (
@@ -419,13 +674,13 @@ export default function ShowPerizinanPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="relative w-full h-full bg-muted">
-            <Image
-              src={perizinan.linkFoto ?? ""}
-              alt="Bukti Perizinan"
-              fill
-              className="object-contain"
-              priority
-            />
+            {perizinan.linkFoto ? (
+              <AttachmentImage
+                src={perizinan.linkFoto}
+                alt="Bukti Perizinan"
+                className="h-full w-full object-contain"
+              />
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

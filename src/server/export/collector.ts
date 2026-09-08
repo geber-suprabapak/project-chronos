@@ -58,6 +58,7 @@ export async function collectAuthoritativeAttendanceRows(
   const normalizedStudents = normalizeStudentRows(rawStudents);
   const studentMap = new Map<string, (typeof normalizedStudents)[number]>();
   for (const s of normalizedStudents) {
+    if (s.user_id === null) continue;
     studentMap.set(s.user_id, s);
   }
 

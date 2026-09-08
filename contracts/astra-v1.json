@@ -52,6 +52,10 @@
       "VALIDATION_ERROR",
       "RESOURCE_NOT_FOUND",
       "CONFLICT",
+      "LEAVE_REQUEST_PENDING",
+      "LEAVE_PERIOD_OVERLAP",
+      "LEAVE_APPROVAL_CONFLICT",
+      "ATTENDANCE_BLOCKED",
       "RATE_LIMITED",
       "DEPENDENCY_UNAVAILABLE",
       "INTERNAL_ERROR",
@@ -115,6 +119,27 @@
       }
     }
   },
+  "monthly_attendance_sources": {
+    "routes": [
+      "GET /v1/admin/academic-periods",
+      "GET /v1/admin/students",
+      "GET /v1/admin/classes",
+      "GET /v1/admin/enrollments",
+      "GET /v1/admin/schedules",
+      "GET /v1/admin/calendar-exceptions",
+      "GET /v1/admin/leave-requests"
+    ],
+    "purpose": "Return the existing academic, enrollment, schedule, calendar-exception, student, and leave sources required to build a complete Monthly Attendance Recap.",
+    "query": {
+      "academic_period_id": "string optional",
+      "start_date": "string YYYY-MM-DD optional",
+      "end_date": "string YYYY-MM-DD optional",
+      "limit": "integer 1..100 optional",
+      "offset": "integer >= 0 optional"
+    },
+    "leave_request_range_semantics": "GET /v1/admin/leave-requests returns periods overlapping the inclusive WIB range: requested_start_date <= end_date and COALESCE(effective_end_date, original_end_date, requested_start_date) >= start_date. A legacy approved row with only date is a one-day period.",
+    "response": "Versioned success envelope; list resources return complete arrays or valid offset pagination metadata."
+  },
   "backup_audit": {
     "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
     "allowed_roles": ["platform_admin", "school_admin"],
@@ -172,6 +197,11 @@
     "GET /v1/mobile/files/{file_id}"
   ],
   "admin_routes": [
+    "GET /v1/admin/bootstrap/status",
+    "POST /v1/admin/bootstrap/roster",
+    "GET /v1/admin/bootstrap/roster/{id}",
+    "POST /v1/admin/bootstrap/roster/{id}/accept",
+    "GET /v1/admin/academic-periods",
     "GET /v1/admin/students",
     "GET /v1/admin/students/{user_id}",
     "POST /v1/admin/students/{userId}/approve",
@@ -183,6 +213,7 @@
     "GET /v1/admin/staff",
     "GET /v1/admin/staff/{user_id}",
     "GET /v1/admin/classes",
+    "GET /v1/admin/enrollments",
     "GET /v1/admin/locations",
     "POST /v1/admin/locations",
     "PUT /v1/admin/locations/{id}",
@@ -193,11 +224,13 @@
     "PUT /v1/admin/schedules/{id}",
     "PATCH /v1/admin/schedules/{id}",
     "DELETE /v1/admin/schedules/{id}",
+    "GET /v1/admin/calendar-exceptions",
     "GET /v1/admin/leave-requests",
     "POST /v1/admin/leave-requests",
     "GET /v1/admin/leave-requests/{id}",
     "PATCH /v1/admin/leave-requests/{id}",
     "POST /v1/admin/leave-requests/{id}/approve",
+    "POST /v1/admin/leave-requests/{id}/force-finish",
     "POST /v1/admin/leave-requests/{id}/reject",
     "POST /v1/admin/leave-requests/{id}/reopen",
     "DELETE /v1/admin/leave-requests/{id}",
@@ -214,6 +247,51 @@
     "POST /v1/admin/backups",
     "GET /v1/admin/backups/status"
   ],
+  "roster_import": {
+    "routes": [
+      "POST /v1/admin/bootstrap/roster",
+      "GET /v1/admin/bootstrap/roster/{id}",
+      "POST /v1/admin/bootstrap/roster/{id}/accept"
+    ],
+    "stage_roles": ["school_admin"],
+    "accept_roles": ["school_admin"],
+    "request": {
+      "academic_period_id": "existing academic period id, required",
+      "rows": "non-empty array",
+      "row": {
+        "nis": "non-empty digit string",
+        "full_name": "non-empty string",
+        "gender": ["L", "P"],
+        "class_id": "existing class id optional when class_name is supplied",
+        "class_name": "existing class name",
+        "absence_number": "positive integer"
+      }
+    },
+    "acceptance": {
+      "creates": ["Student", "Class Enrollment"],
+      "does_not_create": [
+        "User",
+        "Profile",
+        "Logto identity",
+        "Student Binding"
+      ],
+      "absence_number_owner": "Class Enrollment",
+      "atomic": true,
+      "add_only": true,
+      "response_fields": [
+        "student_id",
+        "user_id",
+        "nis",
+        "full_name",
+        "gender",
+        "class_id",
+        "class_name",
+        "academic_period_id",
+        "period_name",
+        "absence_number"
+      ]
+    }
+  },
   "identity_routes": [
     "POST /v1/auth/student/signup",
     "POST /v1/auth/student/reset-password",

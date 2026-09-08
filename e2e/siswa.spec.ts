@@ -1,4 +1,5 @@
 import { test, expect, loginAs } from "./fixtures/auth.ts";
+import ExcelJS from "exceljs";
 
 test.describe("Siswa (Student Roster) Workflows", () => {
   test.beforeEach(async ({ page }) => {
@@ -49,6 +50,117 @@ test.describe("Siswa (Student Roster) Workflows", () => {
     await expect(
       table.getByRole("columnheader", { name: "Status" }),
     ).toBeVisible();
+  });
+
+  test("school administrator can preview and accept an official roster workbook", async ({
+    page,
+  }) => {
+    await loginAs(page, "school_admin");
+    await page.goto("/siswa");
+    await expect(page.locator("#roster-academic-period")).toBeVisible();
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("X PPLG 1");
+    worksheet.getCell("C3").value = "Kelas";
+    worksheet.getCell("E3").value = ": X PPLG 1";
+    worksheet.getCell("N3").value = "Tahun Ajaran";
+    worksheet.getCell("S3").value = ": 2026/2027";
+    worksheet.getRow(7).values = ["No", "NIS", "Nama Siswa", "L/P"];
+    worksheet.getRow(8).values = [1, 18001, "Siti Aminah", "P"];
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    await page.locator("#roster-academic-period").selectOption("period-1");
+    await page.locator("#roster-import-file").setInputFiles({
+      name: "official-roster.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer,
+    });
+    await page.getByRole("button", { name: "Tinjau Workbook" }).click();
+    await expect(
+      page.getByRole("table", { name: "Preview roster" }),
+    ).toContainText("Siti Aminah");
+    await page.getByRole("button", { name: "Terima Roster" }).click();
+    await expect(page.getByRole("status")).toContainText("berhasil diterima");
+  });
+
+  test("keeps valid rows visible and blocks Astra staging for local validation errors", async ({
+    page,
+  }) => {
+    await loginAs(page, "school_admin");
+    await page.goto("/siswa");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("X PPLG 1");
+    worksheet.getCell("C3").value = "Kelas";
+    worksheet.getCell("E3").value = ": X PPLG 1";
+    worksheet.getCell("N3").value = "Tahun Ajaran";
+    worksheet.getCell("S3").value = ": 2026/2027";
+    worksheet.getRow(7).values = ["No", "NIS", "Nama Siswa", "L/P"];
+    worksheet.getRow(8).values = [1, 18001, "Siti Aminah", "P"];
+    worksheet.getRow(9).values = [2, null, "Budi Santoso", "L"];
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const statsUrl = `http://127.0.0.1:${process.env.MOCK_ASTRA_PORT ?? "23500"}/mock/roster-stats`;
+    const before = await (await page.request.get(statsUrl)).json();
+
+    await page.locator("#roster-academic-period").selectOption("period-1");
+    await page.locator("#roster-import-file").setInputFiles({
+      name: "invalid-roster.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer,
+    });
+    await page.getByRole("button", { name: "Tinjau Workbook" }).click();
+
+    await expect(
+      page.getByRole("table", { name: "Preview roster" }),
+    ).toContainText("Siti Aminah");
+    await expect(page.getByText(/NIS is required/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Terima Roster" }),
+    ).toBeDisabled();
+    const after = await (await page.request.get(statsUrl)).json();
+    expect(after.rosterStageCount).toBe(before.rosterStageCount);
+    expect(after.rosterAcceptCount).toBe(before.rosterAcceptCount);
+  });
+
+  test("shows Astra rejected rows and keeps atomic acceptance disabled", async ({
+    page,
+  }) => {
+    await loginAs(page, "school_admin");
+    await page.goto("/siswa");
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Unknown");
+    worksheet.getCell("C3").value = "Kelas";
+    worksheet.getCell("E3").value = ": Unknown class";
+    worksheet.getCell("N3").value = "Tahun Ajaran";
+    worksheet.getCell("S3").value = ": 2026/2027";
+    worksheet.getRow(7).values = ["No", "NIS", "Nama Siswa", "L/P"];
+    worksheet.getRow(8).values = [1, 18001, "Siti Aminah", "P"];
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const statsUrl = `http://127.0.0.1:${process.env.MOCK_ASTRA_PORT ?? "23500"}/mock/roster-stats`;
+    const before = await (await page.request.get(statsUrl)).json();
+
+    await page.locator("#roster-academic-period").selectOption("period-1");
+    await page.locator("#roster-import-file").setInputFiles({
+      name: "astra-invalid-roster.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer,
+    });
+    await page.getByRole("button", { name: "Tinjau Workbook" }).click();
+
+    await expect(page.getByText(/Astra menolak 1 baris/i)).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Error validasi Astra" }),
+    ).toContainText("Unknown:8");
+    await expect(
+      page.getByRole("button", { name: "Terima Roster" }),
+    ).toBeDisabled();
+    const after = await (await page.request.get(statsUrl)).json();
+    expect(after.rosterStageCount).toBe(before.rosterStageCount + 1);
+    expect(after.rosterAcceptCount).toBe(before.rosterAcceptCount);
   });
 
   test("filters student table by name and NIS search input", async ({

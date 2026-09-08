@@ -186,6 +186,10 @@ interface AstraLeaveRequestEnvelope {
     readonly category?: string;
     readonly description?: string | null;
     readonly date?: string;
+    readonly requested_start_date?: string | null;
+    readonly original_end_date?: string | null;
+    readonly effective_end_date?: string | null;
+    readonly duration_days?: number | null;
     readonly approval_status?: string;
     readonly status?: boolean;
     readonly attachment_url?: string | null;
@@ -204,6 +208,10 @@ function parseLeaveRequestResponse(envelope: AstraLeaveRequestEnvelope):
       readonly category: string;
       readonly approvalStatus: string;
       readonly date: string;
+      readonly requestedStartDate: string;
+      readonly originalEndDate: string | null;
+      readonly effectiveEndDate: string | null;
+      readonly durationDays: number | null;
       readonly studentName: string | null;
       readonly studentNis: string | null;
       readonly attachmentUrl: string | null;
@@ -224,6 +232,21 @@ function parseLeaveRequestResponse(envelope: AstraLeaveRequestEnvelope):
     category: envelope.data.category ?? "sakit",
     approvalStatus: envelope.data.approval_status ?? "pending",
     date: envelope.data.date ?? "",
+    requestedStartDate:
+      envelope.data.requested_start_date ?? envelope.data.date ?? "",
+    originalEndDate:
+      envelope.data.original_end_date ??
+      (envelope.data.approval_status === "approved"
+        ? (envelope.data.date ?? null)
+        : null),
+    effectiveEndDate:
+      envelope.data.effective_end_date ??
+      (envelope.data.approval_status === "approved"
+        ? (envelope.data.date ?? null)
+        : null),
+    durationDays:
+      envelope.data.duration_days ??
+      (envelope.data.approval_status === "approved" ? 1 : null),
     studentName: envelope.data.student_name ?? null,
     studentNis: envelope.data.student_nis ?? null,
     attachmentUrl: envelope.data.attachment_url ?? null,
@@ -545,6 +568,10 @@ describe("Astra API Contract Boundary", () => {
           category: "sakit",
           description: "Sakit demam tinggi",
           date: "2026-08-22",
+          requested_start_date: "2026-08-22",
+          original_end_date: "2026-08-24",
+          effective_end_date: "2026-08-24",
+          duration_days: 3,
           approval_status: "approved",
           status: true,
           student_name: "Ahmad Dahlan",
@@ -560,6 +587,10 @@ describe("Astra API Contract Boundary", () => {
         category: "sakit",
         approvalStatus: "approved",
         date: "2026-08-22",
+        requestedStartDate: "2026-08-22",
+        originalEndDate: "2026-08-24",
+        effectiveEndDate: "2026-08-24",
+        durationDays: 3,
         studentName: "Ahmad Dahlan",
         studentNis: "1001",
         attachmentUrl: "https://storage.local/signed/surat_dokter.jpg",

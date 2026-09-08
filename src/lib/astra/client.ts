@@ -19,22 +19,48 @@ export interface AstraRequestOptions {
   timeoutMs?: number;
 }
 
+export type AstraErrorDetailsValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly string[]
+  | Readonly<Record<string, readonly string[] | undefined>>
+  | undefined;
+
+export interface AstraErrorDetailsRecord {
+  [key: string]: AstraErrorDetailsValue;
+  pending_request_id?: string;
+  requested_start_date?: string;
+  overlapping_request_id?: string;
+  overlapping_start_date?: string;
+  overlapping_end_date?: string;
+  conflicting_dates?: readonly string[];
+  requested_end_date?: string;
+}
+
+export type AstraErrorDetails =
+  AstraErrorDetailsRecord | string | number | boolean | null | undefined;
+
 export class AstraRequestError extends Error {
   readonly status: number;
   readonly requestId: string;
   readonly code?: string;
+  readonly details?: AstraErrorDetails;
 
   constructor(
     message: string,
     status: number,
     requestId: string,
     code?: string,
+    details?: AstraErrorDetails,
   ) {
     super(message);
     this.name = "AstraRequestError";
     this.status = status;
     this.requestId = requestId;
     this.code = code;
+    this.details = details;
   }
 
   isTimeout(): boolean {
@@ -68,11 +94,80 @@ export class AstraRequestError extends Error {
   }
 }
 
+const LEAVE_CONFLICT_CODES = new Set([
+  "LEAVE_REQUEST_PENDING",
+  "LEAVE_PERIOD_OVERLAP",
+  "LEAVE_APPROVAL_CONFLICT",
+]);
+
+const asRecord = (
+  details: AstraErrorDetails | undefined,
+): AstraErrorDetailsRecord | null => {
+  if (
+    details === null ||
+    Array.isArray(details) ||
+    Object.prototype.toString.call(details) !== "[object Object]"
+  ) {
+    return null;
+  }
+  // SAFETY: Error details are decoded as the bounded Astra detail value union.
+  return details as AstraErrorDetailsRecord;
+};
+
+/**
+ * Converts Astra's stable leave conflict contract into a message an operator
+ * can act on without losing the machine-readable error on the request.
+ */
+export function actionableLeaveErrorMessage(error: AstraRequestError): string {
+  const details = asRecord(error.details);
+  switch (error.code) {
+    case "LEAVE_REQUEST_PENDING": {
+      const requestId = details?.pending_request_id;
+      return requestId
+        ? `Pengajuan izin masih menunggu persetujuan (ID ${String(requestId)}). Tunggu hingga diproses atau ditolak sebelum mengajukan lagi.`
+        : "Pengajuan izin masih menunggu persetujuan. Tunggu hingga diproses atau ditolak sebelum mengajukan lagi.";
+    }
+    case "LEAVE_PERIOD_OVERLAP": {
+      const start = details?.overlapping_start_date;
+      const end = details?.overlapping_end_date;
+      const period =
+        start && end ? ` (${String(start)} sampai ${String(end)})` : "";
+      return `Tanggal pengajuan bertumpang tindih dengan Leave Period yang sudah disetujui${period}. Pilih tanggal lain.`;
+    }
+    case "LEAVE_APPROVAL_CONFLICT": {
+      const dates = Array.isArray(details?.conflicting_dates)
+        ? details.conflicting_dates.map(String).join(", ")
+        : "tanggal yang sudah memiliki absensi fisik";
+      return `Persetujuan ditolak karena absensi fisik sudah tercatat pada: ${dates}. Tidak ada bagian periode yang disetujui.`;
+    }
+    default:
+      return error.message;
+  }
+}
+
+export function isLeaveConflictError(error: AstraRequestError): boolean {
+  return error.code !== undefined && LEAVE_CONFLICT_CODES.has(error.code);
+}
+
+export function actionableAttendanceBlockedMessage(
+  error: AstraRequestError,
+): string {
+  const details = asRecord(error.details);
+  const end = details?.effective_end_date;
+  return end
+    ? `Presensi diblokir sampai ${String(end)} karena Leave Period yang disetujui.`
+    : "Presensi diblokir karena Leave Period yang disetujui.";
+}
+
 type AstraEnvelope<T> = {
   success: boolean;
   data?: T;
   message?: string;
-  error?: { code?: string; message?: string };
+  error?: {
+    code?: string;
+    message?: string;
+    details?: AstraErrorDetails;
+  };
   meta?: {
     request_id?: string;
     timestamp?: string;
@@ -203,6 +298,7 @@ export async function astraRequestEnvelope<T>(
         response.status,
         envelopeRequestId,
         envelope.error?.code,
+        envelope.error?.details,
       );
     }
     if (!("data" in envelope)) {

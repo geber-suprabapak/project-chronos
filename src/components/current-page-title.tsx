@@ -32,6 +32,8 @@ export function CurrentPageTitle({ className }: { className?: string }) {
         title = "Absensi — Detail";
       } else if (second === "perkelas") {
         title = "Absensi — Per Kelas";
+      } else if (second === "rekap-bulanan") {
+        title = "Absensi — Rekap Bulanan";
       } else {
         title = "Absensi";
       }

@@ -4,8 +4,14 @@ import {
   privilegedProcedure,
   protectedProcedure,
 } from "~/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 import { hasRequiredRole, PRIVILEGED_ROLES } from "~/server/auth/rbac";
-import { astraRequest } from "~/lib/astra/client";
+import {
+  AstraRequestError,
+  actionableLeaveErrorMessage,
+  astraRequest,
+  isLeaveConflictError,
+} from "~/lib/astra/client";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
 
@@ -33,12 +39,34 @@ interface AstraLeaveRequest {
   description?: string | null;
   status: boolean;
   date: string;
+  requested_start_date?: string | null;
+  original_end_date?: string | null;
+  effective_end_date?: string | null;
+  duration_days?: number | null;
   approval_status: "approved" | "rejected" | "pending";
   attachment_url?: string | null;
   rejection_reason?: string | null;
   rejected_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+async function astraLeaveMutationRequest<T>(
+  path: string,
+  init: RequestInit,
+): Promise<T> {
+  try {
+    return await astraRequest<T>(path, init);
+  } catch (error) {
+    if (error instanceof AstraRequestError && isLeaveConflictError(error)) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: actionableLeaveErrorMessage(error),
+        cause: error,
+      });
+    }
+    throw error;
+  }
 }
 
 /**
@@ -71,6 +99,16 @@ function mapAstraLeaveRequestToPerizinan(lr: AstraLeaveRequest) {
     // `T00:00...` to an ISO timestamp creates Invalid Date, which downstream
     // clients can coerce to 01/01/1970.
     tanggal: normalizeDateOnly(lr.date) ?? "",
+    requestedStartDate:
+      normalizeDateOnly(lr.requested_start_date ?? lr.date) ?? "",
+    originalEndDate:
+      normalizeDateOnly(lr.original_end_date) ??
+      (lr.approval_status === "approved" ? normalizeDateOnly(lr.date) : null),
+    effectiveEndDate:
+      normalizeDateOnly(lr.effective_end_date) ??
+      (lr.approval_status === "approved" ? normalizeDateOnly(lr.date) : null),
+    durationDays:
+      lr.duration_days ?? (lr.approval_status === "approved" ? 1 : null),
     kategoriIzin: formatLeaveCategory(lr.category),
     category: lr.category,
     deskripsi: lr.description ?? null,
@@ -259,7 +297,7 @@ export const perizinanRouter = createTRPCRouter({
         );
       }
 
-      const created = await astraRequest<AstraLeaveRequest>(
+      const created = await astraLeaveMutationRequest<AstraLeaveRequest>(
         "/v1/admin/leave-requests",
         {
           method: "POST",
@@ -271,7 +309,7 @@ export const perizinanRouter = createTRPCRouter({
               `Izin ${input.kategoriIzin} dicatat oleh administrator.`,
             date: input.tanggal,
             file_id: input.linkFoto,
-            approval_status: "approved",
+            approval_status: "pending",
           }),
         },
       );
@@ -316,11 +354,12 @@ export const perizinanRouter = createTRPCRouter({
         id: z.string().uuid(),
         approvalStatus: z.enum(["approved", "rejected", "pending"]),
         rejectionReason: z.string().optional(),
+        durationDays: z.number().int().min(1).max(30).optional(),
       }),
     )
     .mutation(async ({ input }) => {
       if (input.approvalStatus === "pending") {
-        const reset = await astraRequest<AstraLeaveRequest>(
+        const reset = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/reopen`,
           { method: "POST" },
         );
@@ -328,15 +367,18 @@ export const perizinanRouter = createTRPCRouter({
       }
 
       if (input.approvalStatus === "approved") {
-        const approved = await astraRequest<AstraLeaveRequest>(
+        const approved = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/approve`,
-          { method: "POST" },
+          {
+            method: "POST",
+            body: JSON.stringify({ duration_days: input.durationDays ?? 1 }),
+          },
         );
         return mapAstraLeaveRequestToPerizinan(approved);
       }
 
       if (input.approvalStatus === "rejected") {
-        const rejected = await astraRequest<AstraLeaveRequest>(
+        const rejected = await astraLeaveMutationRequest<AstraLeaveRequest>(
           `/v1/admin/leave-requests/${input.id}/reject`,
           {
             method: "POST",
@@ -348,10 +390,36 @@ export const perizinanRouter = createTRPCRouter({
         return mapAstraLeaveRequestToPerizinan(rejected);
       }
 
-      const current = await astraRequest<AstraLeaveRequest>(
+      const current = await astraLeaveMutationRequest<AstraLeaveRequest>(
         `/v1/admin/leave-requests/${input.id}`,
+        {},
       );
       return mapAstraLeaveRequestToPerizinan(current);
+    }),
+
+  forceFinish: privilegedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        effectiveEndDate: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/),
+        reason: z.string().trim().min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.userRole !== "school_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const finished = await astraLeaveMutationRequest<AstraLeaveRequest>(
+        `/v1/admin/leave-requests/${input.id}/force-finish`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            effective_end_date: input.effectiveEndDate,
+            reason: input.reason,
+          }),
+        },
+      );
+      return mapAstraLeaveRequestToPerizinan(finished);
     }),
 });
 

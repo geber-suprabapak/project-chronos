@@ -36,7 +36,27 @@ function asBoolean(val: unknown, fallback = false): boolean {
   return fallback;
 }
 
+function rowField(row: unknown, name: string): unknown {
+  if (row === null || typeof row !== "object" || Array.isArray(row)) {
+    return undefined;
+  }
+  return Object.entries(row).find(([key]) => key === name)?.[1];
+}
+
+function rowText(row: unknown, name: string): string {
+  const value = rowField(row, name);
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : "";
+}
+
+function normalizedAbsenceNumber(value: string): string {
+  return value.replace(/^0+(?=\d)/, "");
+}
+
 interface ParsedRequestBody {
+  academic_period_id?: string;
+  rows?: unknown;
   user_id?: string;
   date?: string;
   status?: string;
@@ -73,6 +93,9 @@ export class MockAstraLogtoServer {
   private logtoServer: http.Server | null = null;
   public data = createInitialMockData();
   public backups: Array<Record<string, unknown>> = [];
+  public rosterReports: Array<Record<string, unknown>> = [];
+  public rosterStageCount = 0;
+  public rosterAcceptCount = 0;
 
   private astraPort: number;
   private logtoPort: number;
@@ -85,6 +108,9 @@ export class MockAstraLogtoServer {
   public resetData() {
     this.data = createInitialMockData();
     this.backups = [];
+    this.rosterReports = [];
+    this.rosterStageCount = 0;
+    this.rosterAcceptCount = 0;
   }
 
   private sendAstraJson(
@@ -175,6 +201,135 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    if (pathname === "/mock/roster-stats" && method === "GET") {
+      this.sendJson(res, 200, {
+        rosterStageCount: this.rosterStageCount,
+        rosterAcceptCount: this.rosterAcceptCount,
+      });
+      return;
+    }
+
+    if (pathname === "/v1/admin/academic-periods" && method === "GET") {
+      this.sendAstraJson(res, 200, [
+        {
+          id: "period-1",
+          school_id: "school-1",
+          name: "2026/2027 Ganjil",
+          start_date: "2026-07-01",
+          end_date: "2026-12-31",
+          is_active: true,
+        },
+      ]);
+      return;
+    }
+
+    if (pathname === "/v1/admin/bootstrap/roster" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const rows = Array.isArray(body.rows) ? body.rows : [];
+        // ponytail: O(n²) duplicate scans; use keyed indexes if fixture payloads grow.
+        const rejectedItems = rows.flatMap((row, rowIndex) => {
+          const nis = rowText(row, "nis");
+          const className = rowText(row, "class_name");
+          const absenceNumber = normalizedAbsenceNumber(
+            rowText(row, "absence_number"),
+          );
+          const duplicateNis =
+            nis !== "" &&
+            rows.some(
+              (candidate, candidateIndex) =>
+                candidateIndex !== rowIndex &&
+                rowText(candidate, "nis") === nis,
+            );
+          const existingNis = this.data.students.some(
+            (student) => student.nis === nis,
+          );
+          const duplicateAbsenceNumber =
+            className !== "" &&
+            absenceNumber !== "" &&
+            rows.some(
+              (candidate, candidateIndex) =>
+                candidateIndex !== rowIndex &&
+                rowText(candidate, "class_name") === className &&
+                normalizedAbsenceNumber(
+                  rowText(candidate, "absence_number"),
+                ) === absenceNumber,
+            );
+          const usedAbsenceNumber = this.data.students.some(
+            (student) =>
+              student.class_name === className &&
+              normalizedAbsenceNumber(student.absence_number) === absenceNumber,
+          );
+          const reason = duplicateNis
+            ? `Duplicate NIS "${nis}" in roster batch.`
+            : existingNis
+              ? `NIS "${nis}" already exists in student profiles.`
+              : duplicateAbsenceNumber
+                ? `Absence Number "${absenceNumber}" is duplicated in class.`
+                : usedAbsenceNumber
+                  ? `Absence Number "${absenceNumber}" is already used in class.`
+                  : className === "Unknown class"
+                    ? `Invalid class reference: "${className}" is not a recognized class.`
+                    : null;
+          return reason ? [{ row_index: rowIndex, reason }] : [];
+        });
+        const report = {
+          id: `roster-report-${this.rosterReports.length + 1}`,
+          academic_period_id: body.academic_period_id ?? null,
+          total_rows: rows.length,
+          valid_rows: rows.length - rejectedItems.length,
+          rejected_rows: rejectedItems.length,
+          status: rejectedItems.length > 0 ? "rejected" : "staged",
+          review_state: rejectedItems.length > 0 ? "rejected" : "pending",
+          rows,
+          rejected_items: rejectedItems,
+          accepted_at: null,
+          accepted_by: null,
+        };
+        this.rosterStageCount += 1;
+        this.rosterReports.push(report);
+        this.sendAstraJson(res, 201, report, "Roster staged and validated.");
+      });
+      return;
+    }
+
+    const rosterReportMatch = pathname.match(
+      /^\/v1\/admin\/bootstrap\/roster\/([^/]+)$/,
+    );
+    if (rosterReportMatch && method === "GET") {
+      const report = this.rosterReports.find(
+        (candidate) =>
+          candidate.id === decodeURIComponent(rosterReportMatch[1]!),
+      );
+      this.sendAstraJson(
+        res,
+        report ? 200 : 404,
+        report ?? null,
+        report ? "Roster report retrieved." : "Roster report not found",
+      );
+      return;
+    }
+
+    const rosterAcceptMatch = pathname.match(
+      /^\/v1\/admin\/bootstrap\/roster\/([^/]+)\/accept$/,
+    );
+    if (rosterAcceptMatch && method === "POST") {
+      const report = this.rosterReports.find(
+        (candidate) =>
+          candidate.id === decodeURIComponent(rosterAcceptMatch[1]!),
+      );
+      if (!report) {
+        this.sendAstraJson(res, 404, null, "Roster report not found");
+      } else {
+        report.status = "accepted";
+        report.review_state = "accepted";
+        report.accepted_at = new Date().toISOString();
+        report.accepted_by = "school-admin";
+        this.rosterAcceptCount += 1;
+        this.sendAstraJson(res, 200, report, "Roster report accepted.");
+      }
+      return;
+    }
+
     // 1. STUDENTS
     if (pathname === "/v1/admin/students" && method === "GET") {
       let result = [...this.data.students];
@@ -239,6 +394,16 @@ export class MockAstraLogtoServer {
     // 3. CLASSES
     if (pathname === "/v1/admin/classes" && method === "GET") {
       this.sendAstraJson(res, 200, this.data.classes);
+      return;
+    }
+
+    if (pathname === "/v1/admin/enrollments" && method === "GET") {
+      this.sendAstraJson(res, 200, this.data.enrollments);
+      return;
+    }
+
+    if (pathname === "/v1/admin/calendar-exceptions" && method === "GET") {
+      this.sendAstraJson(res, 200, this.data.calendarExceptions);
       return;
     }
 

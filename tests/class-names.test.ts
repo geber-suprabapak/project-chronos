@@ -44,4 +44,37 @@ describe("class name response normalization", () => {
       ],
     );
   });
+
+  it("retains canonical roster rows that have no bound user", () => {
+    assert.deepEqual(
+      normalizeStudentRows({
+        data: [
+          {
+            student_id: "student-1",
+            user_id: null,
+            nis: "2001",
+            full_name: "Siti Aminah",
+            class_name: "XII RPL 1",
+            absence_number: "7",
+            gender: "P",
+          },
+        ],
+      }),
+      [
+        {
+          student_id: "student-1",
+          user_id: null,
+          full_name: "Siti Aminah",
+          email: null,
+          nis: "2001",
+          class_name: "XII RPL 1",
+          absence_number: "7",
+          avatar_url: null,
+          role: null,
+          lifecycle_status: null,
+          gender: "P",
+        },
+      ],
+    );
+  });
 });

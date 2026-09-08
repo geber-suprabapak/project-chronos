@@ -5,7 +5,11 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import {
+  actionableAttendanceBlockedMessage,
+  AstraRequestError,
+  astraRequest,
+} from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import {
@@ -58,6 +62,19 @@ interface AstraLeaveRequest {
 
 function normalizeAttendanceDate(value: string): string {
   return normalizeDateOnly(value) ?? "";
+}
+
+function mapStudentsByUserId(
+  students: AstraStudentProfile[] | null | undefined,
+): Map<string, AstraStudentProfile> {
+  return new Map<string, AstraStudentProfile>(
+    normalizeStudentRows(students)
+      .filter(
+        (student): student is typeof student & { user_id: string } =>
+          student.user_id !== null,
+      )
+      .map((student) => [student.user_id, student]),
+  );
 }
 
 function mapAstraAttendance(
@@ -157,16 +174,30 @@ export const absencesRouter = createTRPCRouter({
         }
       })();
 
-      return astraRequest("/v1/admin/attendance/manual", {
-        method: "POST",
-        body: JSON.stringify({
-          user_id: student.user_id,
-          status: statusAndAction.status,
-          action_type: statusAndAction.action_type,
-          date: input.date,
-          reason: "Manual attendance recorded by Chronos administrator.",
-        }),
-      });
+      try {
+        return await astraRequest("/v1/admin/attendance/manual", {
+          method: "POST",
+          body: JSON.stringify({
+            user_id: student.user_id,
+            status: statusAndAction.status,
+            action_type: statusAndAction.action_type,
+            date: input.date,
+            reason: "Manual attendance recorded by Chronos administrator.",
+          }),
+        });
+      } catch (error) {
+        if (
+          error instanceof AstraRequestError &&
+          error.code === "ATTENDANCE_BLOCKED"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: actionableAttendanceBlockedMessage(error),
+            cause: error,
+          });
+        }
+        throw error;
+      }
     }),
 
   // DELETE: Hapus data absensi berdasarkan ID
@@ -234,9 +265,7 @@ export const absencesRouter = createTRPCRouter({
         ),
       ]);
 
-      const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students).map((s) => [s.user_id, s]),
-      );
+      const studentMap = mapStudentsByUserId(students);
 
       let filtered = attendances;
 
@@ -346,9 +375,7 @@ export const absencesRouter = createTRPCRouter({
       ),
     ]);
 
-    const studentMap = new Map<string, AstraStudentProfile>(
-      normalizeStudentRows(students).map((s) => [s.user_id, s]),
-    );
+    const studentMap = mapStudentsByUserId(students);
 
     const sorted = [...attendances].sort((a, b) => {
       const dateA = normalizeAttendanceDate(a.date);
@@ -378,9 +405,7 @@ export const absencesRouter = createTRPCRouter({
 
       if (!record) return null;
 
-      const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students).map((s) => [s.user_id, s]),
-      );
+      const studentMap = mapStudentsByUserId(students);
 
       return mapAstraAttendance(record, studentMap);
     }),
@@ -631,6 +656,7 @@ export const absencesRouter = createTRPCRouter({
 
       const classQuery = input.className.toLowerCase();
       const studentsInClass = allStudents
+        .filter((s): s is typeof s & { user_id: string } => s.user_id !== null)
         .filter((s) => (s.class_name ?? "").toLowerCase().includes(classQuery))
         .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 

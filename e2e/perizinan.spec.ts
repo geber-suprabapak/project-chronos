@@ -189,5 +189,64 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
         }
       }
     });
+
+    test("renders attachments after reload and gives a direct-open fallback on load failure", async ({
+      page,
+    }) => {
+      const attachmentUrl =
+        "https://storage.lunaradev.my.id/perizinan/leave-request-001.png";
+      const imageBody = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      );
+      let shouldFail = false;
+
+      await page.route(attachmentUrl, async (route) => {
+        if (shouldFail) {
+          await route.abort();
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "image/png",
+          headers: { "cache-control": "no-store" },
+          body: imageBody,
+        });
+      });
+
+      const attachment = () => page.locator('img[alt="Bukti Foto Izin"]');
+
+      await page.goto("/perizinan/show/b0000000-0000-4000-8000-000000000001");
+      await expect
+        .poll(() =>
+          attachment().evaluate(
+            (img) => (img as HTMLImageElement).naturalWidth,
+          ),
+        )
+        .toBeGreaterThan(0);
+
+      await page.reload();
+      await expect
+        .poll(() =>
+          attachment().evaluate(
+            (img) => (img as HTMLImageElement).naturalWidth,
+          ),
+        )
+        .toBeGreaterThan(0);
+
+      shouldFail = true;
+      await page.reload();
+      await expect(
+        page.getByText("Bukti foto tidak dapat ditampilkan."),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Buka lampiran langsung" }),
+      ).toHaveAttribute("href", attachmentUrl);
+
+      await page.getByRole("button", { name: "Coba lagi" }).click();
+      await expect(
+        page.getByText("Bukti foto tidak dapat ditampilkan."),
+      ).toBeVisible();
+    });
   });
 });

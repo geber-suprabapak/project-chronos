@@ -29,6 +29,7 @@ import {
   getActiveRequestId,
   runWithRequestId,
 } from "~/lib/astra/request-context";
+import { AstraRequestError } from "~/lib/astra/client";
 
 /**
  * 1. CONTEXT
@@ -72,6 +73,8 @@ const t = initTRPC
       const formattedError = opts["shape"];
       const error = opts.error;
       const ctx = opts.ctx;
+      const astraError =
+        error.cause instanceof AstraRequestError ? error.cause : undefined;
       const requestId = ctx?.requestId ?? getActiveRequestId() ?? "";
       return {
         ...formattedError,
@@ -82,6 +85,9 @@ const t = initTRPC
             error.cause instanceof ZodError
               ? z.flattenError(error.cause)
               : null,
+          astraCode: astraError?.code,
+          astraDetails: astraError?.details,
+          astraRequestId: astraError?.requestId,
         },
       };
     },
@@ -209,3 +215,5 @@ export const adminProcedure = requireRole(ADMIN_ROLES);
  * Privileged procedure - admin, kepala_sekolah, guru, or wali_kelas
  */
 export const privilegedProcedure = requireRole(PRIVILEGED_ROLES);
+
+export const schoolAdminProcedure = requireRole(["school_admin"]);

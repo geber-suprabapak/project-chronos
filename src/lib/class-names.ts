@@ -18,6 +18,8 @@ type ClassNameFields = {
 };
 
 type StudentFields = ClassNameFields & {
+  student_id?: string | null;
+  studentId?: string | null;
   user_id?: string | null;
   userId?: string | null;
   full_name?: string | null;
@@ -40,7 +42,8 @@ export type ClassNameSource = ListSource<ClassNameFields>;
 export type StudentSource = ListSource<StudentFields>;
 
 export type NormalizedStudent = {
-  user_id: string;
+  student_id?: string | null;
+  user_id: string | null;
   full_name?: string | null;
   email?: string | null;
   nis?: string | null;
@@ -63,6 +66,8 @@ const classNameRowSchema = z.object({
 });
 
 const studentRowSchema = classNameRowSchema.extend({
+  student_id: z.string().nullable().optional(),
+  studentId: z.string().nullable().optional(),
   user_id: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
   full_name: z.string().nullable().optional(),
@@ -146,39 +151,38 @@ export function normalizeStudentRows(
     if (!parsed.success) return [];
 
     const source = parsed.data;
+    const studentId = nonEmptyStringSchema.safeParse(
+      source.student_id ?? source.studentId,
+    );
     const userId = nonEmptyStringSchema.safeParse(
       source.user_id ?? source.userId,
     );
-    if (!userId.success) return [];
+    if (!studentId.success && !userId.success) return [];
 
-    return [
-      {
-        user_id: userId.data,
-        full_name: readOptionalString(source, [
-          "full_name",
-          "fullName",
-          "nama",
-        ]),
-        email: readOptionalString(source, ["email"]),
-        nis: readOptionalString(source, ["nis"]),
-        class_name: readOptionalString(source, [
-          "class_name",
-          "className",
-          "kelas",
-        ]),
-        absence_number: readOptionalString(source, [
-          "absence_number",
-          "absenceNumber",
-          "absen",
-        ]),
-        avatar_url: readOptionalString(source, ["avatar_url", "avatarUrl"]),
-        role: readOptionalString(source, ["role"]),
-        lifecycle_status: readOptionalString(source, [
-          "lifecycle_status",
-          "lifecycleStatus",
-        ]),
-        gender: readOptionalString(source, ["gender", "kelamin"]),
-      },
-    ];
+    const normalized: NormalizedStudent = {
+      user_id: userId.success ? userId.data : null,
+      full_name: readOptionalString(source, ["full_name", "fullName", "nama"]),
+      email: readOptionalString(source, ["email"]),
+      nis: readOptionalString(source, ["nis"]),
+      class_name: readOptionalString(source, [
+        "class_name",
+        "className",
+        "kelas",
+      ]),
+      absence_number: readOptionalString(source, [
+        "absence_number",
+        "absenceNumber",
+        "absen",
+      ]),
+      avatar_url: readOptionalString(source, ["avatar_url", "avatarUrl"]),
+      role: readOptionalString(source, ["role"]),
+      lifecycle_status: readOptionalString(source, [
+        "lifecycle_status",
+        "lifecycleStatus",
+      ]),
+      gender: readOptionalString(source, ["gender", "kelamin"]),
+    };
+    if (studentId.success) normalized.student_id = studentId.data;
+    return [normalized];
   });
 }
