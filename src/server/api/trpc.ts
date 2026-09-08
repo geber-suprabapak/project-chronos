@@ -215,3 +215,5 @@ export const adminProcedure = requireRole(ADMIN_ROLES);
  * Privileged procedure - admin, kepala_sekolah, guru, or wali_kelas
  */
 export const privilegedProcedure = requireRole(PRIVILEGED_ROLES);
+
+export const schoolAdminProcedure = requireRole(["school_admin"]);

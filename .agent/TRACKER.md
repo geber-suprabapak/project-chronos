@@ -1,17 +1,18 @@
 # Progress
 
-- [x] Read Chronos guidance and existing Astra client seams
-- [x] Create isolated ticket worktree
-- [x] Add force-finish and attendance error mapping
-- [x] Add the School Administrator Leave detail action and contract snapshot
-- [x] Verify typecheck/lint/tests/build/contract
-- [x] Narrow force-finish action to school_admin and remove contract formatter churn
-- [x] Commit Chronos
+- [x] Read guidance, domain docs, ticket, and integrated base
+- [x] Isolate Chronos worktree and verify clean exact base
+- [x] Reconcile academic-period public contract
+- [x] Add parser red/green slice and official-layout fixture helper
+- [x] Add stage/preview/accept adapter
+- [x] Add `/siswa` upload UI and mock/browser seams
+- [x] Run focused and full relevant checks
+- [ ] Commit Ticket 02 changes
 
 # Current
 
-Hardening implementation is complete and validated; parent handoff remains.
+Implementation and focused/full Chronos validation are complete; preparing final diff and commits.
 
 # Blocked
 
-None.
+None yet.

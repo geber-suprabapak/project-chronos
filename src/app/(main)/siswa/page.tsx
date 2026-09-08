@@ -15,6 +15,10 @@ import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { Users, UserCheck, User } from "lucide-react";
 import { AutoSearchForm } from "~/components/auto-search-form";
+import { RosterImportPanel } from "~/components/roster-import-panel";
+import { getLogtoContext } from "@logto/next/server-actions";
+import { logtoConfig } from "~/lib/logto/config";
+import { extractExtendedClaims, resolveLogtoRole } from "~/lib/logto/claims";
 
 function getQueryString(val: string | string[] | undefined): string {
   if (Array.isArray(val)) return val[0] ?? "";
@@ -26,6 +30,12 @@ export default async function SiswaPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const logtoContext = await getLogtoContext(logtoConfig);
+  const claims = logtoContext.claims
+    ? extractExtendedClaims(logtoContext.claims)
+    : null;
+  const isSchoolAdmin =
+    resolveLogtoRole(claims?.roles ?? []) === "school_admin";
   // Process searchParams safely - await the promise in Next.js 15
   const resolvedSearchParams = await searchParams;
   const nama = getQueryString(resolvedSearchParams?.nama).trim();
@@ -124,6 +134,7 @@ export default async function SiswaPage({
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 md:p-6">
       <section className="space-y-4">
+        {isSchoolAdmin ? <RosterImportPanel /> : null}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-lg sm:text-xl font-semibold">Data Siswa</h1>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">

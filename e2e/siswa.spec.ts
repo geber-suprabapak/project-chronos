@@ -1,4 +1,5 @@
 import { test, expect, loginAs } from "./fixtures/auth.ts";
+import ExcelJS from "exceljs";
 
 test.describe("Siswa (Student Roster) Workflows", () => {
   test.beforeEach(async ({ page }) => {
@@ -49,6 +50,38 @@ test.describe("Siswa (Student Roster) Workflows", () => {
     await expect(
       table.getByRole("columnheader", { name: "Status" }),
     ).toBeVisible();
+  });
+
+  test("school administrator can preview and accept an official roster workbook", async ({
+    page,
+  }) => {
+    await loginAs(page, "school_admin");
+    await page.goto("/siswa");
+    await expect(page.locator("#roster-academic-period")).toBeVisible();
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("X PPLG 1");
+    worksheet.getCell("C3").value = "Kelas";
+    worksheet.getCell("E3").value = ": X PPLG 1";
+    worksheet.getCell("N3").value = "Tahun Ajaran";
+    worksheet.getCell("S3").value = ": 2026/2027";
+    worksheet.getRow(7).values = ["No", "NIS", "Nama Siswa", "L/P"];
+    worksheet.getRow(8).values = [1, 18001, "Siti Aminah", "P"];
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    await page.locator("#roster-academic-period").selectOption("period-1");
+    await page.locator("#roster-import-file").setInputFiles({
+      name: "official-roster.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      buffer,
+    });
+    await page.getByRole("button", { name: "Tinjau Workbook" }).click();
+    await expect(
+      page.getByRole("table", { name: "Preview roster" }),
+    ).toContainText("Siti Aminah");
+    await page.getByRole("button", { name: "Terima Roster" }).click();
+    await expect(page.getByRole("status")).toContainText("berhasil diterima");
   });
 
   test("filters student table by name and NIS search input", async ({

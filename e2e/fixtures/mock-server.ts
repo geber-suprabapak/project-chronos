@@ -37,6 +37,8 @@ function asBoolean(val: unknown, fallback = false): boolean {
 }
 
 interface ParsedRequestBody {
+  academic_period_id?: string;
+  rows?: unknown;
   user_id?: string;
   date?: string;
   status?: string;
@@ -73,6 +75,8 @@ export class MockAstraLogtoServer {
   private logtoServer: http.Server | null = null;
   public data = createInitialMockData();
   public backups: Array<Record<string, unknown>> = [];
+  public rosterReports: Array<Record<string, unknown>> = [];
+  public rosterAcceptCount = 0;
 
   private astraPort: number;
   private logtoPort: number;
@@ -85,6 +89,8 @@ export class MockAstraLogtoServer {
   public resetData() {
     this.data = createInitialMockData();
     this.backups = [];
+    this.rosterReports = [];
+    this.rosterAcceptCount = 0;
   }
 
   private sendAstraJson(
@@ -172,6 +178,63 @@ export class MockAstraLogtoServer {
     // 0. HEALTH PROBES
     if (pathname === "/ready" || pathname === "/live") {
       this.sendJson(res, 200, { status: "ok", healthy: true });
+      return;
+    }
+
+    if (pathname === "/v1/admin/academic-periods" && method === "GET") {
+      this.sendAstraJson(res, 200, [
+        {
+          id: "period-1",
+          school_id: "school-1",
+          name: "2026/2027 Ganjil",
+          start_date: "2026-07-01",
+          end_date: "2026-12-31",
+          is_active: true,
+        },
+      ]);
+      return;
+    }
+
+    if (pathname === "/v1/admin/bootstrap/roster" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const rows = Array.isArray(body.rows) ? body.rows : [];
+        const report = {
+          id: `roster-report-${this.rosterReports.length + 1}`,
+          academic_period_id: body.academic_period_id ?? null,
+          total_rows: rows.length,
+          valid_rows: rows.length,
+          rejected_rows: 0,
+          status: "staged",
+          review_state: "pending",
+          rows,
+          rejected_items: [],
+          accepted_at: null,
+          accepted_by: null,
+        };
+        this.rosterReports.push(report);
+        this.sendAstraJson(res, 201, report, "Roster staged and validated.");
+      });
+      return;
+    }
+
+    const rosterAcceptMatch = pathname.match(
+      /^\/v1\/admin\/bootstrap\/roster\/([^/]+)\/accept$/,
+    );
+    if (rosterAcceptMatch && method === "POST") {
+      const report = this.rosterReports.find(
+        (candidate) =>
+          candidate.id === decodeURIComponent(rosterAcceptMatch[1]!),
+      );
+      if (!report) {
+        this.sendAstraJson(res, 404, null, "Roster report not found");
+      } else {
+        report.status = "accepted";
+        report.review_state = "accepted";
+        report.accepted_at = new Date().toISOString();
+        report.accepted_by = "school-admin";
+        this.rosterAcceptCount += 1;
+        this.sendAstraJson(res, 200, report, "Roster report accepted.");
+      }
       return;
     }
 
