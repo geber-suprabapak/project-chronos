@@ -245,7 +245,12 @@
     },
     "acceptance": {
       "creates": ["Student", "Class Enrollment"],
-      "does_not_create": ["User", "Profile", "Logto identity", "Student Binding"],
+      "does_not_create": [
+        "User",
+        "Profile",
+        "Logto identity",
+        "Student Binding"
+      ],
       "absence_number_owner": "Class Enrollment",
       "atomic": true,
       "add_only": true,
