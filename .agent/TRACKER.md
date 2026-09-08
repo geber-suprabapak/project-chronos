@@ -6,11 +6,11 @@
 - [x] Add monthly recap page/navigation and Playwright regression (base implementation)
 - [x] Harden typed collector parsing and add source pagination regression
 - [x] Run focused and full verification
-- [ ] Commit and hand off
+- [x] Commit and hand off
 
 # Current
 
-Implementation and verification are complete; commit and parent handoff remain.
+Implementation, verification, parent handoff, PR #54 merge, and production deployment are complete. Chronos is live and healthy on Evernight.
 
 # Blocked
 
