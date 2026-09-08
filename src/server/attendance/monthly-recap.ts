@@ -1,4 +1,4 @@
-import { normalizeDateOnly } from "~/lib/date-utils";
+import { normalizeDateOnly } from "../../lib/date-utils.ts";
 
 export const DAILY_ATTENDANCE_STATES = ["✓", "S", "I", "A", "T"] as const;
 export type DailyAttendanceState = (typeof DAILY_ATTENDANCE_STATES)[number];
