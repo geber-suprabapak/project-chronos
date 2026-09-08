@@ -512,6 +512,40 @@ test("Authoritative Backup & Absences Export Suite", async (t) => {
     },
   );
 
+  await t.test(
+    "Authoritative collection: does not enrich attendance with identity-free roster rows",
+    async () => {
+      const identityFreeProfile = {
+        student_id: "student-unbound",
+        user_id: null,
+        full_name: "Unbound Student",
+        nis: "1004",
+        class_name: "XII RPL 1",
+      } as unknown as AstraStudentProfile;
+
+      const rows = await collectAuthoritativeAttendanceRows(
+        {},
+        {
+          fetchAttendance: async () => [
+            {
+              id: "att-unbound",
+              user_id: "u-unbound",
+              date: "2026-09-05",
+              status: "Hadir",
+              action_type: "check_in",
+            },
+          ],
+          fetchStudents: async () => [identityFreeProfile],
+        },
+      );
+
+      assert.deepEqual(
+        rows.map(({ nis, className, name }) => ({ nis, className, name })),
+        [{ nis: "-", className: "-", name: "u-unbound" }],
+      );
+    },
+  );
+
   // --------------------------------------------------------------------------
   // 11. Complete Authoritative Collection: 1505 Records + Profiles
   // --------------------------------------------------------------------------

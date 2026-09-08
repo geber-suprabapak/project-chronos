@@ -64,6 +64,19 @@ function normalizeAttendanceDate(value: string): string {
   return normalizeDateOnly(value) ?? "";
 }
 
+function mapStudentsByUserId(
+  students: AstraStudentProfile[] | null | undefined,
+): Map<string, AstraStudentProfile> {
+  return new Map<string, AstraStudentProfile>(
+    normalizeStudentRows(students)
+      .filter(
+        (student): student is typeof student & { user_id: string } =>
+          student.user_id !== null,
+      )
+      .map((student) => [student.user_id, student]),
+  );
+}
+
 function mapAstraAttendance(
   att: AstraAttendanceRecord,
   studentMap?: Map<string, AstraStudentProfile>,
@@ -252,13 +265,7 @@ export const absencesRouter = createTRPCRouter({
         ),
       ]);
 
-      const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students)
-          .filter(
-            (s): s is typeof s & { user_id: string } => s.user_id !== null,
-          )
-          .map((s) => [s.user_id, s]),
-      );
+      const studentMap = mapStudentsByUserId(students);
 
       let filtered = attendances;
 
@@ -368,11 +375,7 @@ export const absencesRouter = createTRPCRouter({
       ),
     ]);
 
-    const studentMap = new Map<string, AstraStudentProfile>(
-      normalizeStudentRows(students)
-        .filter((s): s is typeof s & { user_id: string } => s.user_id !== null)
-        .map((s) => [s.user_id, s]),
-    );
+    const studentMap = mapStudentsByUserId(students);
 
     const sorted = [...attendances].sort((a, b) => {
       const dateA = normalizeAttendanceDate(a.date);
@@ -402,13 +405,7 @@ export const absencesRouter = createTRPCRouter({
 
       if (!record) return null;
 
-      const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students)
-          .filter(
-            (s): s is typeof s & { user_id: string } => s.user_id !== null,
-          )
-          .map((s) => [s.user_id, s]),
-      );
+      const studentMap = mapStudentsByUserId(students);
 
       return mapAstraAttendance(record, studentMap);
     }),

@@ -123,6 +123,14 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
           action_type: "check_in",
           created_at: "2026-09-05T07:40:00Z",
         },
+        {
+          id: "att-unbound",
+          user_id: "u-unbound",
+          date: "2026-09-05",
+          status: "Alpha",
+          action_type: null,
+          created_at: "2026-09-05T08:00:00Z",
+        },
       ];
       const mockStudents = [
         {
@@ -141,6 +149,13 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
           user_id: "u-3",
           full_name: "Student 3",
           nis: "1003",
+          class_name: "XII RPL 1",
+        },
+        {
+          student_id: "student-unbound",
+          user_id: null,
+          full_name: "Unbound Student",
+          nis: "1004",
           class_name: "XII RPL 1",
         },
       ];
@@ -197,6 +212,16 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
       assert.ok(legacyRow);
       assert.equal(legacyRow.status, "Hadir");
       assert.equal(legacyRow.actionType, "check_in");
+      assert.equal(
+        allResult.rows.find((r) => r.id === "att-unbound")?.userProfile,
+        null,
+      );
+
+      const rawResult = await caller.listRaw();
+      assert.equal(
+        rawResult.find((r) => r.id === "att-unbound")?.userProfile,
+        null,
+      );
 
       // Filter by status: "Hadir"
       const hadirResult = await caller.list({ status: "Hadir", limit: 10 });
@@ -232,6 +257,7 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
         action_type: null,
         created_at: "2026-09-05T07:10:00Z",
       };
+      const unboundRecordId = "123e4567-e89b-12d3-a456-426614174001";
 
       globalThis.fetch = async (url) => {
         const urlStr = String(url);
@@ -244,7 +270,15 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
           return new Response(
             JSON.stringify({
               success: true,
-              data: [{ user_id: "u-1", full_name: "Student 1", nis: "1001" }],
+              data: [
+                { user_id: "u-1", full_name: "Student 1", nis: "1001" },
+                {
+                  student_id: "student-unbound",
+                  user_id: null,
+                  full_name: "Unbound Student",
+                  nis: "1004",
+                },
+              ],
               meta: { request_id: "req-2" },
             }),
             { status: 200, headers },
@@ -254,7 +288,9 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
           return new Response(
             JSON.stringify({
               success: true,
-              data: mockRecord,
+              data: urlStr.endsWith(unboundRecordId)
+                ? { ...mockRecord, id: unboundRecordId, user_id: "u-unbound" }
+                : mockRecord,
               meta: { request_id: "req-2" },
             }),
             { status: 200, headers },
@@ -278,6 +314,10 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
       assert.notEqual(record, null);
       assert.equal(record?.status, "Hadir");
       assert.equal(record?.actionType, "check_in");
+      assert.equal(record?.userProfile?.userId, "u-1");
+
+      const unboundRecord = await caller.getById({ id: unboundRecordId });
+      assert.equal(unboundRecord?.userProfile, null);
     });
   });
 
