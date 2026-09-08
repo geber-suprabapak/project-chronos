@@ -264,7 +264,7 @@ export function createInitialMockData() {
       date: today,
       approval_status: "pending",
       attachment_url:
-        "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982",
+        "https://storage.lunaradev.my.id/perizinan/leave-request-001.png",
       created_at: `${today}T06:30:00.000Z`,
       updated_at: `${today}T06:30:00.000Z`,
     },

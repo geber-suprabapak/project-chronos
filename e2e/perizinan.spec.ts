@@ -194,7 +194,7 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
       page,
     }) => {
       const attachmentUrl =
-        "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982";
+        "https://storage.lunaradev.my.id/perizinan/leave-request-001.png";
       const imageBody = Buffer.from(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
         "base64",
