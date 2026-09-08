@@ -253,7 +253,11 @@ export const absencesRouter = createTRPCRouter({
       ]);
 
       const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students).map((s) => [s.user_id, s]),
+        normalizeStudentRows(students)
+          .filter(
+            (s): s is typeof s & { user_id: string } => s.user_id !== null,
+          )
+          .map((s) => [s.user_id, s]),
       );
 
       let filtered = attendances;
@@ -365,7 +369,9 @@ export const absencesRouter = createTRPCRouter({
     ]);
 
     const studentMap = new Map<string, AstraStudentProfile>(
-      normalizeStudentRows(students).map((s) => [s.user_id, s]),
+      normalizeStudentRows(students)
+        .filter((s): s is typeof s & { user_id: string } => s.user_id !== null)
+        .map((s) => [s.user_id, s]),
     );
 
     const sorted = [...attendances].sort((a, b) => {
@@ -397,7 +403,11 @@ export const absencesRouter = createTRPCRouter({
       if (!record) return null;
 
       const studentMap = new Map<string, AstraStudentProfile>(
-        normalizeStudentRows(students).map((s) => [s.user_id, s]),
+        normalizeStudentRows(students)
+          .filter(
+            (s): s is typeof s & { user_id: string } => s.user_id !== null,
+          )
+          .map((s) => [s.user_id, s]),
       );
 
       return mapAstraAttendance(record, studentMap);
@@ -649,6 +659,7 @@ export const absencesRouter = createTRPCRouter({
 
       const classQuery = input.className.toLowerCase();
       const studentsInClass = allStudents
+        .filter((s): s is typeof s & { user_id: string } => s.user_id !== null)
         .filter((s) => (s.class_name ?? "").toLowerCase().includes(classQuery))
         .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
