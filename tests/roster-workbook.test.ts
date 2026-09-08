@@ -1,7 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
-import { parseOfficialRosterWorkbook } from "../src/server/roster/parser.ts";
+import {
+  canAcceptRosterReport,
+  parseOfficialRosterWorkbook,
+  rosterRowProvenance,
+} from "../src/server/roster/parser.ts";
 
 async function officialFixture() {
   const workbook = new ExcelJS.Workbook();
@@ -231,5 +235,60 @@ describe("official roster workbook parser", () => {
     assert.equal(report.sheets[0]?.studentRowCount, 102);
     assert.equal(report.rows.length, 101);
     assert.ok(report.errors.some((error) => error.worksheetRow === 109));
+  });
+
+  it("keeps canonical Astra rejection classes bounded to source rows and blocks acceptance", async () => {
+    const parsed = await parseOfficialRosterWorkbook(await officialFixture());
+    const cases = [
+      [
+        "duplicate NIS",
+        0,
+        'Duplicate NIS "18002" in roster batch.',
+        "X PPLG 1:9",
+      ],
+      [
+        "existing NIS",
+        1,
+        'NIS "18200" already exists in student profiles.',
+        "X AKL 1:5",
+      ],
+      [
+        "duplicate absence number",
+        0,
+        "Absence Number is duplicated in this class.",
+        "X PPLG 1:9",
+      ],
+      [
+        "used absence number",
+        1,
+        "Absence Number is already used in this class and period.",
+        "X AKL 1:5",
+      ],
+      [
+        "unknown class",
+        1,
+        'Invalid class reference: "Unknown class".',
+        "X AKL 1:5",
+      ],
+    ] as const;
+
+    for (const [name, rowIndex, reason, provenance] of cases) {
+      const rejection = { row_index: rowIndex, reason };
+      assert.equal(
+        rosterRowProvenance(parsed.rows, rejection.row_index),
+        provenance,
+        name,
+      );
+      assert.equal(
+        canAcceptRosterReport({
+          rejected_rows: 1,
+          rejected_items: [rejection],
+          status: "rejected",
+          review_state: "rejected",
+        }),
+        false,
+        name,
+      );
+    }
   });
 });

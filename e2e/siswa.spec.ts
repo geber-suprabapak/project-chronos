@@ -139,6 +139,8 @@ test.describe("Siswa (Student Roster) Workflows", () => {
     worksheet.getRow(7).values = ["No", "NIS", "Nama Siswa", "L/P"];
     worksheet.getRow(8).values = [1, 18001, "Siti Aminah", "P"];
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const statsUrl = `http://127.0.0.1:${process.env.MOCK_ASTRA_PORT ?? "23500"}/mock/roster-stats`;
+    const before = await (await page.request.get(statsUrl)).json();
 
     await page.locator("#roster-academic-period").selectOption("period-1");
     await page.locator("#roster-import-file").setInputFiles({
@@ -156,6 +158,9 @@ test.describe("Siswa (Student Roster) Workflows", () => {
     await expect(
       page.getByRole("button", { name: "Terima Roster" }),
     ).toBeDisabled();
+    const after = await (await page.request.get(statsUrl)).json();
+    expect(after.rosterStageCount).toBe(before.rosterStageCount + 1);
+    expect(after.rosterAcceptCount).toBe(before.rosterAcceptCount);
   });
 
   test("filters student table by name and NIS search input", async ({

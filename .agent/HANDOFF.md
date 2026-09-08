@@ -5,19 +5,19 @@ Complete ticket 03 invalid roster workbook handling in Chronos only.
 # Completed
 
 - Read repository, domain, ADR0013, issue/spec, base refs, and TDD guidance.
-- Created isolated branch `codex/ticket-03-invalid-rosters` from Chronos
-  `600930c7b0a3120b691cbf49dd8c5bfeaffb469a`.
+- Created isolated branch `codex/ticket-03-finish` from Chronos
+  `21ced06920dc52066655957917f8aa6dfdae9177`.
 - Confirmed Astra base has the canonical staged-roster rejection contract and
   no Astra worktree is required.
 
 # In Progress
 
-Parser and server/UI validation extensions are complete; full gates remain.
+Parser lint annotation, Astra rejection provenance/accept guards, canonical
+mock rejection classes, regression coverage, and verification are complete.
 
 # Exact Next Action
 
-Run the full Chronos test, contract, build, and relevant empirical gates; then
-inspect and commit the focused ticket03 diff.
+Hand off the latest Ticket03 commit to the coordinator.
 
 # Important Decisions
 
@@ -25,6 +25,8 @@ inspect and commit the focused ticket03 diff.
 - Local parser failures return the full report without Astra stage calls.
 - Astra stays authoritative for existing NIS/class/period and canonical
   rejection details.
+- Astra rejection items are normalized with source worksheet/row provenance;
+  malformed acceptance reports fail closed.
 
 # Changed Files
 
@@ -37,13 +39,18 @@ inspect and commit the focused ticket03 diff.
 
 # Validation
 
-Focused parser: 14 passing. Lint and typecheck pass. Targeted
-`e2e/siswa.spec.ts`: 10 passing.
+Focused parser: 15 passing. Full unit suite: 317 passing. Full lint and
+typecheck pass. Targeted `e2e/siswa.spec.ts`: 10 passing, including no accept
+counter increment for Astra-rejected input. Contract check requires
+`ASTRA_CONTRACT_PATH=/home/robin/project/project-astra/contracts/astra-v1.json`
+and then reports existing snapshot drift.
 
 # Known Issues / Blockers
 
-None.
+Canonical Astra contract is outside this Chronos worktree; default contract
+check path is absent and the explicit canonical path reports snapshot drift.
 
 # Git State
 
-Branch `codex/ticket-03-invalid-rosters`; product worktree clean.
+Branch `codex/ticket-03-finish`; latest commit is the Ticket03 finish commit;
+worktree is clean.

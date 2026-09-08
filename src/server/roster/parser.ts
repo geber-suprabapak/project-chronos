@@ -55,6 +55,11 @@ export interface RosterParseReport {
   errors: RosterParseError[];
 }
 
+export interface IndexedRosterRejection {
+  row_index: number;
+  reason: string;
+}
+
 const HEADERS = ["no", "nis", "nama siswa", "l/p"] as const;
 
 function normalizeText(value: CellValue): string {
@@ -202,6 +207,30 @@ function addError(
   errors.push({ worksheet, worksheetRow, field, message });
 }
 
+export function rosterRowProvenance(
+  rows: readonly Pick<ParsedRosterRow, "worksheet" | "worksheetRow">[],
+  rowIndex: number,
+): string {
+  const row = rows[rowIndex];
+  return row
+    ? `${row.worksheet}:${row.worksheetRow}`
+    : `Workbook:${rowIndex + 1}`;
+}
+
+export function canAcceptRosterReport(report: {
+  rejected_rows: number;
+  rejected_items: IndexedRosterRejection[];
+  status: string;
+  review_state: string;
+}): boolean {
+  return (
+    report.status === "staged" &&
+    report.review_state === "pending" &&
+    report.rejected_rows === 0 &&
+    report.rejected_items.length === 0
+  );
+}
+
 export async function parseOfficialRosterWorkbook(
   input: ArrayBuffer | Uint8Array,
 ): Promise<RosterParseReport> {
@@ -215,9 +244,10 @@ export async function parseOfficialRosterWorkbook(
   if (isOlePackage(workbookData)) {
     throw new Error("Encrypted or unsupported workbook.");
   }
-  // SAFETY: ExcelJS's Node declaration uses its own Buffer type for binary workbook data.
   try {
-    await workbook.xlsx.load(workbookData as never);
+    // SAFETY: Buffer.from above creates the binary Buffer required by ExcelJS's Node loader.
+    // @ts-expect-error ExcelJS declares a duplicate Node Buffer type.
+    await workbook.xlsx.load(workbookData);
   } catch {
     throw new Error("Workbook could not be read.");
   }

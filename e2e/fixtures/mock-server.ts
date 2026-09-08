@@ -36,6 +36,24 @@ function asBoolean(val: unknown, fallback = false): boolean {
   return fallback;
 }
 
+function rowField(row: unknown, name: string): unknown {
+  if (row === null || typeof row !== "object" || Array.isArray(row)) {
+    return undefined;
+  }
+  return Object.entries(row).find(([key]) => key === name)?.[1];
+}
+
+function rowText(row: unknown, name: string): string {
+  const value = rowField(row, name);
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : "";
+}
+
+function normalizedAbsenceNumber(value: string): string {
+  return value.replace(/^0+(?=\d)/, "");
+}
+
 interface ParsedRequestBody {
   academic_period_id?: string;
   rows?: unknown;
@@ -208,17 +226,51 @@ export class MockAstraLogtoServer {
     if (pathname === "/v1/admin/bootstrap/roster" && method === "POST") {
       void this.parseBody(req).then((body) => {
         const rows = Array.isArray(body.rows) ? body.rows : [];
+        // ponytail: O(n²) duplicate scans; use keyed indexes if fixture payloads grow.
         const rejectedItems = rows.flatMap((row, rowIndex) => {
-          const serialized = JSON.stringify(row);
-          return serialized.includes('"nis":"99999"') ||
-            serialized.includes('"class_name":"Unknown class"')
-            ? [
-                {
-                  row_index: rowIndex,
-                  reason: "Roster row is rejected by Astra.",
-                },
-              ]
-            : [];
+          const nis = rowText(row, "nis");
+          const className = rowText(row, "class_name");
+          const absenceNumber = normalizedAbsenceNumber(
+            rowText(row, "absence_number"),
+          );
+          const duplicateNis =
+            nis !== "" &&
+            rows.some(
+              (candidate, candidateIndex) =>
+                candidateIndex !== rowIndex &&
+                rowText(candidate, "nis") === nis,
+            );
+          const existingNis = this.data.students.some(
+            (student) => student.nis === nis,
+          );
+          const duplicateAbsenceNumber =
+            className !== "" &&
+            absenceNumber !== "" &&
+            rows.some(
+              (candidate, candidateIndex) =>
+                candidateIndex !== rowIndex &&
+                rowText(candidate, "class_name") === className &&
+                normalizedAbsenceNumber(
+                  rowText(candidate, "absence_number"),
+                ) === absenceNumber,
+            );
+          const usedAbsenceNumber = this.data.students.some(
+            (student) =>
+              student.class_name === className &&
+              normalizedAbsenceNumber(student.absence_number) === absenceNumber,
+          );
+          const reason = duplicateNis
+            ? `Duplicate NIS "${nis}" in roster batch.`
+            : existingNis
+              ? `NIS "${nis}" already exists in student profiles.`
+              : duplicateAbsenceNumber
+                ? `Absence Number "${absenceNumber}" is duplicated in class.`
+                : usedAbsenceNumber
+                  ? `Absence Number "${absenceNumber}" is already used in class.`
+                  : className === "Unknown class"
+                    ? `Invalid class reference: "${className}" is not a recognized class.`
+                    : null;
+          return reason ? [{ row_index: rowIndex, reason }] : [];
         });
         const report = {
           id: `roster-report-${this.rosterReports.length + 1}`,

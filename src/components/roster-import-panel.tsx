@@ -178,9 +178,11 @@ export function RosterImportPanel() {
               >
                 {report.rejected_items.map((error) => {
                   const row = parse.rows[error.row_index];
-                  const provenance = row
-                    ? `${row.worksheet}:${row.worksheetRow}`
-                    : `baris ${error.row_index + 1}`;
+                  const provenance =
+                    error.provenance ??
+                    (row
+                      ? `${row.worksheet}:${row.worksheetRow}`
+                      : `Workbook:${error.row_index + 1}`);
                   return (
                     <li key={`${error.row_index}-${error.reason}`}>
                       {provenance} — {error.reason}

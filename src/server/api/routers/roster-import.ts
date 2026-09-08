@@ -3,7 +3,9 @@ import { z } from "zod";
 import { astraRequest } from "~/lib/astra/client";
 import { createTRPCRouter, schoolAdminProcedure } from "~/server/api/trpc";
 import {
+  canAcceptRosterReport,
   parseOfficialRosterWorkbook,
+  rosterRowProvenance,
   type RosterParseReport,
 } from "~/server/roster/parser";
 
@@ -29,19 +31,23 @@ interface AstraRosterReport {
   status: string;
   review_state: string;
   rows: unknown[];
-  rejected_items: AstraRejectedRosterItem[];
+  rejected_items: unknown;
   accepted_at?: string | null;
   accepted_by?: string | null;
 }
 
-interface AstraRejectedRosterItem {
-  row_index: number;
-  reason: string;
-}
+const astraRejectedRosterItemSchema = z
+  .object({
+    row_index: z.number().int().nonnegative(),
+    reason: z.string(),
+  })
+  .passthrough();
 
-const astraRejectedRosterItemSchema = z.object({
-  row_index: z.number(),
-  reason: z.string(),
+const astraAcceptanceReportSchema = z.object({
+  rejected_rows: z.number(),
+  rejected_items: z.array(astraRejectedRosterItemSchema),
+  status: z.string(),
+  review_state: z.string(),
 });
 
 function decodeBase64(value: string): Uint8Array {
@@ -195,7 +201,28 @@ export const rosterImportRouter = createTRPCRouter({
           }),
         },
       );
-      return { parsed, report, accepted: false };
+      const rejectionItems = astraRejectedRosterItemSchema
+        .array()
+        .safeParse(report.rejected_items);
+      return {
+        parsed,
+        report: {
+          ...report,
+          rejected_items: rejectionItems.success
+            ? rejectionItems.data.map((item) => ({
+                ...item,
+                provenance: rosterRowProvenance(parsed.rows, item.row_index),
+              }))
+            : [
+                {
+                  row_index: -1,
+                  reason: "Astra returned malformed rejection details.",
+                  provenance: "Workbook",
+                },
+              ],
+        },
+        accepted: false,
+      };
     }),
 
   accept: schoolAdminProcedure
@@ -204,17 +231,10 @@ export const rosterImportRouter = createTRPCRouter({
       const report = await astraRequest<AstraRosterReport>(
         `/v1/admin/bootstrap/roster/${encodeURIComponent(input.reportId)}`,
       );
-      const rejectedItems = Array.isArray(report.rejected_items)
-        ? report.rejected_items.filter(
-            (item): item is AstraRejectedRosterItem =>
-              astraRejectedRosterItemSchema.safeParse(item).success,
-          )
-        : [];
+      const acceptanceReport = astraAcceptanceReportSchema.safeParse(report);
       if (
-        report.rejected_rows > 0 ||
-        rejectedItems.length > 0 ||
-        report.status !== "staged" ||
-        report.review_state !== "pending"
+        !acceptanceReport.success ||
+        !canAcceptRosterReport(acceptanceReport.data)
       ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
