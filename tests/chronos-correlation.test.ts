@@ -188,6 +188,7 @@ describe("Chronos correlation and context seam", () => {
       "src/app/api/export/perizinan/route.ts",
       "src/app/api/export/profiles/route.ts",
       "src/app/api/export/siswa/route.ts",
+      "src/app/api/export/monthly-attendance/route.ts",
     ];
 
     for (const routePath of exportRoutes) {

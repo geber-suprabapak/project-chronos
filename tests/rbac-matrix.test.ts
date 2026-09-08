@@ -223,6 +223,16 @@ describe("Issue 04 Role & Action Enforcement Matrix", () => {
       assert.equal(canExportResource(null, "profiles"), false);
     });
 
+    it("restricts monthly attendance recap export to admin roles", () => {
+      for (const role of adminRoles) {
+        assert.equal(canExportResource(role, "monthlyAttendance"), true);
+      }
+      for (const role of [...teacherStaffRoles, ...studentRoles]) {
+        assert.equal(canExportResource(role, "monthlyAttendance"), false);
+      }
+      assert.equal(canExportResource(null, "monthlyAttendance"), false);
+    });
+
     it("allows all privileged roles (admin, teacher, staff) to export siswa, absences and perizinan", () => {
       for (const role of [...adminRoles, ...teacherStaffRoles]) {
         assert.equal(canExportResource(role, "siswa"), true);

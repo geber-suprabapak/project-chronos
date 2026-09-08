@@ -15,7 +15,12 @@ import { getActiveRequestId } from "~/lib/astra/request-context";
 import { writeOperationalEvent } from "~/lib/observability";
 
 export type ExportResource =
-  "absences" | "perizinan" | "profiles" | "siswa" | "backup";
+  | "absences"
+  | "perizinan"
+  | "profiles"
+  | "siswa"
+  | "backup"
+  | "monthlyAttendance";
 
 type ExportAccessResult =
   | { ok: true; user: AuthenticatedUser; role: AppRole }

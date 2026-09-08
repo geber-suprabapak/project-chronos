@@ -132,10 +132,20 @@ export function canPerformMonthlyBackup(
 
 export function canExportResource(
   role: AppRole | null | undefined,
-  resource: "absences" | "perizinan" | "profiles" | "siswa" | "backup",
+  resource:
+    | "absences"
+    | "perizinan"
+    | "profiles"
+    | "siswa"
+    | "backup"
+    | "monthlyAttendance",
 ): role is AppRole {
   if (!role || !isPrivilegedRole(role)) return false;
-  if (resource === "profiles" || resource === "backup") {
+  if (
+    resource === "profiles" ||
+    resource === "backup" ||
+    resource === "monthlyAttendance"
+  ) {
     return isAdminRole(role);
   }
   return true;

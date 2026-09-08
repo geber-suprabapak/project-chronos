@@ -194,5 +194,19 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
         page.getByRole("heading", { name: "XI TKJ 1" }),
       ).not.toBeVisible();
     });
+
+    test("downloads the selected monthly recap workbook", async ({ page }) => {
+      await page.goto("/absensi/rekap-bulanan?month=2026-09");
+      await expect(
+        page.getByRole("button", { name: "Unduh Excel" }),
+      ).toBeEnabled();
+
+      const downloadPromise = page.waitForEvent("download");
+      await page.getByRole("button", { name: "Unduh Excel" }).click();
+      const download = await downloadPromise;
+      expect(download.suggestedFilename()).toBe(
+        "rekap-absensi-bulanan-2026-09.xlsx",
+      );
+    });
   });
 });

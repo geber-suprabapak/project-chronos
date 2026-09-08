@@ -18,7 +18,7 @@ import { createTRPCRouter, privilegedProcedure } from "~/server/api/trpc";
 
 const monthSchema = z
   .string()
-  .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+  .regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/)
   .refine((value) => {
     const [year, month] = value.split("-").map(Number);
     return new Date(Date.UTC(year!, month!, 0)).getUTCMonth() === month! - 1;
@@ -215,7 +215,7 @@ export async function fetchMonthlyRecapSources(
   };
 }
 
-const monthlyAttendanceInput = z.object({
+export const monthlyAttendanceInput = z.object({
   month: monthSchema,
   academicPeriodId: z.string().trim().min(1).max(255).optional(),
   className: z.string().trim().min(1).max(255).optional(),

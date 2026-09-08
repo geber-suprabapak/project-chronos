@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Card } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
+import { DownloadExcelButton } from "~/components/download-excel-button";
 import {
   Table,
   TableBody,
@@ -44,19 +45,30 @@ export default function MonthlyAttendanceRecapPage() {
       className: className || undefined,
       nis: nis || undefined,
     },
-    { enabled: /^\d{4}-(0[1-9]|1[0-2])$/.test(month) },
+    { enabled: /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month) },
   );
+  const exportParams = new URLSearchParams({ month });
+  if (className) exportParams.set("className", className);
+  if (nis) exportParams.set("nis", nis);
+  const exportHref = `/api/export/monthly-attendance?${exportParams.toString()}`;
 
   return (
     <main className="flex flex-1 flex-col gap-3 p-2 sm:p-3 md:p-4">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-          Rekap Absensi Bulanan
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Matriks kehadiran berdasarkan jadwal sekolah dan Leave Period yang
-          disetujui.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
+            Rekap Absensi Bulanan
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Matriks kehadiran berdasarkan jadwal sekolah dan Leave Period yang
+            disetujui.
+          </p>
+        </div>
+        <DownloadExcelButton
+          href={exportHref}
+          filename={`rekap-absensi-bulanan-${month}.xlsx`}
+          disabled={!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(month)}
+        />
       </div>
 
       <Card className="p-3 sm:p-4">
