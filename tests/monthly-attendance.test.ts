@@ -238,3 +238,36 @@ test("approved leave without a student identity cannot affect another row", () =
   const budi = result.classes[0]!.rows.find((row) => row.fullName === "Budi")!;
   assert.equal(budi.cells["2026-09-09"], "A");
 });
+
+test("projects cross-month Sakit and WIB-boundary Izin", () => {
+  const result = aggregateMonthlyAttendance(
+    fixture({
+      leaveRequests: [
+        {
+          id: "cross-month-sick",
+          user_id: "user-a",
+          category: "sakit",
+          date: "2026-08-25",
+          requested_start_date: "2026-08-25",
+          original_end_date: "2026-09-05",
+          effective_end_date: "2026-09-05",
+          approval_status: "approved",
+        },
+        {
+          id: "wib-boundary-pergi",
+          user_id: "user-b",
+          category: "pergi",
+          date: "2026-08-31T17:00:00.000Z",
+          approval_status: "approved",
+        },
+      ],
+      now: "2026-10-01T10:00:00+07:00",
+    }),
+  );
+
+  const ayu = result.classes[0]!.rows.find((row) => row.fullName === "Ayu")!;
+  const budi = result.classes[0]!.rows.find((row) => row.fullName === "Budi")!;
+  assert.equal(ayu.cells["2026-09-04"], "S");
+  assert.equal(ayu.cells["2026-09-07"], "A");
+  assert.equal(budi.cells["2026-09-01"], "I");
+});

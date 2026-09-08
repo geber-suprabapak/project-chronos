@@ -1,4 +1,4 @@
-import { normalizeDateOnly } from "../../lib/date-utils.ts";
+import { normalizeDateOnly } from "~/lib/date-utils";
 
 export const DAILY_ATTENDANCE_STATES = ["✓", "S", "I", "A", "T"] as const;
 export type DailyAttendanceState = (typeof DAILY_ATTENDANCE_STATES)[number];
@@ -475,8 +475,8 @@ function approvedLeaveFor(
         leave.student_id !== undefined &&
         leave.student_id === studentId);
     if (!identityMatches) return false;
-    const start = normalizeDateOnly(leave.requested_start_date ?? leave.date);
-    const end = normalizeDateOnly(
+    const start = dateFromWib(leave.requested_start_date ?? leave.date);
+    const end = dateFromWib(
       leave.effective_end_date ?? leave.original_end_date ?? start,
     );
     return Boolean(start && end && start <= date && date <= end);
@@ -500,7 +500,7 @@ function attendanceFor(
 ): MonthlyRecapAttendance[] {
   return attendances.filter(
     (attendance) =>
-      normalizeDateOnly(attendance.date) === date &&
+      dateFromWib(attendance.date) === date &&
       ((userId && attendance.user_id === userId) ||
         (studentId && attendance.student_id === studentId)),
   );

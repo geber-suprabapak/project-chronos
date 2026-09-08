@@ -117,4 +117,67 @@ describe("Monthly recap source collection", () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it("requests the WIB-safe month range and keeps overlapping leave periods", async () => {
+    const originalFetch = globalThis.fetch;
+    let leaveRange: [string | null, string | null] = [null, null];
+
+    globalThis.fetch = async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      const parsed = new URL(url);
+      const path = parsed.pathname;
+
+      if (path === "/v1/admin/academic-periods") return response([period]);
+      if (path === "/v1/admin/classes") return response([]);
+      if (path === "/v1/admin/attendance/export")
+        return response([], { limit: 0, offset: 0, has_more: false });
+      if (path === "/v1/admin/students") return response([]);
+      if (path === "/v1/admin/enrollments") return response([]);
+      if (path === "/v1/admin/schedules") return response([]);
+      if (path === "/v1/admin/calendar-exceptions") return response([]);
+      if (path === "/v1/admin/leave-requests") {
+        leaveRange = [
+          parsed.searchParams.get("start_date"),
+          parsed.searchParams.get("end_date"),
+        ];
+        return response([
+          {
+            id: "cross-month-sick",
+            user_id: "user-a",
+            category: "sakit",
+            date: "2026-08-25",
+            requested_start_date: "2026-08-25",
+            effective_end_date: "2026-09-05",
+            approval_status: "approved",
+          },
+          {
+            id: "wib-boundary-izin",
+            user_id: "user-b",
+            category: "pergi",
+            date: "2026-09-01",
+            requested_start_date: "2026-09-01",
+            effective_end_date: "2026-09-01",
+            approval_status: "approved",
+          },
+        ]);
+      }
+      throw new Error(`Unexpected source request: ${url}`);
+    };
+
+    try {
+      const sources = await fetchMonthlyRecapSources("2026-09");
+      assert.deepEqual(leaveRange, ["2026-09-01", "2026-09-30"]);
+      assert.deepEqual(
+        sources.leaveRequests.map((leave) => leave.id),
+        ["cross-month-sick", "wib-boundary-izin"],
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

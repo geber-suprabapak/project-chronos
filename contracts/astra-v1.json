@@ -137,6 +137,7 @@
       "limit": "integer 1..100 optional",
       "offset": "integer >= 0 optional"
     },
+    "leave_request_range_semantics": "GET /v1/admin/leave-requests returns periods overlapping the inclusive WIB range: requested_start_date <= end_date and COALESCE(effective_end_date, original_end_date, requested_start_date) >= start_date. A legacy approved row with only date is a one-day period.",
     "response": "Versioned success envelope; list resources return complete arrays or valid offset pagination metadata."
   },
   "backup_audit": {
