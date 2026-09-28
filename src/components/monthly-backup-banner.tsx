@@ -9,6 +9,7 @@ import {
   FileText,
   Loader2,
   RefreshCw,
+  X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -70,6 +71,7 @@ export function MonthlyBackupBanner({
     directIsAdmin ?? canPerformMonthlyBackup(role),
   );
   const [statusState, setStatusState] = useState<BackupStatusState>("idle");
+  const [isDismissed, setIsDismissed] = useState(false);
   const [downloadingFormat, setDownloadingFormat] = useState<
     "xlsx" | "pdf" | null
   >(null);
@@ -237,7 +239,12 @@ export function MonthlyBackupBanner({
   );
 
   // Do not render if not eligible, not admin, or already completed
-  if (!canBackup || statusState === "idle" || statusState === "completed") {
+  if (
+    !canBackup ||
+    isDismissed ||
+    statusState === "idle" ||
+    statusState === "completed"
+  ) {
     return null;
   }
 
@@ -265,6 +272,16 @@ export function MonthlyBackupBanner({
                   diverifikasi karena layanan Astra mengalami gangguan.
                 </p>
               </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="-mr-1 -mt-1 h-8 w-8 shrink-0 text-rose-800 hover:bg-rose-200/70 hover:text-rose-950 dark:text-rose-200 dark:hover:bg-rose-900 dark:hover:text-rose-100"
+                onClick={() => setIsDismissed(true)}
+                aria-label="Tutup pemberitahuan backup bulanan"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-1 border-t border-rose-200/60 dark:border-rose-800/60">
@@ -314,6 +331,16 @@ export function MonthlyBackupBanner({
                   : "Pencadangan data absensi periode bulan ini wajib dilakukan ke arsip resmi."}
               </p>
             </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="-mr-1 -mt-1 h-8 w-8 shrink-0 text-amber-800 hover:bg-amber-200/70 hover:text-amber-950 dark:text-amber-200 dark:hover:bg-amber-900 dark:hover:text-amber-100"
+              onClick={() => setIsDismissed(true)}
+              aria-label="Tutup pemberitahuan backup bulanan"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-800/60">

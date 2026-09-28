@@ -30,6 +30,34 @@ test.describe("Authoritative Monthly Backup Banner and Exports", () => {
       await expect(selesaiButton).not.toBeVisible();
     });
 
+    test("dismisses pending banner without marking backup complete", async ({
+      page,
+    }) => {
+      let statusRequests = 0;
+      await page.route("**/api/export/backup/status*", async (route) => {
+        statusRequests += 1;
+        await route.continue();
+      });
+
+      await page.goto("/dashboard?showBackupBanner=true&month=2026-12");
+      const banner = page.locator(
+        'div[role="alert"]:has-text("Backup Bulanan (2026-12)")',
+      );
+      await expect(banner).toBeVisible();
+      await expect(banner.getByRole("button", { name: "Excel" })).toBeVisible();
+
+      await banner
+        .getByRole("button", { name: "Tutup pemberitahuan backup bulanan" })
+        .click();
+
+      await expect(banner).not.toBeVisible();
+      expect(statusRequests).toBe(1);
+
+      // Dismissal is temporary UI state; a fresh visit still shows pending backup.
+      await page.reload();
+      await expect(banner).toBeVisible();
+    });
+
     test("audited Excel download generates artifact, persists to Astra, refetches status and auto-dismisses banner", async ({
       page,
     }) => {
@@ -70,6 +98,33 @@ test.describe("Authoritative Monthly Backup Banner and Exports", () => {
 
       // Auto-dismisses upon refetching completed status from Astra
       await expect(banner).not.toBeVisible({ timeout: 15000 });
+    });
+
+    test("dismisses the unavailable notice without retrying backup status", async ({
+      page,
+    }) => {
+      let statusRequests = 0;
+      await page.route("**/api/export/backup/status*", async (route) => {
+        statusRequests += 1;
+        await route.fulfill({
+          status: 502,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Astra unavailable" }),
+        });
+      });
+
+      await page.goto("/dashboard?showBackupBanner=true&month=2026-11");
+      const outageAlert = page.locator(
+        'div[role="alert"]:has-text("Status Tidak Dapat Diverifikasi")',
+      );
+      await expect(outageAlert).toBeVisible({ timeout: 10000 });
+
+      await outageAlert
+        .getByRole("button", { name: "Tutup pemberitahuan backup bulanan" })
+        .click();
+
+      await expect(outageAlert).not.toBeVisible();
+      expect(statusRequests).toBe(1);
     });
 
     test("Astra outage renders unavailable Indonesian notice with retry and recovers to pending on retry", async ({
@@ -178,6 +233,15 @@ test.describe("Authoritative Monthly Backup Banner and Exports", () => {
       const pdfBtn = page.getByRole("button", { name: "Unduh PDF" });
       await expect(excelBtn).toBeVisible();
       await expect(pdfBtn).toBeVisible();
+
+      const backupBanner = page.locator(
+        'div[role="alert"]:has-text("Backup Bulanan")',
+      );
+      if (await backupBanner.isVisible()) {
+        await backupBanner
+          .getByRole("button", { name: "Tutup pemberitahuan backup bulanan" })
+          .click();
+      }
 
       // Verify hidden #absensi-table is completely gone from DOM
       const hiddenTable = page.locator("#absensi-table");
