@@ -60,8 +60,9 @@ function getAsiaJakartaDate(referenceDate = new Date()): AsiaJakartaDateValues {
  * - Models explicit status states: checking, pending, completed, unavailable
  * - Outage renders clear Indonesian cannot-verify status with Retry; never treated as completed
  * - Offers audited Excel and PDF downloads when status is verified pending
+ * - Remembers dismissal for this month in the current browser tab only
  * - Automatically refetches status and dismisses upon confirmed persistence
- * - Eliminates localStorage, DOM lookups, console reset hooks, and fake client-only "Selesai" dismissal
+ * - Avoids persistent localStorage, DOM lookups, console reset hooks, and fake "Selesai" dismissal
  */
 export function MonthlyBackupBanner({
   role,
@@ -133,6 +134,27 @@ export function MonthlyBackupBanner({
       return { forceShow: false, targetMonth: jakartaDate.yearMonth };
     }
   }, [jakartaDate]);
+
+  const dismissalStorageKey = `monthly-backup-dismissed:${targetMonth}`;
+
+  useEffect(() => {
+    try {
+      setIsDismissed(
+        window.sessionStorage.getItem(dismissalStorageKey) === "true",
+      );
+    } catch {
+      setIsDismissed(false);
+    }
+  }, [dismissalStorageKey]);
+
+  const dismissNotice = useCallback(() => {
+    setIsDismissed(true);
+    try {
+      window.sessionStorage.setItem(dismissalStorageKey, "true");
+    } catch {
+      // Dismissal still applies to the mounted component if storage is unavailable.
+    }
+  }, [dismissalStorageKey]);
 
   // Day 25 Asia/Jakarta rule
   const isDay25OrLater = jakartaDate.day >= 25;
@@ -277,7 +299,7 @@ export function MonthlyBackupBanner({
                 size="icon"
                 variant="ghost"
                 className="-mr-1 -mt-1 h-8 w-8 shrink-0 text-rose-800 hover:bg-rose-200/70 hover:text-rose-950 dark:text-rose-200 dark:hover:bg-rose-900 dark:hover:text-rose-100"
-                onClick={() => setIsDismissed(true)}
+                onClick={dismissNotice}
                 aria-label="Tutup pemberitahuan backup bulanan"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -336,7 +358,7 @@ export function MonthlyBackupBanner({
               size="icon"
               variant="ghost"
               className="-mr-1 -mt-1 h-8 w-8 shrink-0 text-amber-800 hover:bg-amber-200/70 hover:text-amber-950 dark:text-amber-200 dark:hover:bg-amber-900 dark:hover:text-amber-100"
-              onClick={() => setIsDismissed(true)}
+              onClick={dismissNotice}
               aria-label="Tutup pemberitahuan backup bulanan"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -368,7 +390,7 @@ export function MonthlyBackupBanner({
             <Button
               size="sm"
               variant="default"
-              className="h-8 px-3 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-600 dark:hover:bg-amber-500 shadow-sm"
+              className="h-8 px-3 text-xs font-medium bg-amber-700 hover:bg-amber-800 text-white dark:bg-amber-700 dark:hover:bg-amber-800 shadow-sm"
               onClick={() => handleDownloadBackup("pdf")}
               disabled={isChecking || downloadingFormat !== null}
               aria-label="Unduh backup format PDF"

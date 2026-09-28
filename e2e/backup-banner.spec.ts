@@ -9,7 +9,9 @@ test.describe("Authoritative Monthly Backup Banner and Exports", () => {
       } catch {
         // ignore if unreachable
       }
-      await loginAs(page, "platform_admin");
+      await loginAs(page, "platform_admin", {
+        dismissMonthlyBackupBanner: false,
+      });
     });
 
     test("activates banner via forced test query, renders Excel & PDF actions, and lacks fake Selesai", async ({
@@ -53,9 +55,13 @@ test.describe("Authoritative Monthly Backup Banner and Exports", () => {
       await expect(banner).not.toBeVisible();
       expect(statusRequests).toBe(1);
 
-      // Dismissal is temporary UI state; a fresh visit still shows pending backup.
+      // Dismissal survives reload for this tab, but not for another month.
       await page.reload();
-      await expect(banner).toBeVisible();
+      await expect(banner).not.toBeVisible();
+      await page.goto("/dashboard?showBackupBanner=true&month=2026-11");
+      await expect(
+        page.locator('div[role="alert"]:has-text("Backup Bulanan (2026-11)")'),
+      ).toBeVisible();
     });
 
     test("audited Excel download generates artifact, persists to Astra, refetches status and auto-dismisses banner", async ({

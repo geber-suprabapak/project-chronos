@@ -17,6 +17,10 @@ export interface MockUserOptions {
   baseUrl?: string;
 }
 
+export interface MockAuthenticationOptions {
+  dismissMonthlyBackupBanner?: boolean;
+}
+
 async function getKeyFromPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -136,6 +140,7 @@ export async function createMockLogtoSessionCookie(
 export async function authenticateContext(
   context: BrowserContext,
   options: MockUserOptions = {},
+  authenticationOptions: MockAuthenticationOptions = {},
 ): Promise<void> {
   const cookieVal = await createMockLogtoSessionCookie(options);
   const appId = options.appId ?? "chronos-app";
@@ -176,12 +181,38 @@ export async function authenticateContext(
   ]);
 
   const now = new Date();
-  const ymKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  await context.addInitScript((key) => {
-    try {
-      localStorage.setItem(key, "done");
-    } catch {}
-  }, `backup_done_${ymKey}`);
+  const jakartaParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const jakartaMonth = `${jakartaParts.find((part) => part.type === "year")?.value}-${jakartaParts.find((part) => part.type === "month")?.value}`;
+  const localMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  await context.addInitScript(
+    (keys) => {
+      try {
+        localStorage.setItem(keys.legacy, "done");
+      } catch {}
+      const forcedBanner = new URL(window.location.href).searchParams.get(
+        "showBackupBanner",
+      );
+      if (
+        keys.dismissal &&
+        (forcedBanner === null || forcedBanner === "false")
+      ) {
+        try {
+          sessionStorage.setItem(keys.dismissal, "true");
+        } catch {}
+      }
+    },
+    {
+      legacy: `backup_done_${localMonth}`,
+      dismissal:
+        authenticationOptions.dismissMonthlyBackupBanner === false
+          ? null
+          : `monthly-backup-dismissed:${jakartaMonth}`,
+    },
+  );
 }
 
 export type RoleType =
@@ -200,6 +231,7 @@ export type RoleType =
 export async function loginAs(
   page: Page,
   role: RoleType = "platform_admin",
+  authenticationOptions: MockAuthenticationOptions = {},
 ): Promise<void> {
   let options: MockUserOptions;
 
@@ -305,7 +337,7 @@ export async function loginAs(
       break;
   }
 
-  await authenticateContext(page.context(), options);
+  await authenticateContext(page.context(), options, authenticationOptions);
 }
 
 export const test = base.extend<{
