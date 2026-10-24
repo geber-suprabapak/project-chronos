@@ -684,9 +684,11 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
       serverMode = "normal";
 
       assert.ok(caughtErrorGetAll instanceof TRPCError);
-      assert.equal(caughtErrorGetAll.code, "INTERNAL_SERVER_ERROR");
+      // C07 configuration read seam maps upstream Astra failures to
+      // SERVICE_UNAVAILABLE (retryable dependency class), not INTERNAL_SERVER_ERROR.
+      assert.equal(caughtErrorGetAll.code, "SERVICE_UNAVAILABLE");
       assert.ok(caughtErrorGetActive instanceof TRPCError);
-      assert.equal(caughtErrorGetActive.code, "INTERNAL_SERVER_ERROR");
+      assert.equal(caughtErrorGetActive.code, "SERVICE_UNAVAILABLE");
     });
   });
 
