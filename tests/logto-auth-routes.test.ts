@@ -143,7 +143,7 @@ describe("Logto Callback and Session Routing", () => {
       "src/app/api/logto/callback/route.ts",
       "src/server/api/trpc.ts",
       "src/server/auth/export-guard.ts",
-      "middleware.ts",
+      "src/proxy.ts",
     ];
 
     for (const relPath of filesToCheck) {

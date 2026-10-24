@@ -120,6 +120,10 @@ export default function JadwalPage() {
     },
     onError: (error) => {
       toast.error(`Gagal mereset jadwal: ${error.message}`);
+      // A prior per-day write may have committed even if a later request or
+      // its response failed. Refresh the authoritative list before retrying.
+      void refetchSchedules();
+      void refetchStats();
     },
   });
 

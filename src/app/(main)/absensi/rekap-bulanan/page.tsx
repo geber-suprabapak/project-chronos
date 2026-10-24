@@ -44,6 +44,15 @@ export default function MonthlyAttendanceRecapPage() {
   const [nis, setNis] = useState("");
   const [role, setRole] = useState<AppRole | null>(null);
 
+  // Honor an explicit ?month= deep link instead of silently falling back to
+  // the current WIB month. Runs after mount so hydration stays consistent.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("month");
+    if (fromUrl && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(fromUrl)) {
+      setMonth(fromUrl);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     void fetch("/api/logto/user")

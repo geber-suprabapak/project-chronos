@@ -1,5 +1,39 @@
 import { test, expect, loginAs } from "./fixtures/auth.ts";
 
+const MOCK_ASTRA_PORT = process.env.MOCK_ASTRA_PORT || "23500";
+const MOCK_ASTRA_BASE = `http://127.0.0.1:${MOCK_ASTRA_PORT}`;
+
+// C05 fail-then-recover fixtures: control the local mock Astra's Leave
+// boundary (/v1/admin/leave-requests collection and detail GET reads). mode is
+// "off" or an HTTP status string ("403" | "404" | "500" | "503" | "504");
+// failNext is how many subsequent leave reads fail before the fixture recovers.
+async function setLeaveFailure(mode: string, failNext = 5) {
+  const response = await fetch(`${MOCK_ASTRA_BASE}/__control/leave-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode, failNext }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to set leave failure mode: ${response.status}`);
+  }
+}
+
+async function getLeaveControl(): Promise<{
+  failStatus: number;
+  failRemaining: number;
+  mutations: number;
+}> {
+  const response = await fetch(`${MOCK_ASTRA_BASE}/__control/leave-requests`);
+  if (!response.ok) {
+    throw new Error(`Failed to read leave control state: ${response.status}`);
+  }
+  return (await response.json()) as {
+    failStatus: number;
+    failRemaining: number;
+    mutations: number;
+  };
+}
+
 test.describe("Perizinan (Leave Requests Management) Workflows", () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, "platform_admin");
@@ -247,6 +281,147 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
       await expect(
         page.getByText("Bukti foto tidak dapat ditampilkan."),
       ).toBeVisible();
+    });
+  });
+
+  test.describe("Leave List/Detail Dependency Failure & Recovery (C05)", () => {
+    const LEAVE_ID = "b0000000-0000-4000-8000-000000000001";
+    const DEPENDENCY_TITLE = "Layanan perizinan tidak tersedia";
+    const NOT_FOUND_MESSAGE = "Data perizinan tidak ditemukan.";
+    const FORBIDDEN_MESSAGE =
+      "Anda tidak memiliki izin untuk mengakses perizinan ini.";
+
+    test.beforeEach(async ({ page }) => {
+      await loginAs(page, "platform_admin");
+    });
+
+    test.afterEach(async () => {
+      await setLeaveFailure("off");
+    });
+
+    test("shows a recoverable dependency error on Astra 503, recovers the same leave record via retry, and never mutates leave data", async ({
+      page,
+    }) => {
+      await setLeaveFailure("503", 5);
+      await page.goto(`/perizinan/show/${LEAVE_ID}`);
+
+      // Dependency failure is distinct from not-found and offers a retry.
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeVisible();
+      await expect(page.getByText(NOT_FOUND_MESSAGE)).toBeHidden();
+      await expect(page.getByTestId("perizinan-detail-loaded")).toBeHidden();
+
+      // Fail-then-recover: fixture recovers, the user retries the same read.
+      await setLeaveFailure("off");
+      await page.getByTestId("perizinan-detail-retry").click();
+
+      await expect(page.getByTestId("perizinan-detail-loaded")).toBeVisible();
+      await expect(page.getByText("Ahmad Dahlan")).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeHidden();
+
+      // Recovery invariant: the retry path performs read-only requests only.
+      const control = await getLeaveControl();
+      expect(control.mutations).toBe(0);
+    });
+
+    test("keeps a genuine not-found state distinct from a dependency failure", async ({
+      page,
+    }) => {
+      const unknownLeaveId = "b0000000-0000-4000-8000-000000000999";
+      // Dependency failure on the same route: recoverable error, not "not found".
+      await setLeaveFailure("503", 5);
+      await page.goto(`/perizinan/show/${unknownLeaveId}`);
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeVisible();
+      await expect(page.getByText(NOT_FOUND_MESSAGE)).toBeHidden();
+
+      // Fixture recovered: the same id resolves to the distinct not-found state.
+      await setLeaveFailure("off");
+      await page.goto(`/perizinan/show/${unknownLeaveId}`);
+      await expect(
+        page.getByTestId("perizinan-detail-not-found"),
+      ).toBeVisible();
+      await expect(page.getByText(NOT_FOUND_MESSAGE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeHidden();
+    });
+
+    test("presents an Astra 403 as an authorization failure without disclosing leave existence", async ({
+      page,
+    }) => {
+      // Existing leave record: forbidden, no retry, not "not found".
+      await setLeaveFailure("403", 5);
+      await page.goto(`/perizinan/show/${LEAVE_ID}`);
+      await expect(page.getByText("Akses ditolak")).toBeVisible();
+      await expect(page.getByText(FORBIDDEN_MESSAGE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeHidden();
+      await expect(page.getByText(NOT_FOUND_MESSAGE)).toBeHidden();
+
+      // Unknown id under the same 403: identical fixed message (no existence oracle).
+      await setLeaveFailure("403", 5);
+      await page.goto("/perizinan/show/b0000000-0000-4000-8000-000000000999");
+      await expect(page.getByText("Akses ditolak")).toBeVisible();
+      await expect(page.getByText(FORBIDDEN_MESSAGE)).toBeVisible();
+      await expect(page.getByText(NOT_FOUND_MESSAGE)).toBeHidden();
+    });
+
+    test("treats an Astra timeout (504) as a recoverable dependency failure like a 503", async ({
+      page,
+    }) => {
+      await setLeaveFailure("504", 5);
+      await page.goto(`/perizinan/show/${LEAVE_ID}`);
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeVisible();
+
+      await setLeaveFailure("off");
+      await page.getByTestId("perizinan-detail-retry").click();
+      await expect(page.getByTestId("perizinan-detail-loaded")).toBeVisible();
+      await expect(page.getByText("Ahmad Dahlan")).toBeVisible();
+
+      const control = await getLeaveControl();
+      expect(control.mutations).toBe(0);
+    });
+
+    test("treats an Astra 500 as a recoverable dependency failure with retry recovery", async ({
+      page,
+    }) => {
+      await setLeaveFailure("500", 5);
+      await page.goto(`/perizinan/show/${LEAVE_ID}`);
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-detail-retry")).toBeVisible();
+
+      await setLeaveFailure("off");
+      await page.getByTestId("perizinan-detail-retry").click();
+      await expect(page.getByTestId("perizinan-detail-loaded")).toBeVisible();
+      await expect(page.getByText("Ahmad Dahlan")).toBeVisible();
+
+      const control = await getLeaveControl();
+      expect(control.mutations).toBe(0);
+    });
+
+    test("shows a recoverable dependency error on the leave list and recovers the same list via retry", async ({
+      page,
+    }) => {
+      await setLeaveFailure("503", 5);
+      await page.goto("/perizinan");
+
+      // The failed collection never renders as "no data" and offers a retry.
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeVisible();
+      await expect(page.getByTestId("perizinan-list-retry")).toBeVisible();
+      await expect(page.getByText("Tidak ada data perizinan.")).toBeHidden();
+
+      // Fail-then-recover: fixture recovers, the user retries the same read.
+      await setLeaveFailure("off");
+      await page.getByTestId("perizinan-list-retry").click();
+
+      await expect(page.getByText(DEPENDENCY_TITLE)).toBeHidden();
+      await expect(page.getByRole("table").first()).toContainText(
+        "Ahmad Dahlan",
+      );
+      await expect(page.getByTestId("perizinan-list-retry")).toBeHidden();
+
+      // Recovery invariant: the retry path performs read-only requests only.
+      const control = await getLeaveControl();
+      expect(control.mutations).toBe(0);
     });
   });
 });

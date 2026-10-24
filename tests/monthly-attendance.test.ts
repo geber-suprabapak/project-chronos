@@ -145,6 +145,275 @@ function fixture(
   };
 }
 
+test("snapshot terminal unknown-end rows produce no Alpha and preserve evidence", () => {
+  const active = Array.from({ length: 956 }, (_, index) => ({
+    id: `active-${index}`,
+    student_id: `active-student-${index}`,
+    academic_period_id: "period-1",
+    class_id: "class-1",
+    absence_number: String(index + 1),
+    status: "active",
+  }));
+  const graduated = Array.from({ length: 345 }, (_, index) => ({
+    id: `graduated-${index}`,
+    student_id: `graduate-${index}`,
+    user_id: `graduate-user-${index}`,
+    academic_period_id: "period-1",
+    status: "graduated",
+    created_at: "2026-07-01T00:00:00+07:00",
+    updated_at: "2026-09-03T00:00:00+07:00",
+  }));
+  const result = aggregateMonthlyAttendance(
+    fixture({
+      month: "2026-10",
+      enrollments: [...active, ...graduated],
+      students: [],
+      attendances: [
+        {
+          id: "graduated-arrival",
+          student_id: "graduate-0",
+          date: "2026-10-01",
+          status: "Hadir",
+          action_type: "check_in",
+        },
+        {
+          id: "graduated-weekend",
+          student_id: "graduate-1",
+          date: "2026-10-03",
+          status: "Terlambat",
+          action_type: "check_in",
+        },
+      ],
+      leaveRequests: [
+        {
+          id: "graduated-leave",
+          student_id: "graduate-2",
+          date: "2026-10-02",
+          effective_end_date: "2026-10-05",
+          category: "sakit",
+          approval_status: "approved",
+        },
+      ],
+      now: "2026-10-06T06:00:00+07:00",
+    }),
+  );
+  const unknown = result.classes.find(
+    (group) => group.classId === "class:unknown",
+  )!;
+  assert.equal(unknown.rows.length, 345);
+  assert.equal(unknown.totals.alpha, 0);
+  assert.ok(
+    unknown.rows.every(
+      (row) =>
+        row.totals.alpha === 0 &&
+        row.totals.expectedDays === 0 &&
+        row.warning?.includes("Rentang enrollment"),
+    ),
+  );
+  const arrived = unknown.rows.find((row) => row.studentId === "graduate-0")!;
+  assert.equal(arrived.cells["2026-10-01"], "✓");
+  assert.equal(arrived.cells["2026-10-02"], "");
+  assert.deepEqual(
+    arrived.days.find((day) => day.date === "2026-10-01")!.attendanceIds,
+    ["graduated-arrival"],
+  );
+  assert.equal(
+    unknown.rows.find((row) => row.studentId === "graduate-1")!.cells[
+      "2026-10-03"
+    ],
+    "T",
+  );
+  assert.equal(
+    unknown.rows.find((row) => row.studentId === "graduate-2")!.cells[
+      "2026-10-04"
+    ],
+    "S",
+  );
+  const current = result.classes.find((group) => group.classId === "class-1")!;
+  assert.equal(current.rows.length, 956);
+  assert.equal(current.totals.alpha, 956 * 3);
+  assert.equal(current.rows[0]!.totals.expectedDays, 22);
+  assert.equal(result.totals.expectedDays, 22);
+});
+
+test("explicit end stays inclusive; recorded evidence after end stays visible with a warning", () => {
+  const result = aggregateMonthlyAttendance(
+    fixture({
+      enrollments: [
+        {
+          id: "known-end",
+          student_id: "student-a",
+          class_id: "class-1",
+          academic_period_id: "period-1",
+          status: "graduated",
+          effective_start_date: "2026-09-01",
+          effective_end_date: "2026-09-03",
+          updated_at: "2026-10-01",
+        },
+      ],
+      attendances: [
+        {
+          id: "after-end",
+          student_id: "student-a",
+          date: "2026-09-07",
+          status: "Hadir",
+          action_type: "check_in",
+        },
+      ],
+      leaveRequests: [],
+      now: "2026-10-01",
+    }),
+  );
+  const row = result.classes[0]!.rows[0]!;
+  assert.equal(row.cells["2026-09-03"], "A");
+  assert.equal(row.cells["2026-09-04"], undefined);
+  assert.equal(row.cells["2026-09-07"], "✓");
+  assert.equal(row.totals.alpha, 3);
+  assert.equal(row.totals.expectedDays, 3);
+  assert.ok(row.warning?.includes("Rentang enrollment"));
+});
+
+test("class filters preserve the successor boundary in transfer history", () => {
+  const unfiltered = aggregateMonthlyAttendance(fixture());
+  const filtered = aggregateMonthlyAttendance(
+    fixture({ className: "X RPL 2" }),
+  );
+  const original = unfiltered.classes
+    .find((group) => group.className === "X RPL 2")!
+    .rows.find((row) => row.fullName === "Budi")!;
+  const selected = filtered.classes[0]!.rows.find(
+    (row) => row.fullName === "Budi",
+  )!;
+  assert.deepEqual(selected.cells, original.cells);
+  assert.deepEqual(selected.totals, original.totals);
+});
+
+test("a terminal unknown-end successor does not erase a known earlier class interval", () => {
+  const result = aggregateMonthlyAttendance(
+    fixture({
+      enrollments: [
+        {
+          id: "old",
+          student_id: "student-a",
+          class_id: "class-1",
+          academic_period_id: "period-1",
+          status: "transferred",
+          effective_start_date: "2026-09-01",
+        },
+        {
+          id: "new",
+          user_id: "user-a",
+          class_id: "class-3",
+          academic_period_id: "period-1",
+          status: "graduated",
+          created_at: "2026-09-15T00:00:00+07:00",
+        },
+      ],
+      attendances: [],
+      leaveRequests: [],
+      now: "2026-10-01",
+    }),
+  );
+  const earlier = result.classes.find((group) => group.classId === "class-1")!
+    .rows[0]!;
+  const terminal = result.classes.find((group) => group.classId === "class-3")!
+    .rows[0]!;
+  assert.equal(earlier.cells["2026-09-14"], "A");
+  assert.equal(earlier.cells["2026-09-15"], undefined);
+  assert.equal(terminal.cells["2026-09-15"], "");
+  assert.equal(terminal.totals.alpha, 0);
+});
+
+test("unknown-end evidence respects the current arrival cutoff and future-day policy", () => {
+  const result = aggregateMonthlyAttendance(
+    fixture({
+      enrollments: [
+        {
+          id: "unknown",
+          student_id: "student-a",
+          class_id: "class-1",
+          academic_period_id: "period-1",
+          status: "archived",
+        },
+      ],
+      attendances: [
+        {
+          id: "open-evidence",
+          student_id: "student-a",
+          date: "2026-09-01",
+          status: "Hadir",
+        },
+      ],
+      leaveRequests: [
+        {
+          id: "future-leave",
+          student_id: "student-a",
+          date: "2026-09-02",
+          category: "sakit",
+          approval_status: "approved",
+        },
+      ],
+      now: "2026-09-01T07:00:00+07:00",
+    }),
+  );
+  const row = result.classes[0]!.rows[0]!;
+  assert.equal(row.cells["2026-09-01"], "");
+  assert.deepEqual(
+    row.days.find((day) => day.date === "2026-09-01")!.attendanceIds,
+    ["open-evidence"],
+  );
+  assert.equal(row.cells["2026-09-02"], "");
+  assert.equal(
+    row.days.find((day) => day.date === "2026-09-02")!.leaveRequestId,
+    "future-leave",
+  );
+  assert.equal(row.totals.alpha, 0);
+});
+
+test("terminal unknown-end history keeps evidence despite later metadata and account binding", () => {
+  for (const status of ["graduated", "archived", "promoted", "transferred"]) {
+    const result = aggregateMonthlyAttendance(
+      fixture({
+        enrollments: [
+          {
+            id: "legacy",
+            user_id: "user-a",
+            academic_period_id: "period-1",
+            class_id: "class-1",
+            status,
+            created_at: "2026-10-01",
+            updated_at: "2026-11-01",
+          },
+        ],
+        attendances: [
+          {
+            id: "historic-arrival",
+            student_id: "student-a",
+            date: "2026-09-01",
+            status: "Datang",
+          },
+        ],
+        leaveRequests: [
+          {
+            id: "historic-leave",
+            user_id: "user-a",
+            date: "2026-09-02",
+            category: "pergi",
+            approval_status: "approved",
+          },
+        ],
+        now: "2026-10-02",
+      }),
+    );
+    const row = result.classes[0]!.rows[0]!;
+    assert.equal(row.cells["2026-09-01"], "✓");
+    assert.equal(row.cells["2026-09-02"], "I");
+    assert.equal(row.cells["2026-09-03"], "");
+    assert.equal(row.totals.alpha, 0);
+    assert.equal(row.totals.expectedDays, 0);
+  }
+});
+
 test("monthly recap uses scheduled WIB dates, leave precedence, transfer history, and totals", () => {
   const result = aggregateMonthlyAttendance(fixture());
 

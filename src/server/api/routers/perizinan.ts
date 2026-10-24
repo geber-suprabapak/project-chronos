@@ -14,6 +14,46 @@ import {
 } from "~/lib/astra/client";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
+import {
+  classifyLeaveDetailFailure,
+  classifyLeaveListFailure,
+  isLeaveDetailNotFound,
+  leaveDetailSeamCode,
+  type AstraUpstreamFailure,
+} from "~/server/api/routers/perizinan-detail";
+
+/**
+ * Throws the classified Leave dependency failure as a tRPC error. The upstream
+ * error stays attached as `cause`, keeping status/correlation information
+ * internal to the established error envelope; the client-visible message is
+ * the fixed, existence-safe string for the outcome class. 403, timeout/network,
+ * and 5xx never collapse into not-found.
+ */
+function failLeaveDependency(
+  failure: AstraUpstreamFailure | null,
+  cause?: AstraRequestError,
+): never {
+  const classified = classifyLeaveDetailFailure(failure);
+  throw new TRPCError({
+    code: leaveDetailSeamCode(classified),
+    message: classified.message,
+    cause,
+  });
+}
+
+/**
+ * Failure mapping for Leave collection reads (`list` / `listRaw`). A failing
+ * collection is never "no data": even an upstream 404 on the collection path
+ * surfaces as a recoverable dependency failure; 403 stays FORBIDDEN.
+ */
+function throwLeaveListFailure(upstream: AstraUpstreamFailure | null): never {
+  const classified = classifyLeaveListFailure(upstream);
+  throw new TRPCError({
+    code: leaveDetailSeamCode(classified),
+    message: classified.message,
+    cause: upstream ?? undefined,
+  });
+}
 
 interface AstraStudentProfile {
   user_id: string;
@@ -176,9 +216,17 @@ export const perizinanRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const leaveRequests = await astraRequest<AstraLeaveRequest[]>(
-        buildLeaveRequestsListPath("leave-requests", input?.userId),
-      );
+      let leaveRequests: AstraLeaveRequest[];
+      try {
+        leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+          buildLeaveRequestsListPath("leave-requests", input?.userId),
+        );
+      } catch (error) {
+        // A failed Leave collection must never render as an empty list (C05).
+        throwLeaveListFailure(
+          error instanceof AstraRequestError ? error : null,
+        );
+      }
 
       let filtered = leaveRequests;
 
@@ -243,9 +291,15 @@ export const perizinanRouter = createTRPCRouter({
 
   // Mengambil seluruh data perizinan (tanpa pagination) dari Astra.
   listRaw: protectedProcedure.query(async ({ ctx }) => {
-    const leaveRequests = await astraRequest<AstraLeaveRequest[]>(
-      "/v1/admin/leave-requests",
-    );
+    let leaveRequests: AstraLeaveRequest[];
+    try {
+      leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+        "/v1/admin/leave-requests",
+      );
+    } catch (error) {
+      // A failed Leave collection must never render as an empty list (C05).
+      throwLeaveListFailure(error instanceof AstraRequestError ? error : null);
+    }
 
     let filtered = leaveRequests;
     if (!hasRequiredRole(ctx.userRole, PRIVILEGED_ROLES)) {
@@ -328,12 +382,30 @@ export const perizinanRouter = createTRPCRouter({
     }),
 
   // Mengambil satu record perizinan berdasarkan UUID primary key dari Astra.
+  //
+  // Failure mapping (C05): hanya 404 upstream yang menjadi "tidak ditemukan".
+  // 403, timeout/network, dan 5xx dilempar sebagai error tRPC terklasifikasi —
+  // bukan `null` — agar UI tidak menyajikan kegagalan dependensi atau
+  // otorisasi sebagai "tidak ditemukan" dan tetap bisa menawarkan retry untuk
+  // kegagalan yang recoverable.
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      const lr = await astraRequest<AstraLeaveRequest>(
-        `/v1/admin/leave-requests/${input.id}`,
-      ).catch(() => null);
+      let lr: AstraLeaveRequest | null;
+      try {
+        lr = await astraRequest<AstraLeaveRequest>(
+          `/v1/admin/leave-requests/${input.id}`,
+        );
+      } catch (error) {
+        const upstream = error instanceof AstraRequestError ? error : null;
+        if (upstream && isLeaveDetailNotFound(upstream)) {
+          // Genuine upstream 404: keep the established not-found contract.
+          lr = null;
+        } else {
+          // 403/timeout/network/5xx/internal: classified, never not-found.
+          failLeaveDependency(upstream, upstream ?? undefined);
+        }
+      }
 
       if (!lr) return null;
 

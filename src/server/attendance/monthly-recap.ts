@@ -410,7 +410,8 @@ function applicableEnrollment(
   date: string,
   periodStart: string,
   periodEnd: string,
-): MonthlyRecapEnrollment[] {
+  evidenceKeys: ReadonlySet<string>,
+): { enrollment: MonthlyRecapEnrollment; membershipKnown: boolean }[] {
   const grouped = new Map<string, MonthlyRecapEnrollment[]>();
   for (const enrollment of enrollments) {
     const key =
@@ -423,7 +424,10 @@ function applicableEnrollment(
     grouped.set(key, list);
   }
 
-  const result: MonthlyRecapEnrollment[] = [];
+  const result: {
+    enrollment: MonthlyRecapEnrollment;
+    membershipKnown: boolean;
+  }[] = [];
   for (const list of grouped.values()) {
     const ordered = [...list].sort((a, b) =>
       enrollmentStart(a, periodStart).localeCompare(
@@ -438,18 +442,38 @@ function applicableEnrollment(
         : null;
       const end =
         explicitEnd ?? (nextStart ? addDays(nextStart, -1) : periodEnd);
-      return start <= date && date <= end ? [current] : [];
+      const unknownEnd =
+        ["graduated", "archived", "transferred", "promoted"].includes(
+          current.status ?? "",
+        ) &&
+        !explicitEnd &&
+        !nextStart;
+      return unknownEnd || (start <= date && date <= end)
+        ? [{ enrollment: current, membershipKnown: !unknownEnd }]
+        : [];
     });
     // A healthy period has one effective enrollment per student. If legacy
     // rows overlap, prefer the latest effective start rather than duplicating
     // the student into multiple classes for the same day.
     if (effective.length > 0) {
-      effective.sort((a, b) =>
-        enrollmentStart(b, periodStart).localeCompare(
-          enrollmentStart(a, periodStart),
-        ),
+      effective.sort(
+        (a, b) =>
+          Number(b.membershipKnown) - Number(a.membershipKnown) ||
+          enrollmentStart(b.enrollment, periodStart).localeCompare(
+            enrollmentStart(a.enrollment, periodStart),
+          ),
       );
       result.push(effective[0]!);
+    } else if (
+      list.some((enrollment) =>
+        [enrollment.student_id, enrollment.user_id].some(
+          (key) => key && evidenceKeys.has(key),
+        ),
+      )
+    ) {
+      // Preserve evidence even when its recorded day is outside the known
+      // enrollment range. Class membership on that day remains uncertain.
+      result.push({ enrollment: ordered.at(-1)!, membershipKnown: false });
     }
   }
   return result;
@@ -568,11 +592,22 @@ export function aggregateMonthlyAttendance(
     }
   }
 
-  const enrollments = input.enrollments.filter(
-    (enrollment) =>
-      !enrollment.academic_period_id ||
-      enrollment.academic_period_id === input.period.id,
-  );
+  const enrollments = input.enrollments
+    .filter(
+      (enrollment) =>
+        !enrollment.academic_period_id ||
+        enrollment.academic_period_id === input.period.id,
+    )
+    .map((enrollment) => {
+      const student = studentByKey.get(
+        enrollment.student_id ?? enrollment.user_id ?? enrollment.nis ?? "",
+      );
+      return {
+        ...enrollment,
+        student_id: enrollment.student_id ?? student?.student_id,
+        user_id: enrollment.user_id ?? student?.user_id,
+      };
+    });
   const filteredEnrollments = enrollments.filter((enrollment) => {
     const student = studentByKey.get(
       enrollment.student_id ??
@@ -601,15 +636,86 @@ export function aggregateMonthlyAttendance(
   });
   const classRows = new Map<string, MonthlyRecapStudentRow[]>();
   const warnings: string[] = [];
+  const scheduledDateCount = dates.length;
+  const selectedEnrollmentIds = new Set(
+    filteredEnrollments.map((enrollment) => enrollment.id),
+  );
+
+  // School dates still come from the calendar. Recorded attendance on an
+  // unscheduled day is also visible, without creating an expected school day.
+  const enrollmentIdentities = new Set(
+    filteredEnrollments.flatMap((enrollment) =>
+      [enrollment.student_id, enrollment.user_id].filter((key): key is string =>
+        Boolean(key),
+      ),
+    ),
+  );
+  for (const attendance of input.attendances) {
+    const date = dateFromWib(attendance.date);
+    if (
+      date &&
+      date >= rangeStart &&
+      date <= rangeEnd &&
+      [attendance.student_id, attendance.user_id].some(
+        (key) => key && enrollmentIdentities.has(key),
+      ) &&
+      !dates.some((candidate) => candidate.date === date)
+    ) {
+      dates.push({
+        date,
+        dayOfWeek: WEEKDAYS[new Date(dateValue(date)).getUTCDay()]!,
+      });
+    }
+  }
+  for (let date = rangeStart; date <= rangeEnd; date = addDays(date, 1)) {
+    if (
+      !dates.some((candidate) => candidate.date === date) &&
+      filteredEnrollments.some((enrollment) =>
+        approvedLeaveFor(
+          input.leaveRequests,
+          enrollment.user_id ?? null,
+          enrollment.student_id ?? null,
+          date,
+        ),
+      )
+    ) {
+      dates.push({
+        date,
+        dayOfWeek: WEEKDAYS[new Date(dateValue(date)).getUTCDay()]!,
+      });
+    }
+  }
+  dates.sort((a, b) => a.date.localeCompare(b.date));
 
   for (const dateInfo of dates) {
+    const evidenceKeys = new Set<string>();
+    for (const attendance of input.attendances) {
+      if (dateFromWib(attendance.date) !== dateInfo.date) continue;
+      if (attendance.student_id) evidenceKeys.add(attendance.student_id);
+      if (attendance.user_id) evidenceKeys.add(attendance.user_id);
+    }
+    for (const enrollment of filteredEnrollments) {
+      if (
+        approvedLeaveFor(
+          input.leaveRequests,
+          enrollment.user_id ?? null,
+          enrollment.student_id ?? null,
+          dateInfo.date,
+        )
+      ) {
+        if (enrollment.student_id) evidenceKeys.add(enrollment.student_id);
+        if (enrollment.user_id) evidenceKeys.add(enrollment.user_id);
+      }
+    }
     const applicable = applicableEnrollment(
-      filteredEnrollments,
+      enrollments,
       dateInfo.date,
       periodStart,
       periodEnd,
+      evidenceKeys,
     );
-    for (const enrollment of applicable) {
+    for (const { enrollment, membershipKnown } of applicable) {
+      if (!selectedEnrollmentIds.has(enrollment.id)) continue;
       const student =
         studentByKey.get(studentKey(enrollment, undefined)) ??
         studentByKey.get(
@@ -650,10 +756,17 @@ export function aggregateMonthlyAttendance(
           warning: null,
           cells: {},
           days: [],
-          totals: emptyTotals(dates.length),
+          totals: emptyTotals(0),
         };
         rows.push(row);
         classRows.set(classId, rows);
+      }
+
+      if (!membershipKnown) {
+        const warning =
+          "Rentang enrollment tidak diketahui pada tanggal rekap; hanya bukti tercatat ditampilkan tanpa Alpha turunan.";
+        row.warning = warning;
+        warnings.push(`${className}: ${row.fullName} — ${warning}`);
       }
 
       const schedule = scheduleFor(
@@ -662,8 +775,13 @@ export function aggregateMonthlyAttendance(
         input.period.id,
         dateInfo.date,
       );
-      if (!schedule) continue;
-      const open = isOpenSchoolDay(dateInfo.date, schedule, now);
+      const expected =
+        membershipKnown &&
+        schedule !== null &&
+        !isHoliday(input.calendarExceptions, input.period.id, dateInfo.date);
+      const open = schedule
+        ? isOpenSchoolDay(dateInfo.date, schedule, now)
+        : !now.date || dateInfo.date >= now.date;
       const leave = approvedLeaveFor(
         input.leaveRequests,
         row.userId,
@@ -676,13 +794,18 @@ export function aggregateMonthlyAttendance(
         row.studentId,
         dateInfo.date,
       );
-      const state = open
-        ? ""
-        : leave
-          ? (leave.category ?? "").toLowerCase() === "sakit"
-            ? "S"
-            : "I"
-          : (arrivalState(attendance) ?? "A");
+      if (!expected && membershipKnown && !leave && attendance.length === 0)
+        continue;
+      const evidenceState = leave
+        ? (leave.category ?? "").toLowerCase() === "sakit"
+          ? "S"
+          : "I"
+        : (arrivalState(attendance) ??
+          (attendance.some((record) => record.status === "Alpha")
+            ? "A"
+            : null));
+      const state = open ? "" : (evidenceState ?? (expected ? "A" : ""));
+      if (expected) row.totals.expectedDays += 1;
       row.cells[dateInfo.date] = state;
       row.days.push({
         date: dateInfo.date,
@@ -714,11 +837,12 @@ export function aggregateMonthlyAttendance(
     for (const row of rows) {
       const number = validAbsenceNumber(row.absenceNumber);
       if (number === null || duplicateNumbers.has(number)) {
-        row.warning =
+        const numberWarning =
           number === null
             ? "Absence Number legacy tidak valid atau kosong."
             : `Absence Number ${number} duplikat dalam kelas.`;
-        warnings.push(`${className}: ${row.fullName} — ${row.warning}`);
+        row.warning = [row.warning, numberWarning].filter(Boolean).join(" ");
+        warnings.push(`${className}: ${row.fullName} — ${numberWarning}`);
       }
     }
     rows.sort((a, b) => {
@@ -736,10 +860,11 @@ export function aggregateMonthlyAttendance(
       return naturalCompare(a.fullName, b.fullName);
     });
     const totals = emptyTotals(dates.length);
-    const expectedDays = dates.filter((date) =>
-      scheduleFor(input.schedules, classId, input.period.id, date.date),
+    const expectedDays = dates.filter(
+      (date) =>
+        scheduleFor(input.schedules, classId, input.period.id, date.date) &&
+        !isHoliday(input.calendarExceptions, input.period.id, date.date),
     ).length;
-    for (const row of rows) row.totals.expectedDays = row.days.length;
     totals.expectedDays = expectedDays;
     for (const row of rows) addTotals(totals, row.totals);
     groups.push({
@@ -747,7 +872,7 @@ export function aggregateMonthlyAttendance(
       className,
       grade: classInfo?.grade ?? naturalClassGrade(className, null),
       warning: rows.some((row) => row.warning)
-        ? "Ada Absence Number legacy yang perlu diperiksa."
+        ? "Ada data enrollment atau Absence Number legacy yang perlu diperiksa."
         : null,
       rows,
       totals,
@@ -757,7 +882,7 @@ export function aggregateMonthlyAttendance(
   groups.sort(
     (a, b) => a.grade! - b.grade! || naturalCompare(a.className, b.className),
   );
-  const totals = emptyTotals(dates.length);
+  const totals = emptyTotals(scheduledDateCount);
   for (const group of groups) addTotals(totals, group.totals);
   return {
     month: input.month,

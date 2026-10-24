@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import ExcelJS from "exceljs";
 import { generateMonthlyAttendanceXlsx } from "../src/server/export/index.ts";
-import type { MonthlyRecapResult } from "../src/server/attendance/monthly-recap.ts";
+import {
+  aggregateMonthlyAttendance,
+  type MonthlyRecapResult,
+} from "../src/server/attendance/monthly-recap.ts";
 
 const result: MonthlyRecapResult = {
   month: "2026-09",
@@ -146,4 +149,59 @@ test("monthly attendance export is an ExcelJS-readable projection of the recap",
     (await generateMonthlyAttendanceXlsx({ ...result, classes: [] })) as any,
   );
   assert.equal(emptyWorkbook.worksheets.length, 0);
+});
+
+test("unknown enrollment workbook preserves evidence, blanks and the membership warning", async () => {
+  const recap = aggregateMonthlyAttendance({
+    month: "2026-10",
+    period: { id: "period", start_date: "2026-07-01", end_date: "2026-12-31" },
+    classes: [],
+    students: [
+      { student_id: "terminal-student", full_name: "Terminal fixture" },
+    ],
+    enrollments: [
+      {
+        id: "terminal",
+        student_id: "terminal-student",
+        academic_period_id: "period",
+        status: "graduated",
+      },
+    ],
+    schedules: [
+      { day_of_week: "kamis", end_time: "07:30" },
+      { day_of_week: "jumat", end_time: "07:30" },
+    ],
+    calendarExceptions: [],
+    leaveRequests: [],
+    attendances: [
+      {
+        id: "recorded-arrival",
+        student_id: "terminal-student",
+        date: "2026-10-01",
+        status: "Hadir",
+      },
+      {
+        id: "recorded-alpha",
+        student_id: "terminal-student",
+        date: "2026-10-02",
+        status: "Alpha",
+      },
+    ],
+    now: "2026-11-01",
+  });
+  const row = recap.classes[0]!.rows[0]!;
+  assert.equal(row.totals.alpha, 1); // Only the actual recorded Alpha, never projected days.
+  assert.equal(row.cells["2026-10-08"], "");
+  assert.equal(row.totals.expectedDays, 0);
+  const workbook = new ExcelJS.Workbook();
+  // SAFETY: ExcelJS accepts the bytes produced by the workbook generator.
+  await workbook.xlsx.load((await generateMonthlyAttendanceXlsx(recap)) as any);
+  const sheet = workbook.worksheets[0]!;
+  assert.equal(sheet.getRow(2).getCell(3).value, "✓");
+  assert.equal(sheet.getRow(2).getCell(4).value, "A");
+  assert.equal(sheet.getRow(2).getCell(5).value, "");
+  assert.match(
+    String(sheet.getRow(2).getCell(1).note),
+    /Rentang enrollment tidak diketahui/,
+  );
 });

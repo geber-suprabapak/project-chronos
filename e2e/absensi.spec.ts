@@ -167,6 +167,32 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
     });
   });
 
+  test.describe("Manual attendance WIB date default", () => {
+    test.use({ timezoneId: "America/Los_Angeles" });
+
+    test("Absen Manual defaults to the WIB school date at 01:00 WIB", async ({
+      page,
+    }) => {
+      await loginAs(page, "platform_admin");
+      // 2026-10-06T18:00:00Z is 01:00 WIB on 2026-10-07 and still 11:00 on
+      // 2026-10-06 in the browser timezone: the prior UTC date must not win.
+      await page.clock.setFixedTime(new Date("2026-10-06T18:00:00Z"));
+      await page.goto("/absensi");
+      await expect(
+        page.getByRole("button", { name: /Absen Manual/i }),
+      ).toBeVisible();
+
+      await page.getByRole("button", { name: /Absen Manual/i }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+
+      // The date field renders once the NIS check resolves a student.
+      await dialog.locator("#nis").fill("1001");
+      await expect(dialog.getByText("Ahmad Dahlan")).toBeVisible();
+      await expect(dialog.locator("#date")).toHaveValue("2026-10-07");
+    });
+  });
+
   test.describe("Monthly Attendance Recap (/absensi/rekap-bulanan)", () => {
     test("renders filters, class-grouped matrix, totals, and optional class filter", async ({
       page,

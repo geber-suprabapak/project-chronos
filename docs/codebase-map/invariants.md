@@ -39,3 +39,20 @@
 
 **Rule:** Operational backup/export content comes from authorized server queries, not the currently rendered DOM or client pagination state.
 **Evidence:** `src/app/api/export/`, `src/components/monthly-backup-banner.tsx`.
+
+## INV-CHRONOS-009 — Daily dashboard categories share roster membership
+
+**Rule:** Select the sole active academic period, deduplicate active enrollment
+members by canonical Student identity, and count attendance/leave only within
+that roster. Missing/ambiguous periods and failed/partial sources cannot become
+successful zero totals.
+**Evidence:** `src/server/attendance/daily-summary.ts`, `tests/daily-summary.bun.ts`.
+
+## INV-CHRONOS-010 — Uncertain enrollment cannot generate Alpha
+
+**Rule:** Preserve historical evidence for terminal enrollments with unknown
+boundaries, mark uncertainty, and leave unevidenced days blank. Metadata write
+timestamps cannot supply academic exit dates. Roster status today cannot erase
+recorded history.
+**Evidence:** `src/server/attendance/monthly-recap.ts`,
+`tests/monthly-attendance.test.ts`, `tests/monthly-attendance-export.test.ts`.

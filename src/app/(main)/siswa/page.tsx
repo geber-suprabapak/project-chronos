@@ -19,6 +19,7 @@ import { RosterImportPanel } from "~/components/roster-import-panel";
 import { getLogtoContext } from "@logto/next/server-actions";
 import { logtoConfig } from "~/lib/logto/config";
 import { extractExtendedClaims, resolveLogtoRole } from "~/lib/logto/claims";
+import { canImportRoster } from "~/server/auth/rbac";
 
 function getQueryString(val: string | string[] | undefined): string {
   if (Array.isArray(val)) return val[0] ?? "";
@@ -34,8 +35,10 @@ export default async function SiswaPage({
   const claims = logtoContext.claims
     ? extractExtendedClaims(logtoContext.claims)
     : null;
-  const isSchoolAdmin =
-    resolveLogtoRole(claims?.roles ?? []) === "school_admin";
+  // Same guard predicate as the rosterImport tRPC procedures
+  // (`schoolAdminProcedure` → `hasRequiredRole`): canonical `school_admin`
+  // plus documented aliases `admin`/`kepala_sekolah`.
+  const isSchoolAdmin = canImportRoster(resolveLogtoRole(claims?.roles ?? []));
   // Process searchParams safely - await the promise in Next.js 15
   const resolvedSearchParams = await searchParams;
   const nama = getQueryString(resolvedSearchParams?.nama).trim();

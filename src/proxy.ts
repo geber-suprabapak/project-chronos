@@ -8,9 +8,19 @@ import {
   isPrivilegedRole,
   resolveLogtoRole,
 } from "~/lib/logto/claims";
+import {
+  classifyLogtoFailure,
+  isDegradedLogtoOutcome,
+} from "~/lib/logto/outcome";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 
-const PUBLIC_PATHS = new Set(["/login", "/ganti-password", "/auth/callback"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/ganti-password",
+  "/auth/callback",
+  // Application-owned identity-degraded state (C09): never the login route.
+  "/auth/unavailable",
+]);
 const STATIC_ASSET = /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|xml)$/;
 
 function isPublicPath(pathname: string): boolean {
@@ -57,7 +67,12 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   return res;
 }
 
-export async function middleware(req: NextRequest) {
+// Next.js 16 renamed the `middleware` file convention to `proxy`: the
+// deprecated root `middleware.ts` still compiled but was no longer registered
+// for execution (`sorted_middleware: []`), leaving the shared identity gate
+// dead. The function must be named `proxy` (or be the default export) in
+// `src/proxy.ts`, at the same level as `src/app` (Next 16 proxy docs).
+export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const requestId = createAstraRequestId(req.headers.get("X-Request-ID"));
 
@@ -147,6 +162,21 @@ export async function middleware(req: NextRequest) {
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.warn(`[middleware] [${requestId}] Logto context error:`, err);
+    }
+    // C09: classify the identity failure instead of collapsing every outcome
+    // into the login redirect. A genuinely absent/expired session or a
+    // forbidden account keeps the existing authentication route (the
+    // fall-through below); a provider-side failure (non-OK, malformed,
+    // timeout/network) routes to the application-owned degraded state.
+    const outcome = classifyLogtoFailure(err);
+    if (isDegradedLogtoOutcome(outcome) && pathname !== "/auth/unavailable") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/auth/unavailable";
+      const redirectTarget = req.nextUrl.search
+        ? `${pathname}${req.nextUrl.search}`
+        : pathname;
+      url.searchParams.set("from", redirectTarget);
+      return createRedirectResponse(url);
     }
   }
 

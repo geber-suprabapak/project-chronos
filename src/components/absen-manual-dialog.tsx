@@ -24,6 +24,7 @@ import {
 } from "~/components/ui/select";
 import { UserPlus, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "~/components/ui/alert";
+import { schoolDate } from "~/lib/date-utils";
 
 interface AbsenManualDialogProps {
   trigger?: React.ReactNode;
@@ -41,9 +42,8 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
   const [status, setStatus] = useState<
     "Hadir" | "Terlambat" | "Pulang" | "Dipulangkan" | undefined
   >(undefined);
-  const [date, setDate] = useState(
-    new Date().toISOString().split("T")[0] ?? "",
-  );
+  // Default ke tanggal sekolah WIB, bukan tanggal UTC dari jam browser.
+  const [date, setDate] = useState(() => schoolDate());
   const [isCheckingNis, setIsCheckingNis] = useState(false);
 
   const utils = api.useUtils();
@@ -98,7 +98,7 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
       setNis("");
       setSiswaData(null);
       setStatus(undefined);
-      setDate(new Date().toISOString().split("T")[0] ?? "");
+      setDate(schoolDate());
       setOpen(false);
     },
     onError: (error) => {
@@ -138,7 +138,7 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
       setNis("");
       setSiswaData(null);
       setStatus(undefined);
-      setDate(new Date().toISOString().split("T")[0] ?? "");
+      setDate(schoolDate());
       setIsCheckingNis(false);
     }
   };

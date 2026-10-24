@@ -15,7 +15,9 @@ import {
   ChartTooltipContent,
 } from "~/components/ui/chart";
 import { api } from "~/trpc/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { schoolDate } from "~/lib/date-utils";
 
 // Config untuk absen masuk
 const chartConfigMasuk = {
@@ -57,12 +59,42 @@ const chartConfigPulang = {
 
 export function StatistikPieChart() {
   // Gunakan endpoint agregat agar request ringan dan lebih stabil.
-  const todayString = useMemo(
-    () => new Date().toISOString().split("T")[0]!,
-    [],
+  const [todayString, setTodayString] = useState<string>();
+  const {
+    data: summary,
+    isLoading: loadingSummary,
+    refetch,
+    error,
+  } = api.absences.getTodaySummary.useQuery(
+    { date: todayString },
+    { enabled: Boolean(todayString), refetchOnWindowFocus: "always" },
   );
-  const { data: summary, isLoading: loadingSummary } =
-    api.absences.getTodaySummary.useQuery({ date: todayString });
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const refreshDate = () => {
+      const date = schoolDate();
+      setTodayString(date);
+      clearTimeout(timer);
+      const nextMidnight = Date.parse(`${date}T00:00:00+07:00`) + 86_400_000;
+      timer = setTimeout(refreshDate, Math.max(1, nextMidnight - Date.now()));
+    };
+    const onWake = () => {
+      if (document.visibilityState === "hidden") return;
+      refreshDate();
+      // A new day gets its own query key. On same-day focus refresh the
+      // existing query as well, including browsers that only emit focus.
+      if (schoolDate() === todayString) void refetch();
+    };
+    refreshDate();
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [todayString, refetch]);
 
   // Compact chart sizing for dashboard top layout.
   const outerRadius = 68;
@@ -131,8 +163,23 @@ export function StatistikPieChart() {
           <CardTitle>Statistik Kehadiran</CardTitle>
           <CardDescription>Rekap Hari Ini</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="text-sm text-muted-foreground">Memuat data...</div>
+        <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 py-8">
+          <div
+            className="text-sm text-muted-foreground"
+            role={error ? "alert" : undefined}
+          >
+            {error ? error.message : "Memuat data..."}
+          </div>
+          {error && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void refetch()}
+            >
+              Coba lagi
+            </Button>
+          )}
         </CardContent>
       </Card>
     );

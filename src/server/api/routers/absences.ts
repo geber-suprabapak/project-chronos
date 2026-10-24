@@ -11,7 +11,8 @@ import {
   astraRequest,
 } from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
-import { normalizeDateOnly } from "~/lib/date-utils";
+import { normalizeDateOnly, schoolDate } from "~/lib/date-utils";
+import { getDailyAttendanceSummary } from "~/server/attendance/daily-summary";
 import {
   fetchAllAttendanceRecords,
   fetchAttendanceRecordById,
@@ -539,17 +540,9 @@ export const absencesRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ input }) => {
-      const date = input?.date ?? new Date().toISOString().split("T")[0]!;
-
-      let students: AstraStudentProfile[];
-      let attendances: AstraAttendanceRecord[];
-      let leaveRequests: AstraLeaveRequest[];
+      const date = input?.date ?? schoolDate();
       try {
-        [students, attendances, leaveRequests] = await Promise.all([
-          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
-          fetchAllAttendanceRecords<AstraAttendanceRecord>({ date }),
-          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
-        ]);
+        return await getDailyAttendanceSummary(date);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
@@ -558,69 +551,6 @@ export const absencesRouter = createTRPCRouter({
           cause: error,
         });
       }
-
-      const totalUsers = students.length;
-      const masukUserIds = new Set<string>();
-      const pulangUserIds = new Set<string>();
-      const izinUserIds = new Set<string>();
-      let izin = 0;
-      let sakit = 0;
-
-      // 1. Process leave requests first to establish precedence and category counts
-      leaveRequests
-        .filter(
-          (row) =>
-            normalizeDateOnly(row.date) === date &&
-            (row.approval_status === "approved" || row.status === true),
-        )
-        .forEach((row) => {
-          izinUserIds.add(row.user_id);
-          if (row.category === "sakit") {
-            sakit += 1;
-          } else {
-            // Count pergi, dispensasi, lainnya under izin
-            izin += 1;
-          }
-        });
-
-      // 2. Process attendance rows, respecting leave precedence
-      attendances
-        .filter((row) => normalizeAttendanceDate(row.date) === date)
-        .forEach((row) => {
-          if (row.status === "Pulang") {
-            pulangUserIds.add(row.user_id);
-          }
-          // Approved leave overrides physical check-in for daily state
-          if (izinUserIds.has(row.user_id)) {
-            return;
-          }
-          if (
-            row.status === "Hadir" ||
-            row.status === "Datang" ||
-            row.status === "Terlambat"
-          ) {
-            masukUserIds.add(row.user_id);
-          }
-        });
-
-      const hadirAtauIzin = new Set<string>([...masukUserIds, ...izinUserIds]);
-      const sudahAbsenPulang = Array.from(masukUserIds).filter((userId) =>
-        pulangUserIds.has(userId),
-      ).length;
-      const belumAbsenPulang = Array.from(masukUserIds).filter(
-        (userId) => !pulangUserIds.has(userId),
-      ).length;
-
-      return {
-        date,
-        totalUsers,
-        sudahAbsenMasuk: masukUserIds.size,
-        belumAbsenMasuk: Math.max(0, totalUsers - hadirAtauIzin.size),
-        sudahAbsenPulang,
-        belumAbsenPulang,
-        izin,
-        sakit,
-      };
     }),
 
   // Ringkasan kehadiran per kelas: siapa yang hadir, tidak hadir, izin, sakit

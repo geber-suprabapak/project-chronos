@@ -5,7 +5,12 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import { AstraRequestError, astraRequest } from "~/lib/astra/client";
+import {
+  classifyConfigurationReadFailure,
+  configurationReadSeamCode,
+  type AstraUpstreamFailure,
+} from "~/server/api/routers/configuration-read";
 import {
   getAstraDefaultLocation,
   findAstraLocationByUiId,
@@ -19,6 +24,27 @@ import {
 } from "~/server/api/routers/location-mapping";
 
 export type { AstraLocation } from "~/server/api/routers/location-mapping";
+
+/**
+ * Failure mapping for configuration reads (C07). A read failure is never a
+ * successful empty/default configuration response: timeout/network, 5xx, and
+ * 403 surface as classified tRPC errors instead of `null` or an empty list.
+ * The upstream error stays attached as `cause`, keeping status/correlation
+ * information internal to the established error envelope; the client-visible
+ * message is the fixed, upstream-safe string for the outcome class. A
+ * genuine first-use/no-config state remains the successful upstream payload.
+ */
+function throwConfigurationReadFailure(
+  upstream: AstraUpstreamFailure | null,
+  cause?: AstraRequestError,
+): never {
+  const classified = classifyConfigurationReadFailure(upstream);
+  throw new TRPCError({
+    code: configurationReadSeamCode(classified),
+    message: classified.message,
+    cause,
+  });
+}
 
 /**
  * Router tRPC untuk konfigurasi lokasi yang di-route melalui Astra API contract v1.
@@ -36,8 +62,10 @@ export const locationRouter = createTRPCRouter({
 
       const uiId = ordered.findIndex((loc) => loc.id === active.id) + 1;
       return mapAstraLocation(active, uiId);
-    } catch {
-      return null;
+    } catch (error) {
+      // A read failure must not masquerade as "no active location" (null).
+      const upstream = error instanceof AstraRequestError ? error : null;
+      throwConfigurationReadFailure(upstream, upstream ?? undefined);
     }
   }),
 
@@ -50,11 +78,8 @@ export const locationRouter = createTRPCRouter({
       return mapAstraLocations(locations);
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Gagal memuat lokasi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
-        cause: error,
-      });
+      const upstream = error instanceof AstraRequestError ? error : null;
+      throwConfigurationReadFailure(upstream, upstream ?? undefined);
     }
   }),
 
@@ -69,11 +94,8 @@ export const locationRouter = createTRPCRouter({
       );
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Gagal memuat lokasi aktif dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
-        cause: error,
-      });
+      const upstream = error instanceof AstraRequestError ? error : null;
+      throwConfigurationReadFailure(upstream, upstream ?? undefined);
     }
   }),
 
@@ -88,8 +110,10 @@ export const locationRouter = createTRPCRouter({
         const loc = findAstraLocationByUiId(locations, input.id);
         const uiId = loc ? getAstraLocationUiId(locations, loc.id) : undefined;
         return loc ? mapAstraLocation(loc, uiId) : null;
-      } catch {
-        return null;
+      } catch (error) {
+        // A read failure must not masquerade as "location not found" (null).
+        const upstream = error instanceof AstraRequestError ? error : null;
+        throwConfigurationReadFailure(upstream, upstream ?? undefined);
       }
     }),
 
@@ -399,11 +423,8 @@ export const locationRouter = createTRPCRouter({
       };
     } catch (error) {
       if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Gagal memuat statistik lokasi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
-        cause: error,
-      });
+      const upstream = error instanceof AstraRequestError ? error : null;
+      throwConfigurationReadFailure(upstream, upstream ?? undefined);
     }
   }),
 });

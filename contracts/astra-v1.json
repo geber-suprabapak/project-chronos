@@ -17,7 +17,10 @@
       "value": "v1"
     },
     "authorization": "Logto OIDC access token",
-    "admin_scopes": ["mobile:access", "admin:read"]
+    "admin_scopes": [
+      "mobile:access",
+      "admin:read"
+    ]
   },
   "response": {
     "content_type": "application/json",
@@ -55,6 +58,8 @@
       "LEAVE_REQUEST_PENDING",
       "LEAVE_PERIOD_OVERLAP",
       "LEAVE_APPROVAL_CONFLICT",
+      "ADIWIYATA_NOT_ELIGIBLE",
+      "ADIWIYATA_CONFIGURATION_ERROR",
       "ATTENDANCE_BLOCKED",
       "RATE_LIMITED",
       "DEPENDENCY_UNAVAILABLE",
@@ -64,7 +69,10 @@
   },
   "pagination": {
     "strategy": "offset",
-    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
+    "routes": [
+      "GET /v1/admin/attendance",
+      "GET /v1/admin/attendances"
+    ],
     "query": {
       "limit": "integer 1..100",
       "offset": "integer >= 0",
@@ -81,7 +89,10 @@
     "stable_order_required": true
   },
   "attendance_query": {
-    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
+    "routes": [
+      "GET /v1/admin/attendance",
+      "GET /v1/admin/attendances"
+    ],
     "parameters": {
       "limit": "integer 1..100 optional (default 50)",
       "offset": "integer >= 0 optional (default 0)",
@@ -141,24 +152,41 @@
     "response": "Versioned success envelope; list resources return complete arrays or valid offset pagination metadata."
   },
   "backup_audit": {
-    "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
-    "allowed_roles": ["platform_admin", "school_admin"],
+    "routes": [
+      "POST /v1/admin/backups",
+      "GET /v1/admin/backups/status"
+    ],
+    "allowed_roles": [
+      "platform_admin",
+      "school_admin"
+    ],
     "entity_type": "backup",
     "entity_id": "year_month",
     "post_fields": {
       "year_month": "strict real YYYY-MM required",
-      "scope": ["absences"],
-      "format": ["xlsx", "pdf"],
+      "scope": [
+        "absences"
+      ],
+      "format": [
+        "xlsx",
+        "pdf"
+      ],
       "start_date": "YYYY-MM-DD within month required",
       "end_date": "YYYY-MM-DD within month required, start_date <= end_date",
       "checksum": "sha256 lowercase 64-character hex required for both completed and failed results",
       "record_count": "integer >= 0",
       "byte_length": "integer > 0",
-      "result": ["completed", "failed"]
+      "result": [
+        "completed",
+        "failed"
+      ]
     },
     "status_query": {
       "year_month": "strict real YYYY-MM required",
-      "scope": ["absences", "optional"]
+      "scope": [
+        "absences",
+        "optional"
+      ]
     },
     "status_response": {
       "http_status": 200,
@@ -170,7 +198,9 @@
     }
   },
   "idempotency": {
-    "safe_methods": ["GET"],
+    "safe_methods": [
+      "GET"
+    ],
     "delete_by_id": "Repeated deletion leaves the resource absent; a later call may return RESOURCE_NOT_FOUND.",
     "leave_reopen": "Repeated reopen leaves the request pending and clears rejection state.",
     "other_mutations": "Not retryable unless an operation-specific idempotency key is documented."
@@ -194,8 +224,128 @@
     "PATCH /v1/mobile/notifications/token",
     "POST /v1/mobile/files/upload-intent",
     "POST /v1/mobile/files/{file_id}/confirm",
-    "GET /v1/mobile/files/{file_id}"
+    "GET /v1/mobile/files/{file_id}",
+    "DELETE /v1/mobile/files/{file_id}"
   ],
+  "adiwiyata_routes": [
+    "GET /v1/adiwiyata/dashboard",
+    "POST /v1/adiwiyata/reports"
+  ],
+  "adiwiyata_dashboard": {
+    "authorization": "Bearer Logto access token with mobile:access; approved Astra student profile and active Eligibility keyed by user_id",
+    "period_and_enrollment": "Requires exactly one active Academic Period and exactly one active Class Enrollment for the caller in that Period; the Class is never caller-supplied",
+    "school_day": "Server WIB date; an active schedule for the same school and Academic Period matching the Class or period-wide general (class_id is null) enables the weekday; exact-Class schedules override general schedules; other schools, periods, classes, and periodless global schedules do not apply; schedule hours are ignored; a holiday calendar exception suppresses the day",
+    "configuration_error": "Missing or ambiguous Academic Period or Enrollment, a Class outside the current school/period, zero active schedules for the current school/period, or duplicate schedules at today's chosen specificity returns 503 ADIWIYATA_CONFIGURATION_ERROR; a configured weekday with no applicable schedule is not_scheduled",
+    "ineligible_error": "A non-eligible user receives 403 ADIWIYATA_NOT_ELIGIBLE with a recovery message",
+    "response": {
+      "date": "YYYY-MM-DD WIB",
+      "timezone": "Asia/Jakarta",
+      "student": "Astra profile display name only",
+      "academic_period": "The unique active Astra Academic Period",
+      "class": "The caller's unique active Astra Class Enrollment",
+      "school_day": [
+        "scheduled",
+        "not_scheduled",
+        "holiday"
+      ],
+      "sites": "Active Sites for the caller's Class or general Sites only; each includes coverage_status, own_report, and can_report",
+      "site_coverage_status": [
+        "not_scheduled",
+        "missing",
+        "reported",
+        "verified"
+      ],
+      "own_report": "Only this student's report fields, canonical file_created_at and signed photo URL; null when the student has not submitted",
+      "can_report": "True only on a school day before this student submits and before the Class-Site is verified"
+    }
+  },
+  "adiwiyata_report_submission": {
+    "authorization": "Bearer Logto access token with mobile:access; approved student profile, one active current-period enrollment, and active Adiwiyata eligibility",
+    "request": {
+      "content_type": "multipart/form-data",
+      "fields": {
+        "site_id": "UUID",
+        "image": "Exactly one JPEG or PNG file, maximum 5 MiB"
+      },
+      "extra_fields": "Rejected; client date, name, class, and captions are never accepted",
+      "image_validation": "Astra checks the decoded JPEG/PNG format and limits decoded pixels to 20 million",
+      "authority": "Astra resolves the active Class and profile name; server WIB time/date are captured after image decoding; uploads have no schedule-hour restriction"
+    },
+    "output": "Permanently watermarked JPEG, maximum 2 MiB, stored in the dedicated S3_BUCKET_ADIWIYATA bucket with Astra file metadata",
+    "response": "201 envelope data is {report:{id,site_id,class_id,file_id,report_date,created_at,file_created_at,photo_url}}; photo_url may be null if signing fails after commit",
+    "uniqueness": "PostgreSQL UNIQUE(site_id, reported_by, report_date) rejects concurrent duplicate student/site/WIB-date uploads, independent of Class changes",
+    "verification_closure": "The report transaction rechecks current eligibility, active enrollment, Site visibility, school day, duplicate, and verified Class-Site closure under the shared pg_advisory_xact_lock name adiwiyata-report:{classId}:{siteId}:{date}; ticket 06 verify/unverify uses the same name",
+    "storage_compensation": "Create pending Astra file metadata before PUT. On failed upload or report commit, delete the object and mark metadata deleted only after confirmed delete; retain pending metadata if cleanup fails",
+    "student_privacy": "Dashboard returns only this student's report; admin file reads require files:read:any and an approved Astra school_admin/platform_admin profile",
+    "ordinary_file_lifecycle": "Generic file upload/confirm/delete cannot create, activate, or remove Adiwiyata evidence; expiry is 365 days and the signed URL never lasts beyond that deadline"
+  },
+  "adiwiyata_admin_sites": {
+    "routes": [
+      "GET /v1/admin/adiwiyata/sites",
+      "POST /v1/admin/adiwiyata/sites",
+      "PATCH /v1/admin/adiwiyata/sites/{id}",
+      "DELETE /v1/admin/adiwiyata/sites/{id}"
+    ],
+    "authorization": "Bearer Logto access token with admin:read; approved Astra profile role is school_admin or platform_admin",
+    "school_scope": "Uses the school of Astra's unique active Academic Period; lists include active and inactive Sites for that school",
+    "class_mapping": "class_id is null for a general Site or references a Class in the unique active Academic Period and same school; rollover mapping is explicit and never inferred by class name",
+    "fields": {
+      "name": "trimmed non-empty string, maximum 120 characters",
+      "category": [
+        "tanaman",
+        "lele"
+      ],
+      "class_id": "UUID or null; optional on create and patch",
+      "sort_order": "finite non-negative 32-bit integer; defaults to 0 on create"
+    },
+    "deactivation": "DELETE sets is_active=false and retains the Site row and report history"
+  },
+  "adiwiyata_admin_reports": {
+    "routes": [
+      "GET /v1/admin/adiwiyata/reports?date=&class_id=&site_id=",
+      "POST /v1/admin/adiwiyata/reports/{id}/verify",
+      "POST /v1/admin/adiwiyata/reports/{id}/unverify"
+    ],
+    "authorization": "Bearer Logto access token with admin:read; approved Astra profile role is school_admin or platform_admin",
+    "query": {
+      "date": "Strict real YYYY-MM-DD; defaults to server WIB today",
+      "class_id": "Optional UUID; includes historical Classes from this school without a current-period filter",
+      "site_id": "Optional UUID"
+    },
+    "school_scope": "Uses the school of Astra's unique active Academic Period; report Class and Site must both belong to that school",
+    "listing": "Reports contain actual submissions. Coverage for server WIB today additionally includes active visible Sites once per Class with an approved, active-enrolled eligible student; scoped schedules and holidays determine missing or not_scheduled. Historical dates contain only reported/verified pairs from actual submissions, including inactive Sites and historical Classes.",
+    "photo_access": "can_view_photos is true only with files:read:any and the approved Astra admin role; without that scope, photo_url is null while report metadata remains visible",
+    "response": {
+      "date": "Requested report date in YYYY-MM-DD",
+      "today": "Server-authoritative current WIB date in YYYY-MM-DD",
+      "timezone": "Asia/Jakarta",
+      "can_view_photos": "Whether this administrator has the approved role and files:read:any scope",
+      "reports": "Array of {id,site_id,site_name,category,class_id,class_name,reported_by,uploader_name,file_id,file_created_at,report_date,created_at,verified_at,verified_by,photo_url}; expired photos retain metadata and have photo_url=null",
+      "coverage": "Array of {class_id,class_name,site_id,site_name,category,coverage_status,photo_count,reason}; status is not_scheduled, missing, reported, or verified; only today's expected pairs can be missing/not_scheduled",
+      "filter_options": "Classes and Sites present in the unfiltered date coverage, each as {id,name}; applying one filter does not erase other choices"
+    },
+    "mutation_response": "{report:{id,site_id,class_id,file_id,report_date,created_at,verified_at,verified_by},coverage_status:'reported'|'verified'}",
+    "verification": "Verify/unverify re-reads the report under the shared Class-Site-WIB-date transaction advisory lock; actor, action, previous and next verification state, and time are recorded atomically in audit_logs. Repeated identical mutations do not add audit rows.",
+    "upload_closure": "The first verified report closes uploads for its Class-Site-date; un-verifying the last verified report returns coverage to reported. Student uploads still use only the current server WIB date, so historical unverify does not open backdated uploads."
+  },
+  "adiwiyata_admin_eligibility": {
+    "routes": [
+      "GET /v1/admin/adiwiyata/eligibility?q=",
+      "POST /v1/admin/adiwiyata/eligibility",
+      "DELETE /v1/admin/adiwiyata/eligibility/{id}"
+    ],
+    "authorization": "Bearer Logto access token with admin:read; approved Astra profile role is school_admin or platform_admin",
+    "search": "Reuses Astra student profiles and active enrollment data; name and email are display/search fields, and q is case-insensitive",
+    "student_fields": {
+      "user_id": "Astra profile user_id, the only grant key",
+      "current_class": "The unique active enrollment class in Astra's unique active Academic Period, or null when unavailable",
+      "can_grant": "true only for an approved student profile with exactly one valid active enrollment in the current period",
+      "reason": "Explains a missing profile, role, approval, period, enrollment, or matching class when access cannot be granted"
+    },
+    "grant": "POST accepts only {user_id}; the profile must be an approved student with one active same-school, current-period class enrollment; unique user_id upsert reactivates the same row",
+    "revoke": "DELETE sets is_active=false immediately and retains eligibility metadata and student report history; revocation does not require current eligibility",
+    "listing": "GET returns search matches and all existing eligibility rows, including inactive rows; class is resolved from the current Astra enrollment and is never copied into eligibility"
+  },
   "admin_routes": [
     "GET /v1/admin/bootstrap/status",
     "POST /v1/admin/bootstrap/roster",
@@ -213,6 +363,16 @@
     "GET /v1/admin/staff",
     "GET /v1/admin/staff/{user_id}",
     "GET /v1/admin/classes",
+    "GET /v1/admin/adiwiyata/sites",
+    "GET /v1/admin/adiwiyata/reports",
+    "POST /v1/admin/adiwiyata/reports/{id}/verify",
+    "POST /v1/admin/adiwiyata/reports/{id}/unverify",
+    "GET /v1/admin/adiwiyata/eligibility",
+    "POST /v1/admin/adiwiyata/eligibility",
+    "DELETE /v1/admin/adiwiyata/eligibility/{id}",
+    "POST /v1/admin/adiwiyata/sites",
+    "PATCH /v1/admin/adiwiyata/sites/{id}",
+    "DELETE /v1/admin/adiwiyata/sites/{id}",
     "GET /v1/admin/enrollments",
     "GET /v1/admin/locations",
     "POST /v1/admin/locations",
@@ -253,22 +413,32 @@
       "GET /v1/admin/bootstrap/roster/{id}",
       "POST /v1/admin/bootstrap/roster/{id}/accept"
     ],
-    "stage_roles": ["school_admin"],
-    "accept_roles": ["school_admin"],
+    "stage_roles": [
+      "school_admin"
+    ],
+    "accept_roles": [
+      "school_admin"
+    ],
     "request": {
       "academic_period_id": "existing academic period id, required",
       "rows": "non-empty array",
       "row": {
         "nis": "non-empty digit string",
         "full_name": "non-empty string",
-        "gender": ["L", "P"],
+        "gender": [
+          "L",
+          "P"
+        ],
         "class_id": "existing class id optional when class_name is supplied",
         "class_name": "existing class name",
         "absence_number": "positive integer"
       }
     },
     "acceptance": {
-      "creates": ["Student", "Class Enrollment"],
+      "creates": [
+        "Student",
+        "Class Enrollment"
+      ],
       "does_not_create": [
         "User",
         "Profile",

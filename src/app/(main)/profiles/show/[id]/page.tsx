@@ -15,8 +15,13 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Separator } from "~/components/ui/separator";
-import { User } from "lucide-react";
+import { User, RefreshCw } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import {
+  PROFILE_DETAIL_MESSAGES,
+  isRetryableProfileDetailUiState,
+  profileDetailUiState,
+} from "~/server/api/routers/user-profiles-detail";
 import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
 
 // Helper to format date or datetime; handles date-only strings without timezone skew
@@ -42,11 +47,19 @@ export default function ShowProfilePage() {
     ? (params.id[0] ?? "")
     : (params.id ?? "");
 
+  // retry: false keeps dependency-failure handling deterministic (no silent
+  // background retries); recovery is user-driven through the explicit retry
+  // action, which refetches the same read-only query on the same boundary.
   const {
     data: profile,
     isLoading,
     error,
-  } = api.userProfiles.getById.useQuery({ id }, { enabled: !!id });
+    refetch,
+    isRefetching,
+  } = api.userProfiles.getById.useQuery(
+    { id },
+    { enabled: !!id, retry: false },
+  );
 
   // Related data (small lists) for additional context
   const { data: allAbsencesData } = api.absences.list.useQuery(
@@ -68,16 +81,54 @@ export default function ShowProfilePage() {
 
   if (!id) return <div className="p-8 text-destructive">ID tidak valid.</div>;
   if (isLoading) return <SkeletonLayout />;
-  if (error)
+  if (error) {
+    const uiState = profileDetailUiState(error.data?.code);
+    if (uiState === "not_found") {
+      return <ProfileDetailNotFound />;
+    }
+    const retryable = isRetryableProfileDetailUiState(uiState);
     return (
-      <div className="p-8 text-destructive">
-        Terjadi kesalahan: {error.message}
+      <div className="p-8">
+        <Card className="mx-auto max-w-lg">
+          <CardHeader>
+            <CardTitle>
+              {uiState === "forbidden"
+                ? "Akses ditolak"
+                : "Layanan profil tidak tersedia"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {uiState === "forbidden"
+                ? PROFILE_DETAIL_MESSAGES.forbidden
+                : uiState === "unknown"
+                  ? PROFILE_DETAIL_MESSAGES.unknown
+                  : PROFILE_DETAIL_MESSAGES.dependency}
+            </p>
+            {retryable ? (
+              <Button
+                onClick={() => void refetch()}
+                disabled={isRefetching}
+                data-testid="profile-detail-retry"
+              >
+                <RefreshCw
+                  className={isRefetching ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                />
+                Coba Lagi
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     );
-  if (!profile) return <div className="p-8">Profil tidak ditemukan.</div>;
+  }
+  if (!profile) return <ProfileDetailNotFound />;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8">
+    <div
+      className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 p-4 md:p-8"
+      data-testid="profile-detail-loaded"
+    >
       {/* Left: Profile summary */}
       <div className="lg:col-span-1">
         <Card>
@@ -235,6 +286,14 @@ export default function ShowProfilePage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function ProfileDetailNotFound() {
+  return (
+    <div className="p-8" data-testid="profile-detail-not-found">
+      <p>Profil tidak ditemukan.</p>
     </div>
   );
 }

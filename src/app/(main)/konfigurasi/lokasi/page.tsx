@@ -51,8 +51,15 @@ import {
   Loader2,
   Plus,
   X,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import LocationPicker from "~/components/location-picker";
+import {
+  CONFIGURATION_READ_MESSAGES,
+  configurationReadUiState,
+  isRetryableConfigurationReadUiState,
+} from "~/server/api/routers/configuration-read";
 
 export default function ConfigurationPage() {
   const [formData, setFormData] = useState({
@@ -94,14 +101,25 @@ export default function ConfigurationPage() {
   const currentSearchIdRef = useRef(0);
 
   // Queries
+  // retry: false keeps dependency-failure handling deterministic (no silent
+  // background retries); recovery is user-driven through the explicit retry
+  // action (C07), which refetches the same read-only queries on this boundary.
   const {
     data: locations,
     isLoading: locationsLoading,
+    error: locationsError,
     refetch: refetchLocations,
-  } = api.location.getAll.useQuery();
+    isRefetching: locationsRefetching,
+  } = api.location.getAll.useQuery(undefined, { retry: false });
   const { refetch: refetchActive } = api.location.getActive.useQuery();
   const { data: stats, refetch: refetchStats } =
     api.location.getStats.useQuery();
+
+  const retryConfigurationReads = () => {
+    void refetchLocations();
+    void refetchActive();
+    void refetchStats();
+  };
 
   // Mutations
   const upsertMutation = api.location.upsert.useMutation({
@@ -616,6 +634,53 @@ export default function ConfigurationPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+    );
+  }
+
+  if (locationsError) {
+    // C07: a failed configuration read never renders as "no data" or as the
+    // first-use empty state. The failure stays distinguishable from the empty
+    // state and recoverable outcomes offer a retry that refetches the same
+    // read-only queries on this boundary — never a mutation.
+    const uiState = configurationReadUiState(locationsError.data?.code);
+    const retryable = isRetryableConfigurationReadUiState(uiState);
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="mx-auto max-w-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              {uiState === "forbidden"
+                ? "Akses ditolak"
+                : "Konfigurasi tidak tersedia"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {uiState === "forbidden"
+                ? CONFIGURATION_READ_MESSAGES.forbidden
+                : uiState === "unknown"
+                  ? CONFIGURATION_READ_MESSAGES.unknown
+                  : CONFIGURATION_READ_MESSAGES.dependency}
+            </p>
+            {retryable ? (
+              <Button
+                type="button"
+                onClick={retryConfigurationReads}
+                disabled={locationsRefetching}
+                data-testid="konfigurasi-list-retry"
+              >
+                <RefreshCw
+                  className={
+                    locationsRefetching ? "h-4 w-4 animate-spin" : "h-4 w-4"
+                  }
+                />
+                Coba Lagi
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     );
   }

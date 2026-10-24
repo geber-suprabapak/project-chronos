@@ -31,6 +31,12 @@ import {
   formatDateOnly,
   normalizeDateOnly,
 } from "~/lib/date-utils";
+import {
+  LEAVE_DETAIL_MESSAGES,
+  isRetryableLeaveDetailUiState,
+  leaveDetailUiState,
+} from "~/server/api/routers/perizinan-detail";
+import { RefreshCw } from "lucide-react";
 
 // Helper function to format date
 const formatDate = (dateString: string | Date) => {
@@ -80,6 +86,8 @@ export default function PerizinanPage() {
     data: perizinan,
     isLoading,
     error,
+    refetch,
+    isRefetching,
   } = api.perizinan.list.useQuery(
     {
       limit,
@@ -90,6 +98,7 @@ export default function PerizinanPage() {
     {
       enabled: !isSearchingByName,
       refetchOnWindowFocus: false, // Optional: disable refetch on window focus
+      retry: false,
     },
   );
 
@@ -97,9 +106,12 @@ export default function PerizinanPage() {
     data: perizinanRaw,
     isLoading: isLoadingRaw,
     error: rawError,
+    refetch: refetchRaw,
+    isRefetching: isRefetchingRaw,
   } = api.perizinan.listRaw.useQuery(undefined, {
     enabled: isSearchingByName,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const activeError = isSearchingByName ? rawError : error;
@@ -136,9 +148,50 @@ export default function PerizinanPage() {
   const hasVisibleRows = pagedRows.length > 0;
 
   if (activeError) {
+    // C05: a failed Leave collection never renders as "no data". The failure
+    // stays distinguishable from the empty state and recoverable outcomes
+    // offer a retry that refetches the same read-only query.
+    const uiState = leaveDetailUiState(activeError.data?.code);
+    const retryable = isRetryableLeaveDetailUiState(uiState);
+    const retry = () =>
+      isSearchingByName ? void refetchRaw() : void refetch();
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <p className="text-red-500">Error: {activeError.message}</p>
+      <div className="p-2 sm:p-4 md:p-6">
+        <Card className="mx-auto max-w-lg">
+          <CardHeader>
+            <CardTitle>
+              {uiState === "forbidden"
+                ? "Akses ditolak"
+                : "Layanan perizinan tidak tersedia"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {uiState === "forbidden"
+                ? LEAVE_DETAIL_MESSAGES.forbidden
+                : uiState === "unknown"
+                  ? LEAVE_DETAIL_MESSAGES.unknown
+                  : LEAVE_DETAIL_MESSAGES.dependency}
+            </p>
+            {retryable ? (
+              <Button
+                type="button"
+                onClick={retry}
+                disabled={isRefetching || isRefetchingRaw}
+                data-testid="perizinan-list-retry"
+              >
+                <RefreshCw
+                  className={
+                    isRefetching || isRefetchingRaw
+                      ? "h-4 w-4 animate-spin"
+                      : "h-4 w-4"
+                  }
+                />
+                Coba Lagi
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     );
   }

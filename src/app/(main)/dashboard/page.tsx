@@ -1,4 +1,5 @@
 import { api } from "~/trpc/server";
+import { TRPCError } from "@trpc/server";
 import {
   Card,
   CardContent,
@@ -19,6 +20,11 @@ import { Button } from "~/components/ui/button";
 import Link from "next/link";
 import { DashboardActionCard } from "~/components/dashboard-action-card";
 import { StatistikPieChart } from "~/components/pie-chart";
+import { DashboardDataError } from "~/components/dashboard-data-error";
+import {
+  dashboardDataUiState,
+  type DashboardDataUiState,
+} from "~/server/api/routers/dashboard-data-outcome";
 import { formatDateOnly } from "~/lib/date-utils";
 
 /**
@@ -129,17 +135,43 @@ function PendingPermissionsTable({
  * Main Dashboard Content Component
  */
 async function DashboardContent() {
-  // Parallel data fetching using RSC
+  // Pending perizinan for today, read through the Leave collection boundary.
+  // A failing Astra-backed read is classified and rendered as the
+  // application-owned error/retry state (C09) instead of escaping as an
+  // uncaught rejection or being presented as an empty table.
   const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
-  const [perizinanToday] = await Promise.all([
-    api.perizinan.list({
+  let failureState: DashboardDataUiState | null = null;
+  let perizinanToday: Awaited<ReturnType<typeof api.perizinan.list>> | null =
+    null;
+  try {
+    perizinanToday = await api.perizinan.list({
       approvalStatus: "pending",
       tanggal: todayStr,
       limit: 100,
       offset: 0,
-    }),
-    api.jadwal.getCurrentDay(),
-  ]);
+    });
+  } catch (cause) {
+    // The server-side tRPC caller rethrows the router's TRPCError; its code
+    // is the classified seam code the UI-state mapper consumes.
+    failureState = dashboardDataUiState(
+      cause instanceof TRPCError ? cause.code : undefined,
+    );
+  }
+
+  if (perizinanToday === null) {
+    return (
+      <div className="flex flex-col gap-6 min-w-0 w-full">
+        <div className="grid grid-cols-1 gap-4 min-w-0 xl:grid-cols-2">
+          <div className="flex flex-col min-w-0 w-full">
+            <StatistikPieChart />
+          </div>
+          <div className="min-w-0 w-full xl:flex-1">
+            <DashboardDataError state={failureState ?? "dependency"} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Pending permissions only for today
   const pendingPermissions = perizinanToday.rows.slice(0, 5);

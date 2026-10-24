@@ -58,12 +58,20 @@ export type AuthenticatedUser = {
 
 /**
  * Check if a role has required privileges
+ *
+ * Legacy aliases are normalized to their canonical role (Phase 1 alias
+ * compatibility in docs/rbac-implementation.md) before matching, so a
+ * documented alias such as `admin` or `kepala_sekolah` receives exactly the
+ * affordances granted to its canonical role (e.g. `school_admin` roster
+ * import). Allow-lists that already contain the aliases keep identical
+ * outcomes, and canonical-only lists (e.g. `["school_admin"]`) now admit the
+ * documented aliases instead of rejecting them.
  */
 export function hasRequiredRole(
   role: AppRole,
   allowed: readonly AppRole[],
 ): boolean {
-  return allowed.includes(role);
+  return allowed.includes(toCanonicalRole(role));
 }
 
 export type CanonicalRole =
@@ -161,6 +169,20 @@ export function canAccessSiswa(
   role: AppRole | null | undefined,
 ): role is AppRole {
   return role != null && isPrivilegedRole(role);
+}
+
+/**
+ * Roster import affordance (Siswa import panel and `rosterImport` tRPC
+ * procedures). Mirrors the `schoolAdminProcedure` guard: canonical
+ * `school_admin` plus its documented legacy aliases (`admin`,
+ * `kepala_sekolah`) via the shared alias normalization in
+ * `hasRequiredRole`; every other role, including `platform_admin`, stays on
+ * its current (denied) behavior.
+ */
+export function canImportRoster(
+  role: AppRole | null | undefined,
+): role is AppRole {
+  return role != null && hasRequiredRole(role, ["school_admin"]);
 }
 
 export function canAccessAbsensi(

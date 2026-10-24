@@ -3,6 +3,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { api } from "~/trpc/react";
 import {
+  PER_CLASS_STATUS_OPTIONS,
+  resolvePerClassStatusRows,
+  type PerClassAttendanceStatus,
+} from "~/lib/attendance-status";
+import { schoolDate } from "~/lib/date-utils";
+import {
   Table,
   TableBody,
   TableCell,
@@ -24,6 +30,16 @@ import {
 import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 import { RotateCcw } from "lucide-react";
+
+// Canonical per-class status presentation: every status keeps its own badge.
+const STATUS_BADGE_CLASS = {
+  Hadir: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  Terlambat:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  Sakit: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  Izin: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  "Belum Presensi": "bg-muted text-muted-foreground",
+} satisfies Record<PerClassAttendanceStatus, string>;
 
 export default function AbsensiPerKelasPage() {
   // Filter states
@@ -50,8 +66,7 @@ export default function AbsensiPerKelasPage() {
       if (currentUser.role === "wali_kelas" || currentUser.role === "guru") {
         setSelectedClass(currentUser.className);
         // Also set date to today (same logic as handleClassChange)
-        const today = formatToYMD(new Date());
-        setDate(today);
+        setDate(schoolDate());
       }
     }
   }, [currentUser, selectedClass]);
@@ -75,64 +90,13 @@ export default function AbsensiPerKelasPage() {
   const rows = useMemo(() => {
     if (!attendanceSummary) return [];
 
-    type StudentLite = {
-      userId: string;
-      nis: string | null;
-      fullName: string | null;
-      absenceNumber: string | null;
-    };
-
-    const statusByUserId = new Map<
-      string,
-      "Hadir" | "Izin" | "Belum Presensi"
-    >();
-    const studentByUserId = new Map<string, StudentLite>();
-
-    const upsertStudent = (
-      students: readonly StudentLite[],
-      status: "Hadir" | "Izin" | "Belum Presensi",
-    ) => {
-      for (const s of students) {
-        studentByUserId.set(s.userId, s);
-
-        const prev = statusByUserId.get(s.userId);
-        if (!prev) {
-          statusByUserId.set(s.userId, status);
-          continue;
-        }
-
-        // Prioritas status untuk menghindari konflik data: Izin > Hadir > Belum Presensi.
-        if (
-          status === "Izin" ||
-          (status === "Hadir" && prev === "Belum Presensi")
-        ) {
-          statusByUserId.set(s.userId, status);
-        }
-      }
-    };
-
-    upsertStudent(attendanceSummary.details.tidakHadir, "Belum Presensi");
-    upsertStudent(attendanceSummary.details.hadir, "Hadir");
-    upsertStudent(attendanceSummary.details.terlambat, "Hadir");
-    upsertStudent(attendanceSummary.details.izin, "Izin");
-    upsertStudent(attendanceSummary.details.sakit, "Izin");
-
-    return Array.from(studentByUserId.values())
-      .map((s) => ({
-        userId: s.userId,
-        nis: s.nis,
-        fullName: s.fullName,
-        absenceNumber: s.absenceNumber,
-        className: selectedClass,
-        date,
-        status: statusByUserId.get(s.userId) ?? "Belum Presensi",
-      }))
-      .sort((a, b) => {
-        const noA = Number(a.absenceNumber ?? Number.MAX_SAFE_INTEGER);
-        const noB = Number(b.absenceNumber ?? Number.MAX_SAFE_INTEGER);
-        if (noA !== noB) return noA - noB;
-        return (a.fullName ?? "").localeCompare(b.fullName ?? "");
-      });
+    // Canonical buckets stay distinct: Terlambat and Sakit keep their own
+    // label instead of collapsing into Hadir or Izin.
+    return resolvePerClassStatusRows(attendanceSummary.details).map((row) => ({
+      ...row,
+      className: selectedClass,
+      date,
+    }));
   }, [attendanceSummary, date, selectedClass]);
 
   const filteredRows = useMemo(() => {
@@ -159,14 +123,6 @@ export default function AbsensiPerKelasPage() {
   const hasMore = page * limit < filteredRows.length;
   const loading = userLoading || classNamesLoading || summaryLoading;
 
-  // Helper to format date to YYYY-MM-DD
-  const formatToYMD = (d: Date): string => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${da}`;
-  };
-
   // Reset page when filters change
   const handleClassChange = (value: string) => {
     const newClass = value === "all" ? "" : value;
@@ -176,8 +132,7 @@ export default function AbsensiPerKelasPage() {
 
     // Auto-set tanggal hari ini ketika kelas dipilih
     if (newClass && !date) {
-      const today = formatToYMD(new Date());
-      setDate(today);
+      setDate(schoolDate());
     }
   };
 
@@ -272,9 +227,11 @@ export default function AbsensiPerKelasPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Status</SelectItem>
-                  <SelectItem value="Hadir">Hadir</SelectItem>
-                  <SelectItem value="Belum Presensi">Belum Presensi</SelectItem>
-                  <SelectItem value="Izin">Izin</SelectItem>
+                  {PER_CLASS_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -393,10 +350,21 @@ export default function AbsensiPerKelasPage() {
                               {rows.filter((r) => r.status === "Hadir").length}
                             </span>
                             <span className="text-amber-600">
+                              {" | T:"}
+                              {
+                                rows.filter((r) => r.status === "Terlambat")
+                                  .length
+                              }
+                            </span>
+                            <span className="text-red-600">
+                              {" | S:"}
+                              {rows.filter((r) => r.status === "Sakit").length}
+                            </span>
+                            <span className="text-blue-600">
                               {" | I:"}
                               {rows.filter((r) => r.status === "Izin").length}
                             </span>
-                            <span className="text-red-600">
+                            <span className="text-muted-foreground">
                               {" | BP:"}
                               {
                                 rows.filter(
@@ -434,11 +402,7 @@ export default function AbsensiPerKelasPage() {
                         <TableCell>
                           <span
                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                              row.status === "Hadir"
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                : row.status === "Izin"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              STATUS_BADGE_CLASS[row.status]
                             }`}
                           >
                             {row.status}

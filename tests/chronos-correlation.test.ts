@@ -104,21 +104,23 @@ describe("Chronos correlation and context seam", () => {
     );
   });
 
-  it("verifies middleware generates/sanitizes X-Request-ID for request and response", () => {
-    const middlewarePath = join(process.cwd(), "middleware.ts");
-    const content = readFileSync(middlewarePath, "utf8");
+  it("verifies proxy generates/sanitizes X-Request-ID for request and response", () => {
+    // Next.js 16 renamed the middleware file convention to proxy; the shared
+    // identity/request-id gate lives in src/proxy.ts.
+    const proxyPath = join(process.cwd(), "src", "proxy.ts");
+    const content = readFileSync(proxyPath, "utf8");
 
     assert.ok(
       content.includes("createAstraRequestId"),
-      "middleware.ts must sanitize incoming X-Request-ID",
+      "src/proxy.ts must sanitize incoming X-Request-ID",
     );
     assert.ok(
       content.includes('requestHeaders.set("X-Request-ID", requestId)'),
-      "middleware.ts must propagate X-Request-ID to downstream headers",
+      "src/proxy.ts must propagate X-Request-ID to downstream headers",
     );
     assert.ok(
       content.includes('res.headers.set("X-Request-ID", requestId)'),
-      "middleware.ts must return X-Request-ID in response headers",
+      "src/proxy.ts must return X-Request-ID in response headers",
     );
   });
 

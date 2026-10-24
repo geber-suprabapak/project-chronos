@@ -1,4 +1,5 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
+import { createSign, generateKeyPairSync, type KeyObject } from "node:crypto";
 import { parse as parseUrl } from "node:url";
 import {
   createInitialMockData,
@@ -55,6 +56,7 @@ function normalizedAbsenceNumber(value: string): string {
 }
 
 interface ParsedRequestBody {
+  failAt?: number;
   academic_period_id?: string;
   rows?: unknown;
   user_id?: string;
@@ -86,6 +88,10 @@ interface ParsedRequestBody {
   record_count?: number;
   byte_length?: number;
   result?: string;
+  mode?: string;
+  failNext?: number;
+  empty?: boolean;
+  target?: string;
 }
 
 export class MockAstraLogtoServer {
@@ -96,13 +102,93 @@ export class MockAstraLogtoServer {
   public rosterReports: Array<Record<string, unknown>> = [];
   public rosterStageCount = 0;
   public rosterAcceptCount = 0;
+  public scheduleWriteFailAt = 0;
+  public scheduleWriteCount = 0;
+  // C01b profile-detail fail-then-recover fixture state.
+  public profileDetailFailStatus = 0;
+  public profileDetailFailRemaining = 0;
+  public profileDetailMutations = 0;
+  // C05 leave list/detail fail-then-recover fixture state.
+  public leaveRequestsFailStatus = 0;
+  public leaveRequestsFailRemaining = 0;
+  public leaveRequestsMutations = 0;
+  // C07 configuration (location) fail-then-recover fixture state.
+  public locationsFailStatus = 0;
+  public locationsFailRemaining = 0;
+  public locationsEmpty = false;
+  public locationsMutations = 0;
+  // C09 Logto fail-then-recover fixture state. mode is "off" or one of
+  // "401" | "403" | "503" | "malformed" | "network"; target is "discovery" or
+  // "token"; failNext counts how many subsequent requests to the target fail
+  // before the fixture recovers.
+  public logtoFailMode = "off";
+  public logtoFailTarget = "any";
+  public logtoFailRemaining = 0;
 
   private astraPort: number;
   private logtoPort: number;
+  // RS256 signing material for mock OIDC id tokens. The Logto SDK verifies
+  // the id token against the discovery JWKS, so the fixture issues a real
+  // signed JWT instead of a static placeholder string.
+  private readonly signPrivateKey: KeyObject;
+  private readonly signPublicKey: KeyObject;
+  private readonly signKeyId = "mock-logto-key-1";
 
   constructor(astraPort = 23000, logtoPort = 23001) {
     this.astraPort = astraPort;
     this.logtoPort = logtoPort;
+    const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+    });
+    this.signPrivateKey = privateKey;
+    this.signPublicKey = publicKey;
+  }
+
+  /**
+   * Signs a mock OIDC id token (RS256). Claims match what the Chronos
+   * identity seam consumes: `iss` equals the discovery issuer, `aud` the
+   * fixture app id, and `roles` drives the privileged-role resolution.
+   */
+  private signIdToken(claims: {
+    sub: string;
+    name: string;
+    email: string;
+    roles: string[];
+    must_change_password?: boolean;
+  }): string {
+    const header = Buffer.from(
+      JSON.stringify({ alg: "RS256", typ: "JWT", kid: this.signKeyId }),
+    ).toString("base64url");
+    const now = Math.floor(Date.now() / 1000);
+    const payload = Buffer.from(
+      JSON.stringify({
+        iss: `http://127.0.0.1:${this.logtoPort}/oidc`,
+        aud: "chronos-app",
+        iat: now,
+        exp: now + 86400 * 7,
+        ...claims,
+      }),
+    ).toString("base64url");
+    const signer = createSign("RSA-SHA256");
+    signer.update(`${header}.${payload}`);
+    const signature = signer.sign(this.signPrivateKey).toString("base64url");
+    return `${header}.${payload}.${signature}`;
+  }
+
+  private jwksDocument(): { keys: Array<JsonWebKey & { kid?: string }> } {
+    // A JWKS must contain public keys only: export the paired public key so
+    // jose's remote JWKS consumer accepts it, and stamp fixture metadata.
+    const jwk = this.signPublicKey.export({ format: "jwk" });
+    return {
+      keys: [
+        {
+          ...jwk,
+          kid: this.signKeyId,
+          use: "sig",
+          alg: "RS256",
+        },
+      ],
+    };
   }
 
   public resetData() {
@@ -111,6 +197,21 @@ export class MockAstraLogtoServer {
     this.rosterReports = [];
     this.rosterStageCount = 0;
     this.rosterAcceptCount = 0;
+    this.scheduleWriteFailAt = 0;
+    this.scheduleWriteCount = 0;
+    this.profileDetailFailStatus = 0;
+    this.profileDetailFailRemaining = 0;
+    this.profileDetailMutations = 0;
+    this.leaveRequestsFailStatus = 0;
+    this.leaveRequestsFailRemaining = 0;
+    this.leaveRequestsMutations = 0;
+    this.locationsFailStatus = 0;
+    this.locationsFailRemaining = 0;
+    this.locationsEmpty = false;
+    this.locationsMutations = 0;
+    this.logtoFailMode = "off";
+    this.logtoFailTarget = "any";
+    this.logtoFailRemaining = 0;
   }
 
   private sendAstraJson(
@@ -195,6 +296,149 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    // C01b fail-then-recover controls for the profile detail boundary.
+    if (pathname === "/__control/profile-detail" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const mode = asString(body.mode, "off");
+        const status = mode === "off" ? 0 : Number(mode);
+        this.profileDetailFailStatus = Number.isFinite(status) ? status : 0;
+        this.profileDetailFailRemaining = Math.max(
+          Number(body.failNext ?? 0),
+          0,
+        );
+        this.sendJson(res, 200, {
+          failStatus: this.profileDetailFailStatus,
+          failRemaining: this.profileDetailFailRemaining,
+        });
+      });
+      return;
+    }
+
+    if (pathname === "/__control/profile-detail" && method === "GET") {
+      this.sendJson(res, 200, {
+        failStatus: this.profileDetailFailStatus,
+        failRemaining: this.profileDetailFailRemaining,
+        mutations: this.profileDetailMutations,
+      });
+      return;
+    }
+
+    // C05 fail-then-recover controls for the Leave list/detail boundary.
+    // Arming a new scenario also resets the mutation counter so assertions
+    // measure only the requests made by the scenario being armed.
+    if (pathname === "/__control/leave-requests" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const mode = asString(body.mode, "off");
+        const status = mode === "off" ? 0 : Number(mode);
+        this.leaveRequestsFailStatus = Number.isFinite(status) ? status : 0;
+        this.leaveRequestsFailRemaining = Math.max(
+          Number(body.failNext ?? 0),
+          0,
+        );
+        this.leaveRequestsMutations = 0;
+        this.sendJson(res, 200, {
+          failStatus: this.leaveRequestsFailStatus,
+          failRemaining: this.leaveRequestsFailRemaining,
+        });
+      });
+      return;
+    }
+
+    if (pathname === "/__control/leave-requests" && method === "GET") {
+      this.sendJson(res, 200, {
+        failStatus: this.leaveRequestsFailStatus,
+        failRemaining: this.leaveRequestsFailRemaining,
+        mutations: this.leaveRequestsMutations,
+      });
+      return;
+    }
+
+    // C07 fail-then-recover controls for the configuration location boundary.
+    // mode is "off" or an HTTP status string ("403" | "500" | "503" | "504");
+    // failNext is how many subsequent location reads fail before the fixture
+    // recovers. empty=true models a genuine first-use/no-config collection
+    // without touching the stored fixture locations. Arming a new scenario
+    // also resets the mutation counter.
+    if (pathname === "/__control/locations" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const mode = asString(body.mode, "off");
+        const status = mode === "off" ? 0 : Number(mode);
+        this.locationsFailStatus = Number.isFinite(status) ? status : 0;
+        this.locationsFailRemaining = Math.max(Number(body.failNext ?? 0), 0);
+        this.locationsEmpty = asBoolean(body.empty, false);
+        this.locationsMutations = 0;
+        this.sendJson(res, 200, {
+          failStatus: this.locationsFailStatus,
+          failRemaining: this.locationsFailRemaining,
+          empty: this.locationsEmpty,
+        });
+      });
+      return;
+    }
+
+    if (pathname === "/__control/locations" && method === "GET") {
+      this.sendJson(res, 200, {
+        failStatus: this.locationsFailStatus,
+        failRemaining: this.locationsFailRemaining,
+        empty: this.locationsEmpty,
+        mutations: this.locationsMutations,
+      });
+      return;
+    }
+
+    const isLeaveCollectionPath = pathname.startsWith(
+      "/v1/admin/leave-requests",
+    );
+    if (isLeaveCollectionPath && method !== "GET") {
+      // Recovery invariant: retrying the Leave list/detail read must never write.
+      this.leaveRequestsMutations += 1;
+    }
+    const isLeaveReadPath =
+      isLeaveCollectionPath &&
+      method === "GET" &&
+      (pathname === "/v1/admin/leave-requests" ||
+        /^\/v1\/admin\/leave-requests\/[^/]+$/.test(pathname));
+    if (
+      isLeaveReadPath &&
+      this.leaveRequestsFailRemaining > 0 &&
+      this.leaveRequestsFailStatus > 0
+    ) {
+      this.leaveRequestsFailRemaining -= 1;
+      this.sendAstraJson(
+        res,
+        this.leaveRequestsFailStatus,
+        null,
+        `Simulated leave requests failure (${this.leaveRequestsFailStatus})`,
+      );
+      return;
+    }
+
+    const isProfileCollectionPath =
+      pathname.startsWith("/v1/admin/students") ||
+      pathname.startsWith("/v1/admin/staff");
+    if (isProfileCollectionPath && method !== "GET") {
+      // Recovery invariant: retrying the profile detail read must never write.
+      this.profileDetailMutations += 1;
+    }
+    const isProfileDetailPath =
+      isProfileCollectionPath &&
+      method === "GET" &&
+      /^\/v1\/admin\/(students|staff)\/[^/]+$/.test(pathname);
+    if (
+      isProfileDetailPath &&
+      this.profileDetailFailRemaining > 0 &&
+      this.profileDetailFailStatus > 0
+    ) {
+      this.profileDetailFailRemaining -= 1;
+      this.sendAstraJson(
+        res,
+        this.profileDetailFailStatus,
+        null,
+        `Simulated profile detail failure (${this.profileDetailFailStatus})`,
+      );
+      return;
+    }
+
     // 0. HEALTH PROBES
     if (pathname === "/ready" || pathname === "/live") {
       this.sendJson(res, 200, { status: "ok", healthy: true });
@@ -205,6 +449,20 @@ export class MockAstraLogtoServer {
       this.sendJson(res, 200, {
         rosterStageCount: this.rosterStageCount,
         rosterAcceptCount: this.rosterAcceptCount,
+      });
+      return;
+    }
+
+    if (pathname === "/__control/schedules" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        if (typeof body.start_time === "string") {
+          for (const schedule of this.data.schedules) {
+            schedule.start_time = body.start_time;
+          }
+        }
+        this.scheduleWriteFailAt = Number(body.failAt ?? 0);
+        this.scheduleWriteCount = 0;
+        this.sendJson(res, 200, { ready: true });
       });
       return;
     }
@@ -669,7 +927,27 @@ export class MockAstraLogtoServer {
     }
 
     // 7. LOCATIONS
+    const isLocationCollectionPath = pathname.startsWith("/v1/admin/locations");
+    if (isLocationCollectionPath && method !== "GET") {
+      // Recovery invariant: retrying the configuration read must never write.
+      this.locationsMutations += 1;
+    }
     if (pathname === "/v1/admin/locations" && method === "GET") {
+      // C07: the empty flag models a genuine first-use/no-config collection.
+      if (this.locationsEmpty) {
+        this.sendAstraJson(res, 200, []);
+        return;
+      }
+      if (this.locationsFailRemaining > 0 && this.locationsFailStatus > 0) {
+        this.locationsFailRemaining -= 1;
+        this.sendAstraJson(
+          res,
+          this.locationsFailStatus,
+          null,
+          `Simulated locations failure (${this.locationsFailStatus})`,
+        );
+        return;
+      }
       let locs = [...this.data.locations];
       if (query.isActive === "true") {
         locs = locs.filter((l) => l.is_active);
@@ -763,6 +1041,17 @@ export class MockAstraLogtoServer {
         (s) => s.id === id || s.day_of_week.toLowerCase() === id.toLowerCase(),
       );
       void this.parseBody(req).then((body) => {
+        this.scheduleWriteCount += 1;
+        if (this.scheduleWriteCount === this.scheduleWriteFailAt) {
+          this.scheduleWriteFailAt = 0;
+          this.sendAstraJson(
+            res,
+            503,
+            null,
+            "Simulated schedule write failure",
+          );
+          return;
+        }
         if (sched) {
           if (body.start_time !== undefined)
             sched.start_time = asString(body.start_time, sched.start_time);
@@ -948,6 +1237,66 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    // C09 fail-then-recover control for the Logto boundary.
+    if (pathname === "/__control/logto" && method === "POST") {
+      void this.parseBody(req).then((body) => {
+        const mode = asString(body.mode, "off");
+        this.logtoFailMode = mode;
+        this.logtoFailTarget = asString(body.target, "any");
+        this.logtoFailRemaining = Math.max(Number(body.failNext ?? 0), 0);
+        this.sendJson(res, 200, {
+          mode: this.logtoFailMode,
+          target: this.logtoFailTarget,
+          failRemaining: this.logtoFailRemaining,
+        });
+      });
+      return;
+    }
+
+    if (pathname === "/__control/logto" && method === "GET") {
+      this.sendJson(res, 200, {
+        mode: this.logtoFailMode,
+        target: this.logtoFailTarget,
+        failRemaining: this.logtoFailRemaining,
+      });
+      return;
+    }
+
+    if (
+      this.logtoFailMode !== "off" &&
+      this.logtoFailRemaining > 0 &&
+      (this.logtoFailTarget === "any" ||
+        (pathname === "/oidc/.well-known/openid-configuration" &&
+          this.logtoFailTarget === "discovery") ||
+        (pathname === "/oidc/token" && this.logtoFailTarget === "token"))
+    ) {
+      this.logtoFailRemaining -= 1;
+      if (this.logtoFailMode === "network") {
+        // Simulate a connection-level failure: destroy the socket so the
+        // client fetch rejects instead of receiving an HTTP response.
+        res.socket?.destroy();
+        return;
+      }
+      if (this.logtoFailMode === "malformed") {
+        // Simulate a malformed provider response: HTTP 200 with a non-JSON
+        // body, which breaks response.json() in the Logto requester.
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("<<not-json{");
+        return;
+      }
+      const status = Number(this.logtoFailMode);
+      if (Number.isFinite(status) && status >= 400) {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            code: "mock_logto_failure",
+            message: `Simulated Logto failure (${status})`,
+          }),
+        );
+        return;
+      }
+    }
+
     if (pathname === "/oidc/.well-known/openid-configuration") {
       this.sendJson(res, 200, {
         issuer: `http://127.0.0.1:${this.logtoPort}/oidc`,
@@ -972,7 +1321,7 @@ export class MockAstraLogtoServer {
     }
 
     if (pathname === "/oidc/jwks") {
-      this.sendJson(res, 200, { keys: [] });
+      this.sendJson(res, 200, this.jwksDocument());
       return;
     }
 
@@ -995,7 +1344,13 @@ export class MockAstraLogtoServer {
         token_type: "Bearer",
         expires_in: 86400,
         refresh_token: "mock-refresh-token",
-        id_token: "mock-id-token",
+        id_token: this.signIdToken({
+          sub: "10000000-0000-0000-0000-000000000001",
+          name: "Platform Administrator",
+          email: "admin@skanida.sch.id",
+          roles: ["platform_admin"],
+          must_change_password: false,
+        }),
         scope: "openid profile email roles custom_data",
       });
       return;

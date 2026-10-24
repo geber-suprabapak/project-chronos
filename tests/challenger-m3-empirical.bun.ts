@@ -385,7 +385,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
     }
 
     it("4.1 Edge Redirect on Unauthenticated Protected Route (/dashboard) attaches all 7 security headers", async () => {
-      const { middleware } = await import("../middleware.ts");
+      const { proxy: middleware } = await import("../src/proxy.ts");
       const req = new NextRequest("http://localhost:3000/dashboard");
       const res = await middleware(req);
 
@@ -408,7 +408,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
     });
 
     it("4.2 Edge Redirect on Protected Sub-path (/siswa?kelas=XII-RPL-1) preserves query and attaches all 7 security headers", async () => {
-      const { middleware } = await import("../middleware.ts");
+      const { proxy: middleware } = await import("../src/proxy.ts");
       const req = new NextRequest(
         "http://localhost:3000/siswa?kelas=XII-RPL-1",
       );
@@ -429,7 +429,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
     });
 
     it("4.3 Public Path (/login) NextResponse attaches all 7 security headers", async () => {
-      const { middleware } = await import("../middleware.ts");
+      const { proxy: middleware } = await import("../src/proxy.ts");
       const req = new NextRequest("http://localhost:3000/login");
       const res = await middleware(req);
 
@@ -440,7 +440,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
     });
 
     it("4.4 API Path (/api/health/ready) NextResponse attaches all 7 security headers", async () => {
-      const { middleware } = await import("../middleware.ts");
+      const { proxy: middleware } = await import("../src/proxy.ts");
       const req = new NextRequest("http://localhost:3000/api/health/ready");
       const res = await middleware(req);
 

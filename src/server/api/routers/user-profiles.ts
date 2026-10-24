@@ -1,12 +1,20 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   adminProcedure,
   createTRPCRouter,
   privilegedProcedure,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import { astraRequest, AstraRequestError } from "~/lib/astra/client";
 import { collectUniqueClassNames } from "~/lib/class-names";
+import {
+  PROFILE_DETAIL_NOT_FOUND_SIGNAL,
+  classifyProfileDetailFailures,
+  isProfileDetailNotFound,
+  profileDetailSeamCode,
+  type AstraUpstreamFailure,
+} from "~/server/api/routers/user-profiles-detail";
 
 interface AstraStudentProfile {
   user_id: string;
@@ -36,6 +44,58 @@ interface AstraClassItem {
   id?: string;
   name: string;
   grade?: number | null;
+}
+
+function toStudentProfile(student: AstraStudentProfile) {
+  return {
+    id: student.user_id,
+    userId: student.user_id,
+    fullName: student.full_name ?? null,
+    email: student.email ?? null,
+    nis: student.nis ?? null,
+    className: student.class_name ?? null,
+    absenceNumber: student.absence_number ?? null,
+    avatarUrl: student.avatar_url ?? null,
+    gender: student.gender ?? null,
+    role: student.role ?? "student",
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+function toStaffProfile(staff: AstraStaffProfile) {
+  return {
+    id: staff.user_id,
+    userId: staff.user_id,
+    fullName: staff.full_name ?? null,
+    email: staff.email ?? null,
+    nis: null,
+    className: null,
+    absenceNumber: null,
+    avatarUrl: null,
+    gender: staff.gender ?? null,
+    role: staff.role ?? staff.roles?.[0] ?? "staff",
+    createdAt: staff.created_at ?? null,
+    updatedAt: staff.updated_at ?? null,
+  };
+}
+
+/**
+ * Throws the classified profile-detail failure as a tRPC error. The upstream
+ * error stays attached as `cause`, keeping status/correlation information
+ * internal to the established error envelope; the client-visible message is
+ * the fixed, existence-safe string for the outcome class.
+ */
+function failProfileDetail(
+  failures: readonly (AstraUpstreamFailure | null)[],
+  cause?: AstraRequestError,
+): never {
+  const failure = classifyProfileDetailFailures(failures);
+  throw new TRPCError({
+    code: profileDetailSeamCode(failure),
+    message: failure.message,
+    cause,
+  });
 }
 
 /**
@@ -68,55 +128,59 @@ export const userProfilesRouter = createTRPCRouter({
   }),
 
   // GET BY ID: Ambil profil berdasarkan user_id dari Astra
+  //
+  // Failure mapping: hanya 404 yang meneruskan pencarian ke koleksi staff.
+  // 403, timeout/network, dan 5xx adalah kegagalan dependensi/otorisasi yang
+  // dilempar sebagai error tRPC terklasifikasi (recoverable untuk 5xx/timeout,
+  // forbidden untuk 403) — bukan `null`, agar UI tidak menyajikan kegagalan
+  // dependensi sebagai "profil tidak ditemukan" dan tidak membedah keberadaan
+  // profil terproteksi lewat koleksi lain saat 403.
   getById: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {
+      const failures: (AstraUpstreamFailure | null)[] = [];
+      let upstreamCause: AstraRequestError | undefined;
+      let student: AstraStudentProfile | null | undefined;
       try {
-        const student = await astraRequest<AstraStudentProfile>(
+        student = await astraRequest<AstraStudentProfile>(
           `/v1/admin/students/${input.id}`,
         );
-        if (student) {
-          return {
-            id: student.user_id,
-            userId: student.user_id,
-            fullName: student.full_name ?? null,
-            email: student.email ?? null,
-            nis: student.nis ?? null,
-            className: student.class_name ?? null,
-            absenceNumber: student.absence_number ?? null,
-            avatarUrl: student.avatar_url ?? null,
-            gender: student.gender ?? null,
-            role: student.role ?? "student",
-            createdAt: null,
-            updatedAt: null,
-          };
-        }
-      } catch {
-        try {
-          const staff = await astraRequest<AstraStaffProfile>(
-            `/v1/admin/staff/${input.id}`,
-          );
-          if (staff) {
-            return {
-              id: staff.user_id,
-              userId: staff.user_id,
-              fullName: staff.full_name ?? null,
-              email: staff.email ?? null,
-              nis: null,
-              className: null,
-              absenceNumber: null,
-              avatarUrl: null,
-              gender: staff.gender ?? null,
-              role: staff.role ?? staff.roles?.[0] ?? "staff",
-              createdAt: staff.created_at ?? null,
-              updatedAt: staff.updated_at ?? null,
-            };
-          }
-        } catch {
-          return null;
+      } catch (error) {
+        const upstream = error instanceof AstraRequestError ? error : null;
+        if (upstream) upstreamCause = upstream;
+        failures.push(upstream);
+        if (!isProfileDetailNotFound(upstream)) {
+          failProfileDetail(failures, upstreamCause);
         }
       }
-      return null;
+
+      if (student) {
+        return toStudentProfile(student);
+      }
+
+      let staff: AstraStaffProfile | null | undefined;
+      try {
+        staff = await astraRequest<AstraStaffProfile>(
+          `/v1/admin/staff/${input.id}`,
+        );
+      } catch (error) {
+        const upstream = error instanceof AstraRequestError ? error : null;
+        upstreamCause ??= upstream ?? undefined;
+        failures.push(upstream);
+        failProfileDetail(failures, upstreamCause);
+      }
+
+      if (staff) {
+        return toStaffProfile(staff);
+      }
+
+      if (student === undefined || staff === undefined) {
+        // The collection answered successfully without a payload; treat the
+        // missing payload as a not-found signal for the seam matrix.
+        failures.push(PROFILE_DETAIL_NOT_FOUND_SIGNAL);
+      }
+
+      failProfileDetail(failures, upstreamCause);
     }),
 
   // LIST: ambil daftar user_profiles dengan pagination sederhana dari Astra

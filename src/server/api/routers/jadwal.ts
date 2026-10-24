@@ -15,9 +15,31 @@ import {
   type AstraSchedule,
 } from "~/server/api/routers/jadwal-mapping";
 import { buildScheduleUpdatePayload } from "~/server/api/routers/jadwal-update";
+// Batch/reset orchestration lives in a transport-agnostic module so the
+// partial-outcome and recovery behavior is testable under `node --test`.
+import {
+  applyScheduleWrites,
+  findSchedule,
+  type ScheduleBatchClient,
+  type ScheduleWrite,
+} from "~/server/api/routers/jadwal-batch";
 
 export { isDayId, mapAstraSchedule };
 export type { AstraSchedule };
+
+const astraScheduleBatchClient: ScheduleBatchClient = {
+  listSchedules: () => astraRequest<AstraSchedule[]>("/v1/admin/schedules"),
+  updateSchedule: (id, payload) =>
+    astraRequest<AstraSchedule>(`/v1/admin/schedules/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  createSchedule: (payload) =>
+    astraRequest<AstraSchedule>("/v1/admin/schedules", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
 
 /**
  * Router tRPC untuk entitas `jadwal` (schedules) yang di-route melalui Astra API contract v1.
@@ -261,56 +283,34 @@ export const jadwalRouter = createTRPCRouter({
       const schedules = await astraRequest<AstraSchedule[]>(
         "/v1/admin/schedules",
       );
-      const results = [];
-
-      for (const item of input) {
-        const targetHari = isDayId(item.id) ? ID_TO_HARI[item.id] : "senin";
-        const idStr = String(item.id);
-        const target = schedules.find(
-          (s, idx) =>
-            s.id === idStr ||
-            (targetHari &&
-              (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
-            idx + 1 === item.id,
-        );
-
-        if (target) {
-          const payload = buildScheduleUpdatePayload(item.data);
-          if (Object.keys(payload).length === 0) {
-            throw new Error(
-              "Pilih setidaknya satu nilai jadwal untuk diperbarui.",
-            );
-          }
-
-          const updated = await astraRequest<AstraSchedule>(
-            `/v1/admin/schedules/${target.id}`,
-            {
-              method: "PUT",
-              body: JSON.stringify(payload),
-            },
+      const plan: ScheduleWrite[] = input.map((item) => {
+        // SAFETY: the zod input schema constrains id to 1..7, exactly the
+        // ID_TO_HARI keys, so the assertion cannot hit an undefined day.
+        const hari = ID_TO_HARI[item.id as keyof typeof ID_TO_HARI];
+        const partialPayload = buildScheduleUpdatePayload(item.data);
+        if (Object.keys(partialPayload).length === 0) {
+          throw new Error(
+            "Pilih setidaknya satu nilai jadwal untuk diperbarui.",
           );
-          results.push(mapAstraSchedule(updated, item.id));
-        } else {
-          const created = await astraRequest<AstraSchedule>(
-            "/v1/admin/schedules",
-            {
-              method: "POST",
-              body: JSON.stringify({
-                day_of_week: targetHari,
+        }
+        const target = findSchedule(schedules, item.id, hari);
+        return {
+          id: item.id,
+          hari,
+          payload: target
+            ? partialPayload
+            : {
+                day_of_week: hari,
                 start_time: item.data.mulaiMasuk ?? "06:30:00",
                 end_time: item.data.selesaiMasuk ?? "07:30:00",
                 start_checkout: item.data.mulaiPulang ?? "15:00:00",
                 end_checkout: item.data.selesaiPulang ?? "16:00:00",
                 grace_period_minutes: item.data.kompensasiWaktu ?? 0,
                 is_active: item.data.isActive ?? true,
-              }),
-            },
-          );
-          results.push(mapAstraSchedule(created, item.id));
-        }
-      }
-
-      return results;
+              },
+        };
+      });
+      return applyScheduleWrites(plan, schedules, astraScheduleBatchClient);
     }),
 
   // Toggle active status
@@ -436,17 +436,12 @@ export const jadwalRouter = createTRPCRouter({
       });
     }
 
-    const results = [];
-
-    for (const def of defaultSchedules) {
-      const existing = existingSchedules.find(
-        (s, idx) =>
-          s.id === String(def.id) ||
-          (s.hari ?? s.day_of_week)?.toLowerCase() === def.hari ||
-          idx + 1 === def.id,
-      );
-
-      const payload = {
+    const plan: ScheduleWrite[] = defaultSchedules.map((def) => ({
+      id: def.id,
+      // SAFETY: every defaultSchedules entry uses one of the seven literals
+      // of HARI_ENUM, so the assertion only narrows the literal union.
+      hari: def.hari as (typeof HARI_ENUM)[number],
+      payload: {
         day_of_week: def.hari,
         start_time: def.mulaiMasuk,
         end_time: def.selesaiMasuk,
@@ -454,30 +449,14 @@ export const jadwalRouter = createTRPCRouter({
         end_checkout: def.selesaiPulang,
         grace_period_minutes: def.kompensasiWaktu,
         is_active: def.isActive,
-      };
+      },
+    }));
 
-      if (existing) {
-        const updated = await astraRequest<AstraSchedule>(
-          `/v1/admin/schedules/${existing.id}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          },
-        );
-        results.push(mapAstraSchedule(updated, def.id));
-      } else {
-        const created = await astraRequest<AstraSchedule>(
-          "/v1/admin/schedules",
-          {
-            method: "POST",
-            body: JSON.stringify(payload),
-          },
-        );
-        results.push(mapAstraSchedule(created, def.id));
-      }
-    }
-
-    return results;
+    return applyScheduleWrites(
+      plan,
+      existingSchedules,
+      astraScheduleBatchClient,
+    );
   }),
 
   // Get statistics

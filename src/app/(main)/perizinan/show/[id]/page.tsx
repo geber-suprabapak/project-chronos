@@ -31,6 +31,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateOnly, isDateOnlyValue } from "~/lib/date-utils";
+import {
+  LEAVE_DETAIL_MESSAGES,
+  isRetryableLeaveDetailUiState,
+  leaveDetailUiState,
+} from "~/server/api/routers/perizinan-detail";
 
 // Helper function to format date
 // - Handles date-only strings (YYYY-MM-DD) without applying timezone shift
@@ -186,11 +191,16 @@ export default function ShowPerizinanPage() {
   const [forceFinishReason, setForceFinishReason] = useState("");
 
   const utils = api.useUtils();
+  // retry: false keeps dependency-failure handling deterministic (no silent
+  // background retries); recovery is user-driven through the explicit retry
+  // action, which refetches the same read-only query on the same boundary (C05).
   const {
     data: perizinan,
     isLoading,
     error,
-  } = api.perizinan.getById.useQuery({ id }, { enabled: !!id });
+    refetch,
+    isRefetching,
+  } = api.perizinan.getById.useQuery({ id }, { enabled: !!id, retry: false });
 
   const updateStatusMutation = api.perizinan.updateStatus.useMutation({
     onSuccess: (data) => {
@@ -272,20 +282,59 @@ export default function ShowPerizinanPage() {
 
   if (!id) return <div className="p-8 text-destructive">ID tidak valid.</div>;
   if (isLoading) return <SkeletonLayout />;
-  if (error)
+  if (error) {
+    // C05: upstream 404, 403, timeout/network, and 5xx stay distinguishable.
+    // Recoverable outcomes offer a retry that refetches the same read-only
+    // query; forbidden and not-found never offer one.
+    const uiState = leaveDetailUiState(error.data?.code);
+    if (uiState === "not_found") return <PerizinanDetailNotFound />;
+    const retryable = isRetryableLeaveDetailUiState(uiState);
     return (
-      <div className="p-8 text-destructive">
-        Terjadi kesalahan: {error.message}
+      <div className="p-8">
+        <Card className="mx-auto max-w-lg">
+          <CardHeader>
+            <CardTitle>
+              {uiState === "forbidden"
+                ? "Akses ditolak"
+                : "Layanan perizinan tidak tersedia"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {uiState === "forbidden"
+                ? LEAVE_DETAIL_MESSAGES.forbidden
+                : uiState === "unknown"
+                  ? LEAVE_DETAIL_MESSAGES.unknown
+                  : LEAVE_DETAIL_MESSAGES.dependency}
+            </p>
+            {retryable ? (
+              <Button
+                type="button"
+                onClick={() => void refetch()}
+                disabled={isRefetching}
+                data-testid="perizinan-detail-retry"
+              >
+                <RefreshCw
+                  className={isRefetching ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+                />
+                Coba Lagi
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     );
-  if (!perizinan)
-    return <div className="p-8">Data perizinan tidak ditemukan.</div>;
+  }
+  if (!perizinan) return <PerizinanDetailNotFound />;
 
   const isActionable = perizinan.approvalStatus === "pending";
   const user = perizinan.userProfile;
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] overflow-y-auto p-3 md:p-4 flex flex-col gap-3 md:gap-4">
+    <div
+      className="min-h-[calc(100dvh-4rem)] overflow-y-auto p-3 md:p-4 flex flex-col gap-3 md:gap-4"
+      data-testid="perizinan-detail-loaded"
+    >
       <div className="flex items-start gap-3">
         <Button
           type="button"
@@ -684,6 +733,14 @@ export default function ShowPerizinanPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function PerizinanDetailNotFound() {
+  return (
+    <div className="p-8" data-testid="perizinan-detail-not-found">
+      {LEAVE_DETAIL_MESSAGES.notFound}
     </div>
   );
 }
