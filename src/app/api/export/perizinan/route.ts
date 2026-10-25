@@ -4,7 +4,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
-import { astraRequest, AstraRequestError } from "~/lib/astra/client";
+import { AstraRequestError } from "~/lib/astra/client";
+import { fetchCompleteAstraExport } from "~/server/export/complete-astra-list";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
 import { formatLeaveCategory } from "~/server/api/routers/perizinan";
@@ -78,8 +79,8 @@ export async function GET(request: Request) {
   try {
     [leaveRequests, students] = await runWithRequestId(requestId, () =>
       Promise.all([
-        astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+        fetchCompleteAstraExport<AstraLeaveRequest>("/v1/admin/leave-requests"),
+        fetchCompleteAstraExport<AstraStudentProfile>("/v1/admin/students"),
       ]),
     );
   } catch (error) {

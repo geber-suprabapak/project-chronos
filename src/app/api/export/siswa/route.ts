@@ -4,7 +4,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
 import { requireExportAccess } from "~/server/auth/export-guard";
-import { astraRequest, AstraRequestError } from "~/lib/astra/client";
+import { AstraRequestError } from "~/lib/astra/client";
+import { fetchCompleteAstraExport } from "~/server/export/complete-astra-list";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
 import { getAsiaJakartaCurrentInfo } from "~/server/export/date-bounds";
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
   let students: AstraStudentProfile[];
   try {
     students = await runWithRequestId(requestId, () =>
-      astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+      fetchCompleteAstraExport<AstraStudentProfile>("/v1/admin/students"),
     );
   } catch (error) {
     const isTimeout = error instanceof AstraRequestError && error.isTimeout();

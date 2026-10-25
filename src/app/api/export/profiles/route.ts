@@ -4,7 +4,8 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { requireExportAccess } from "~/server/auth/export-guard";
 import { makeWorkbookMetadata, workbookToResponseBuffer } from "../utils";
-import { astraRequest, AstraRequestError } from "~/lib/astra/client";
+import { AstraRequestError } from "~/lib/astra/client";
+import { fetchCompleteAstraExport } from "~/server/export/complete-astra-list";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
 import { getAsiaJakartaCurrentInfo } from "~/server/export/date-bounds";
@@ -133,8 +134,8 @@ export async function GET(request: Request) {
   try {
     [students, staff] = await runWithRequestId(requestId, () =>
       Promise.all([
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
-        astraRequest<AstraStaffProfile[]>("/v1/admin/staff"),
+        fetchCompleteAstraExport<AstraStudentProfile>("/v1/admin/students"),
+        fetchCompleteAstraExport<AstraStaffProfile>("/v1/admin/staff"),
       ]),
     );
   } catch (error) {
