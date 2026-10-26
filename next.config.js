@@ -4,18 +4,6 @@
  */
 import "./src/env.js";
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-  "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://storage.lunaradev.my.id",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.tile.openstreetmap.org",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
 /** @type {import("next").NextConfig} */
 const config = {
   output: "standalone",
@@ -47,10 +35,7 @@ const config = {
             value: "max-age=31536000; includeSubDomains",
           },
           { key: "X-DNS-Prefetch-Control", value: "on" },
-          {
-            key: "Content-Security-Policy",
-            value: contentSecurityPolicy,
-          },
+          // CSP is set by proxy at runtime, so storage config is not frozen into the build.
         ],
       },
     ];

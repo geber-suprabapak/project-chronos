@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-011 — Storage image policy follows runtime configuration
+
+**Rule:** Proxy is the single CSP authority; permit the exact HTTP(S) origin from STORAGE_PUBLIC_URL in img-src. URL paths cannot add directives, credentials/non-HTTP schemes are rejected, and the build must not freeze a second conflicting CSP. Other source restrictions remain intact.
+**Evidence:** `src/lib/security/csp.ts`, `src/proxy.ts`, `src/env.js`, `next.config.js`, `tests/storage-csp.test.ts`.
+
 ## INV-CHRONOS-001 — Protected procedures require permitted Logto context
 
 **Rule:** Do not bypass tRPC authentication/role middleware for administration operations.
@@ -23,7 +28,7 @@
 ## INV-CHRONOS-005 — API routes authorize independently
 
 **Rule:** Middleware bypasses `/api/*`; each Route Handler and tRPC procedure must authenticate, enforce password-change state where relevant, and authorize the requested capability. UI hiding never replaces server enforcement.
-**Evidence:** `middleware.ts`, `src/server/api/trpc.ts`, `src/server/auth/export-guard.ts`, `src/app/api/astra/files/route.ts`.
+**Evidence:** `src/proxy.ts`, `src/server/api/trpc.ts`, `src/server/auth/export-guard.ts`, `src/app/api/astra/files/route.ts`.
 
 ## INV-CHRONOS-006 — Collection completeness is explicit
 

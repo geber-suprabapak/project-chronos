@@ -13,6 +13,8 @@ import {
   isDegradedLogtoOutcome,
 } from "~/lib/logto/outcome";
 import { createAstraRequestId } from "~/lib/astra/request-id";
+import { env } from "~/env.js";
+import { buildContentSecurityPolicy } from "~/lib/security/csp";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -45,17 +47,7 @@ const CANONICAL_SECURITY_HEADERS = {
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
   "X-DNS-Prefetch-Control": "on",
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com https://storage.lunaradev.my.id",
-    "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' https://*.tile.openstreetmap.org",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; "),
+  "Content-Security-Policy": buildContentSecurityPolicy(env.STORAGE_PUBLIC_URL),
 } satisfies Record<string, string>;
 
 function applySecurityHeaders(res: NextResponse): NextResponse {

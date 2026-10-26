@@ -24,6 +24,10 @@ export const env = createEnv({
     LOGTO_RESOURCE: z.string().optional(),
     LOGTO_POST_LOGOUT_REDIRECT_URI: z.string().url(),
     ASTRA_API_URL: z.string().url().default("http://localhost:3000"),
+    STORAGE_PUBLIC_URL: z
+      .string()
+      .url()
+      .default("https://storage.lunaradev.my.id"),
   },
 
   /**
@@ -50,6 +54,7 @@ export const env = createEnv({
     LOGTO_POST_LOGOUT_REDIRECT_URI:
       process.env["LOGTO_POST_LOGOUT_REDIRECT_URI"],
     ASTRA_API_URL: process.env["ASTRA_API_URL"],
+    STORAGE_PUBLIC_URL: process.env["STORAGE_PUBLIC_URL"],
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
