@@ -10,7 +10,11 @@ export const logtoConfig: LogtoNextConfig = {
   cookieSecret:
     env.LOGTO_COOKIE_SECRET ??
     "complex_password_at_least_32_characters_long_12345",
-  cookieSecure: env.NODE_ENV === "production",
+  // Produksi tetap default Secure; staging k8s over HTTP menonaktifkannya
+  // eksplisit via LOGTO_COOKIE_SECURE=false.
+  cookieSecure:
+    env.NODE_ENV === "production" &&
+    process.env.LOGTO_COOKIE_SECURE !== "false",
   scopes: [
     UserScope.Profile,
     UserScope.Email,
