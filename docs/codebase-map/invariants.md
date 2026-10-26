@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-012 — Accepted roster refreshes the server-rendered page
+
+**Rule:** A successful roster acceptance refreshes the current route so server-rendered student rows and statistics reflect the committed import. Preserve the accepted panel state to prevent duplicate submission; failed imports do not refresh or announce success.
+**Evidence:** `src/components/roster-import-panel.tsx`, `src/app/(main)/siswa/page.tsx`.
+
 ## INV-CHRONOS-011 — Storage image policy follows runtime configuration
 
 **Rule:** Proxy is the single CSP authority; permit the exact HTTP(S) origin from STORAGE_PUBLIC_URL in img-src. URL paths cannot add directives, credentials/non-HTTP schemes are rejected, and the build must not freeze a second conflicting CSP. Other source restrictions remain intact.

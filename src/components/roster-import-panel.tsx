@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -14,6 +15,7 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 export function RosterImportPanel() {
+  const router = useRouter();
   const periods = api.rosterImport.periods.useQuery();
   const preview = api.rosterImport.preview.useMutation();
   const accept = api.rosterImport.accept.useMutation();
@@ -61,7 +63,12 @@ export function RosterImportPanel() {
     if (!report?.id) return;
     accept.mutate(
       { reportId: report.id },
-      { onSuccess: () => setAccepted(true) },
+      {
+        onSuccess: () => {
+          setAccepted(true);
+          router.refresh();
+        },
+      },
     );
   }
 
