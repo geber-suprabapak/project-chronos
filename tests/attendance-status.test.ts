@@ -4,6 +4,7 @@ import {
   comparePerClassRows,
   PER_CLASS_STATUS_OPTIONS,
   resolvePerClassStatusRows,
+  filterPerClassStatusRows,
   type PerClassStudent,
 } from "../src/lib/attendance-status.ts";
 
@@ -35,6 +36,42 @@ function buckets(
 }
 
 describe("canonical per-class attendance status", () => {
+  it("shares status and trimmed name/NIS/absence search for UI and export", () => {
+    const rows = resolvePerClassStatusRows(
+      buckets({
+        hadir: [{ ...student("u1", "2", "Siswa Dummy"), nis: "24002" }],
+        sakit: [student("u2", "3", "Other")],
+      }),
+    );
+    assert.equal(filterPerClassStatusRows(rows, "Hadir", " DUMMY ").length, 1);
+    assert.equal(filterPerClassStatusRows(rows, "", "24002").length, 1);
+    assert.equal(filterPerClassStatusRows(rows, "", "3")[0]?.userId, "u2");
+    assert.equal(filterPerClassStatusRows(rows, "Sakit", "24002").length, 0);
+  });
+  it("keeps distinct canonical roster-only students without inventing user identities", () => {
+    const rows = resolvePerClassStatusRows(
+      buckets({
+        tidakHadir: [
+          { ...student("unused"), userId: null, studentId: "s-a" },
+          { ...student("unused"), userId: null, studentId: "s-b" },
+        ],
+      }),
+    );
+    assert.equal(rows.length, 2);
+    assert.deepEqual(
+      rows.map((row) => row.studentId),
+      ["s-a", "s-b"],
+    );
+    assert.ok(rows.every((row) => row.userId === null));
+    assert.throws(
+      () =>
+        resolvePerClassStatusRows(
+          buckets({ tidakHadir: [{ ...student("unused"), userId: null }] }),
+        ),
+      /no canonical identity/,
+    );
+  });
+
   it("keeps every canonical bucket label distinct", () => {
     const rows = resolvePerClassStatusRows(
       buckets({

@@ -18,6 +18,16 @@ approved. Attendance and leave categories use that same membership. Sakit takes
 precedence over other approved leave, and approved leave takes precedence over
 check-in. Missing/ambiguous active periods and source failures raise errors.
 
+Per-class summaries use that same daily assessment, restricted by the active
+period's canonical class ID. Approved leave spans include the effective final
+date; a force-finished period cannot extend to the original end. Roster-only
+students remain distinct by Student ID. The per-class page and
+`/api/export/class-attendance` share status/name/NIS/absence-number filtering;
+XLSX/PDF export one assessed row per student with No, Nama, NIS, Kelas and Status.
+This is distinct from the raw event export's separate check-in/check-out records.
+Class summaries show current physical attendance immediately; monthly recap
+cutoff rules remain specific to monthly assessment.
+
 Client requests and the daily server default use the Asia/Jakarta school day.
 The chart changes its query date at WIB midnight and on focus/visibility wake.
 

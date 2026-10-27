@@ -27,6 +27,9 @@ const student = (index: number) => ({
   student_id: `s-${index}`,
   user_id: `u-${index}`,
   lifecycle_status: "approved",
+  full_name: `Student ${index}`,
+  class_name: "X PPLG 1",
+  nis: `24${index}`,
 });
 const enrollment = (index: number) => ({
   ...student(index),
@@ -64,6 +67,10 @@ function sources(
   const requests: URL[] = [];
   const data: Record<string, unknown[]> = {
     "academic-periods": [period],
+    classes: [
+      { id: "class", name: "X PPLG 1" },
+      { id: "other", name: "X PPLG 10" },
+    ],
     students: [student(0)],
     enrollments: [enrollment(0)],
     "attendance/export": [],
@@ -117,6 +124,107 @@ const leave = (index: number, category = "pergi") => ({
 });
 
 describe("daily summary membership and WIB defaults", () => {
+  it("rejects impossible class-summary dates before contacting sources", async () => {
+    const requests = sources();
+    await assert.rejects(
+      caller.getClassAttendanceSummary({
+        className: "X PPLG 1",
+        date: "2026-02-30",
+      }),
+      { code: "BAD_REQUEST" },
+    );
+    assert.deepEqual(requests, []);
+  });
+  it("class summary shares canonical roster membership, preserves unbound students and inclusive effective leave", async () => {
+    const unbound = (id: string) => ({
+      student_id: id,
+      user_id: null,
+      full_name: id,
+      class_name: "X PPLG 1",
+    });
+    sources({
+      students: [
+        student(0),
+        student(1),
+        unbound("roster-a"),
+        unbound("roster-b"),
+        { ...student(4), class_name: "X PPLG 10" },
+        { ...student(5), lifecycle_status: "pending" },
+      ],
+      enrollments: [
+        enrollment(0),
+        enrollment(0),
+        enrollment(1),
+        ...["roster-a", "roster-b"].map((id) => ({
+          ...enrollment(0),
+          student_id: id,
+          user_id: null,
+        })),
+        { ...enrollment(4), class_id: "other" },
+        enrollment(5),
+      ],
+      "attendance/export": [
+        arrival(0),
+        { ...arrival(0), status: "Pulang", action_type: "check_out" },
+        arrival(1),
+        arrival(4),
+        arrival(5),
+      ],
+      "leave-requests": [
+        { ...leave(1, "sakit"), original_end_date: "2026-10-09" },
+        { ...leave(0, "sakit"), approval_status: "pending", status: true },
+      ],
+    });
+    const summary = await caller.getClassAttendanceSummary({
+      className: "X PPLG 1",
+      date: "2026-10-06",
+    });
+    assert.equal(summary.totalStudents, 4);
+    assert.deepEqual(summary.summary, {
+      hadir: 1,
+      terlambat: 0,
+      sakit: 1,
+      izin: 0,
+      tidakHadir: 2,
+    });
+    assert.deepEqual(
+      summary.details.tidakHadir.map((row) => row.studentId).sort(),
+      ["roster-a", "roster-b"],
+    );
+    assert.ok(summary.details.tidakHadir.every((row) => row.userId === null));
+    assert.equal(
+      (await caller.getTodaySummary({ date: "2026-10-06" })).totalUsers,
+      5,
+    );
+    assert.equal(
+      (
+        await caller.getClassAttendanceSummary({
+          className: "X PPLG 1",
+          date: "2026-10-07",
+        })
+      ).summary.sakit,
+      1,
+    );
+    assert.equal(
+      (
+        await caller.getClassAttendanceSummary({
+          className: "X PPLG 1",
+          date: "2026-10-08",
+        })
+      ).summary.sakit,
+      0,
+    );
+    assert.equal(
+      (
+        await caller.getClassAttendanceSummary({
+          className: "Missing",
+          date: "2026-10-06",
+        })
+      ).totalStudents,
+      0,
+    );
+  });
+
   it("counts the 956 snapshot roster once and uses it for every category", async () => {
     const current = Array.from({ length: 956 }, (_, index) => student(index));
     const students = [

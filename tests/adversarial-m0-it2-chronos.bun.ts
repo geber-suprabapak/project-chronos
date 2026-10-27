@@ -438,11 +438,46 @@ describe("Empirical Challenge M0 Iteration 2: Chronos Attendance Taxonomy & Inva
           "X-Astra-Contract-Version": "v1",
           "X-Request-ID": "req-3",
         };
+        if (urlStr.includes("/v1/admin/academic-periods"))
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: [{ id: "period", is_active: true }],
+              meta: { request_id: "req-3" },
+            }),
+            { status: 200, headers },
+          );
+        if (urlStr.includes("/v1/admin/classes"))
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: [{ id: "class", name: "XII RPL 1" }],
+              meta: { request_id: "req-3" },
+            }),
+            { status: 200, headers },
+          );
+        if (urlStr.includes("/v1/admin/enrollments"))
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: students.map((student) => ({
+                user_id: student.user_id,
+                academic_period_id: "period",
+                class_id: "class",
+                status: "active",
+              })),
+              meta: { request_id: "req-3" },
+            }),
+            { status: 200, headers },
+          );
         if (urlStr.includes("/v1/admin/students")) {
           return new Response(
             JSON.stringify({
               success: true,
-              data: students,
+              data: students.map((student) => ({
+                ...student,
+                lifecycle_status: "approved",
+              })),
               meta: { request_id: "req-3" },
             }),
             { status: 200, headers },

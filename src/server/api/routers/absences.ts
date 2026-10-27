@@ -11,8 +11,15 @@ import {
   astraRequest,
 } from "~/lib/astra/client";
 import { normalizeStudentRows } from "~/lib/class-names";
-import { normalizeDateOnly, schoolDate } from "~/lib/date-utils";
-import { getDailyAttendanceSummary } from "~/server/attendance/daily-summary";
+import {
+  isDateOnlyValue,
+  normalizeDateOnly,
+  schoolDate,
+} from "~/lib/date-utils";
+import {
+  getDailyAttendanceSummary,
+  getClassAttendanceSummary,
+} from "~/server/attendance/daily-summary";
 import {
   fetchAllAttendanceRecords,
   fetchAttendanceRecordById,
@@ -557,22 +564,13 @@ export const absencesRouter = createTRPCRouter({
   getClassAttendanceSummary: protectedProcedure
     .input(
       z.object({
-        className: z.string().min(1),
-        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+        className: z.string().trim().min(1),
+        date: z.string().refine(isDateOnlyValue),
       }),
     )
     .query(async ({ input }) => {
-      let studentPayload: AstraStudentProfile[];
-      let attendances: AstraAttendanceRecord[];
-      let leaveRequests: AstraLeaveRequest[];
       try {
-        [studentPayload, attendances, leaveRequests] = await Promise.all([
-          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
-          fetchAllAttendanceRecords<AstraAttendanceRecord>({
-            date: input.date,
-          }),
-          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
-        ]);
+        return await getClassAttendanceSummary(input);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({
@@ -581,131 +579,6 @@ export const absencesRouter = createTRPCRouter({
           cause: error,
         });
       }
-
-      const allStudents = normalizeStudentRows(studentPayload);
-
-      const classQuery = input.className.toLowerCase();
-      const studentsInClass = allStudents
-        .filter((s): s is typeof s & { user_id: string } => s.user_id !== null)
-        .filter((s) => (s.class_name ?? "").toLowerCase().includes(classQuery))
-        .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
-
-      const studentUserIds = new Set(studentsInClass.map((s) => s.user_id));
-
-      if (studentsInClass.length === 0) {
-        return {
-          date: input.date,
-          className: input.className,
-          totalStudents: 0,
-          summary: {
-            hadir: 0,
-            terlambat: 0,
-            sakit: 0,
-            izin: 0,
-            tidakHadir: 0,
-          },
-          details: {
-            hadir: [],
-            terlambat: [],
-            sakit: [],
-            izin: [],
-            tidakHadir: [],
-          },
-        };
-      }
-
-      const classAbsences = attendances.filter(
-        (a) =>
-          normalizeAttendanceDate(a.date) === input.date &&
-          studentUserIds.has(a.user_id),
-      );
-
-      const classPerizinan = leaveRequests.filter(
-        (p) =>
-          normalizeDateOnly(p.date) === input.date &&
-          studentUserIds.has(p.user_id) &&
-          (p.approval_status === "approved" || p.status === true),
-      );
-
-      const hadirSet = new Set<string>();
-      const terlambatSet = new Set<string>();
-      const sakitSet = new Set<string>();
-      const izinSet = new Set<string>();
-
-      // 1. Process approved leave requests first (ADR-002 precedence rule)
-      for (const p of classPerizinan) {
-        const userId = p.user_id;
-        if (p.category === "sakit") {
-          sakitSet.add(userId);
-        } else {
-          izinSet.add(userId);
-        }
-      }
-
-      // 2. Process attendance records with disjoint sets, leave precedence, and no double-counting
-      for (const a of classAbsences) {
-        const userId = a.user_id;
-        // Leave precedence: students with approved leave are already in sakitSet or izinSet
-        if (sakitSet.has(userId) || izinSet.has(userId)) {
-          continue;
-        }
-
-        if (a.status === "Terlambat") {
-          hadirSet.delete(userId);
-          terlambatSet.add(userId);
-        } else if (a.status === "Hadir" || a.status === "Datang") {
-          if (!terlambatSet.has(userId)) {
-            hadirSet.add(userId);
-          }
-        }
-        // Pulang and Alpha rows are excluded from presence sets
-      }
-
-      // 3. Union of all accounted for students includes terlambatSet
-      const allAccountedFor = new Set([
-        ...hadirSet,
-        ...terlambatSet,
-        ...sakitSet,
-        ...izinSet,
-      ]);
-      const tidakHadirList = studentsInClass.filter(
-        (s) => !allAccountedFor.has(s.user_id),
-      );
-
-      const getStudentDetails = (userIds: Set<string>) =>
-        studentsInClass
-          .filter((s) => userIds.has(s.user_id))
-          .map((s) => ({
-            userId: s.user_id,
-            nis: s.nis ?? null,
-            fullName: s.full_name ?? null,
-            absenceNumber: s.absence_number ?? null,
-          }));
-
-      return {
-        date: input.date,
-        className: input.className,
-        totalStudents: studentsInClass.length,
-        summary: {
-          hadir: hadirSet.size,
-          terlambat: terlambatSet.size,
-          sakit: sakitSet.size,
-          izin: izinSet.size,
-          tidakHadir: tidakHadirList.length,
-        },
-        details: {
-          hadir: getStudentDetails(hadirSet),
-          terlambat: getStudentDetails(terlambatSet),
-          sakit: getStudentDetails(sakitSet),
-          izin: getStudentDetails(izinSet),
-          tidakHadir: tidakHadirList.map((s) => ({
-            userId: s.user_id,
-            nis: s.nis ?? null,
-            fullName: s.full_name ?? null,
-            absenceNumber: s.absence_number ?? null,
-          })),
-        },
-      };
     }),
 });
 

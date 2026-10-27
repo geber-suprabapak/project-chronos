@@ -2,6 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { fetchCompleteList } from "~/lib/astra/complete-list";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { fetchAllAttendanceRecords } from "~/server/api/routers/attendance-source";
+import { normalizeStudentRows } from "~/lib/class-names";
+import {
+  perClassStudentKey,
+  type PerClassStudent,
+  type PerClassSummaryBuckets,
+} from "~/lib/attendance-status";
 
 interface Period {
   id: string;
@@ -13,12 +19,17 @@ interface Student {
   student_id?: string | null;
   user_id?: string | null;
   lifecycle_status?: string | null;
+  full_name?: string | null;
+  email?: string | null;
+  nis?: string | null;
+  absence_number?: string | null;
 }
 
 interface Enrollment extends Student {
   academic_period_id?: string | null;
   class_id?: string | null;
   status: string;
+  absence_number?: string | null;
 }
 
 interface Attendance extends Student {
@@ -37,7 +48,11 @@ interface Leave extends Student {
   category: string;
 }
 
-export async function getDailyAttendanceSummary(date: string) {
+type ClassSummaryDetails = {
+  [Bucket in keyof PerClassSummaryBuckets]: PerClassStudent[];
+};
+
+async function getDailyAttendanceState(date: string, className?: string) {
   // Astra is tenant scoped. A unique active period identifies this school's
   // roster; an absent or ambiguous period must not masquerade as an empty one.
   const periods = await fetchCompleteList<Period>(
@@ -59,12 +74,25 @@ export async function getDailyAttendanceSummary(date: string) {
     academic_period_id: period.id,
     status: "active",
   });
-  const [students, enrollments, attendances, leaves] = await Promise.all([
-    fetchCompleteList<Student>("/v1/admin/students"),
-    fetchCompleteList<Enrollment>(`/v1/admin/enrollments?${enrollmentQuery}`),
-    fetchAllAttendanceRecords<Attendance>({ date }),
-    fetchCompleteList<Leave>(`/v1/admin/leave-requests?${range}`),
-  ]);
+  const [rawStudents, enrollments, attendances, leaves, classes] =
+    await Promise.all([
+      fetchCompleteList<Student>("/v1/admin/students"),
+      fetchCompleteList<Enrollment>(`/v1/admin/enrollments?${enrollmentQuery}`),
+      fetchAllAttendanceRecords<Attendance>({ date }),
+      fetchCompleteList<Leave>(`/v1/admin/leave-requests?${range}`),
+      className
+        ? fetchCompleteList<{ id: string; name: string }>(
+            `/v1/admin/classes?academic_period_id=${encodeURIComponent(period.id)}`,
+          )
+        : Promise.resolve([]),
+    ]);
+
+  const students = normalizeStudentRows(rawStudents);
+  const classIds = new Set(
+    classes
+      .filter((c) => c.name.toLowerCase() === className?.trim().toLowerCase())
+      .map((c) => c.id),
+  );
 
   const byStudent = new Map<string, Student>();
   const byUser = new Map<string, Student>();
@@ -72,14 +100,15 @@ export async function getDailyAttendanceSummary(date: string) {
     if (student.student_id) byStudent.set(student.student_id, student);
     if (student.user_id) byUser.set(student.user_id, student);
   }
-  const roster = new Set<string>();
+  const roster = new Map<string, PerClassStudent>();
   const studentKeys = new Map<string, string>();
   const userKeys = new Map<string, string>();
   for (const enrollment of enrollments) {
     if (
       enrollment.status !== "active" ||
       enrollment.academic_period_id !== period.id ||
-      !enrollment.class_id
+      !enrollment.class_id ||
+      (className && !classIds.has(enrollment.class_id))
     )
       continue;
     const student = enrollment.student_id
@@ -95,8 +124,16 @@ export async function getDailyAttendanceSummary(date: string) {
     if (student.user_id && student.lifecycle_status !== "approved") continue;
     const studentId = student.student_id ?? enrollment.student_id;
     const userId = student.user_id ?? enrollment.user_id;
-    const key = studentId ? `student:${studentId}` : `user:${userId}`;
-    roster.add(key);
+    const detail: PerClassStudent = {
+      studentId: studentId ?? null,
+      userId: userId ?? null,
+      fullName: student.full_name ?? student.email ?? null,
+      nis: student.nis ?? null,
+      absenceNumber:
+        enrollment.absence_number ?? student.absence_number ?? null,
+    };
+    const key = perClassStudentKey(detail);
+    roster.set(key, detail);
     if (studentId) studentKeys.set(studentId, key);
     if (userId) userKeys.set(userId, key);
   }
@@ -130,6 +167,7 @@ export async function getDailyAttendanceSummary(date: string) {
     }
   }
   const arrived = new Set<string>();
+  const late = new Set<string>();
   const departed = new Set<string>();
   for (const attendance of attendances) {
     const key = identityKey(attendance);
@@ -143,9 +181,17 @@ export async function getDailyAttendanceSummary(date: string) {
     if (
       attendance.action_type !== "check_out" &&
       ["Hadir", "Datang", "Terlambat"].includes(attendance.status)
-    )
+    ) {
       arrived.add(key);
+      if (attendance.status === "Terlambat") late.add(key);
+    }
   }
+  return { roster, arrived, late, departed, sick, permitted };
+}
+
+export async function getDailyAttendanceSummary(date: string) {
+  const { roster, arrived, departed, sick, permitted } =
+    await getDailyAttendanceState(date);
   const checkedOut = [...arrived].filter((key) => departed.has(key)).length;
   return {
     date,
@@ -156,5 +202,44 @@ export async function getDailyAttendanceSummary(date: string) {
     belumAbsenPulang: arrived.size - checkedOut,
     izin: permitted.size,
     sakit: sick.size,
+  };
+}
+
+export async function getClassAttendanceSummary(input: {
+  date: string;
+  className: string;
+}) {
+  const { roster, arrived, late, sick, permitted } =
+    await getDailyAttendanceState(input.date, input.className);
+  const details: ClassSummaryDetails = {
+    hadir: [],
+    terlambat: [],
+    sakit: [],
+    izin: [],
+    tidakHadir: [],
+  };
+  for (const [key, student] of roster) {
+    const bucket = sick.has(key)
+      ? "sakit"
+      : permitted.has(key)
+        ? "izin"
+        : late.has(key)
+          ? "terlambat"
+          : arrived.has(key)
+            ? "hadir"
+            : "tidakHadir";
+    details[bucket].push(student);
+  }
+  return {
+    ...input,
+    totalStudents: roster.size,
+    summary: {
+      hadir: details.hadir.length,
+      terlambat: details.terlambat.length,
+      sakit: details.sakit.length,
+      izin: details.izin.length,
+      tidakHadir: details.tidakHadir.length,
+    },
+    details,
   };
 }

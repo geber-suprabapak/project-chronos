@@ -35,6 +35,13 @@
 **Entry points:** `src/app/api/export/`, `src/app/api/export/utils.ts`.
 **Depends on:** Logto access checks and the administration routers' Astra-backed data.
 
+## Daily attendance assessment
+
+**Purpose:** Resolve the sole active-period enrollment roster, canonical student identity, effective approved leave and physical check-in status for dashboard and class summaries.
+**Entry points:** `src/server/attendance/daily-summary.ts`, `src/lib/attendance-status.ts`.
+**Used by:** `absencesRouter`, the per-class page and `/api/export/class-attendance` through its server-side generator `src/server/export/class-attendance.ts`.
+**Boundary:** Roster-only students use Student IDs with nullable User IDs; shared filters operate on the full class assessment before UI pagination or export generation.
+
 ## Astra-facing helpers
 
 **Purpose:** Forward supported management/file behavior through Astra.

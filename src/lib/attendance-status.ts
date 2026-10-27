@@ -12,10 +12,17 @@ export type PerClassAttendanceStatus =
   "Hadir" | "Terlambat" | "Sakit" | "Izin" | "Belum Presensi";
 
 export interface PerClassStudent {
-  userId: string;
+  studentId?: string | null;
+  userId: string | null;
   nis: string | null;
   fullName: string | null;
   absenceNumber: string | null;
+}
+
+export function perClassStudentKey(student: PerClassStudent): string {
+  if (student.studentId) return `student:${student.studentId}`;
+  if (student.userId) return `user:${student.userId}`;
+  throw new Error("Student summary row has no canonical identity.");
 }
 
 export interface PerClassSummaryBuckets {
@@ -62,15 +69,31 @@ export type PerClassStatusRow = PerClassStudent & {
 export function resolvePerClassStatusRows(
   buckets: PerClassSummaryBuckets,
 ): PerClassStatusRow[] {
-  const byUserId = new Map<string, PerClassStatusRow>();
+  const byIdentity = new Map<string, PerClassStatusRow>();
 
   for (const [bucket, status] of BUCKET_PRECEDENCE) {
     for (const student of buckets[bucket]) {
-      byUserId.set(student.userId, { ...student, status });
+      byIdentity.set(perClassStudentKey(student), { ...student, status });
     }
   }
 
-  return Array.from(byUserId.values()).sort(comparePerClassRows);
+  return Array.from(byIdentity.values()).sort(comparePerClassRows);
+}
+
+export function filterPerClassStatusRows<Row extends PerClassStatusRow>(
+  rows: readonly Row[],
+  status: string,
+  query: string,
+): Row[] {
+  const q = query.trim().toLowerCase();
+  return rows.filter(
+    (row) =>
+      (!status || row.status === status) &&
+      (!q ||
+        [row.fullName, row.nis, row.absenceNumber].some((value) =>
+          value?.toLowerCase().includes(q),
+        )),
+  );
 }
 
 /** Order rows by absence number, then by full name. */

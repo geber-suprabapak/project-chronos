@@ -5,6 +5,8 @@ import { api } from "~/trpc/react";
 import {
   PER_CLASS_STATUS_OPTIONS,
   resolvePerClassStatusRows,
+  perClassStudentKey,
+  filterPerClassStatusRows,
   type PerClassAttendanceStatus,
 } from "~/lib/attendance-status";
 import { schoolDate } from "~/lib/date-utils";
@@ -100,18 +102,7 @@ export default function AbsensiPerKelasPage() {
   }, [attendanceSummary, date, selectedClass]);
 
   const filteredRows = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-
-    return rows.filter((r) => {
-      const matchStatus = !status || r.status === status;
-      if (!matchStatus) return false;
-      if (!q) return true;
-
-      const name = (r.fullName ?? "").toLowerCase();
-      const nis = (r.nis ?? "").toLowerCase();
-      const noAbsen = String(r.absenceNumber ?? "").toLowerCase();
-      return name.includes(q) || nis.includes(q) || noAbsen.includes(q);
-    });
+    return filterPerClassStatusRows(rows, status, searchQuery);
   }, [rows, searchQuery, status]);
 
   const pagedRows = useMemo(() => {
@@ -146,17 +137,13 @@ export default function AbsensiPerKelasPage() {
     setPage(1);
   };
 
-  // Build export URL with date range
-  const exportParams = new URLSearchParams();
-  if (selectedClass) exportParams.set("className", selectedClass);
-  if (date) {
-    exportParams.set("startDate", date);
-    exportParams.set("endDate", date);
-  }
-  const exportUrl = `/api/export/absences?${exportParams.toString()}`;
+  const exportParams = new URLSearchParams({ className: selectedClass, date });
+  if (status) exportParams.set("status", status);
+  if (searchQuery.trim()) exportParams.set("query", searchQuery.trim());
+  const exportUrl = `/api/export/class-attendance?${exportParams.toString()}`;
   const pdfParams = new URLSearchParams(exportParams);
   pdfParams.set("format", "pdf");
-  const pdfExportUrl = `/api/export/absences?${pdfParams.toString()}`;
+  const pdfExportUrl = `/api/export/class-attendance?${pdfParams.toString()}`;
 
   return (
     <div className="flex flex-1 flex-col gap-3 p-2 sm:p-3 md:p-4">
@@ -392,7 +379,7 @@ export default function AbsensiPerKelasPage() {
                     </TableRow>
                   ) : (
                     pagedRows.map((row) => (
-                      <TableRow key={row.userId}>
+                      <TableRow key={perClassStudentKey(row)}>
                         <TableCell className="font-mono">
                           {row.absenceNumber ?? "-"}
                         </TableCell>
@@ -428,7 +415,7 @@ export default function AbsensiPerKelasPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredRows.map((row) => (
-                    <TableRow key={`${row.userId}-pdf`}>
+                    <TableRow key={`${perClassStudentKey(row)}-pdf`}>
                       <TableCell>{row.absenceNumber ?? "-"}</TableCell>
                       <TableCell>{row.fullName ?? "-"}</TableCell>
                       <TableCell>{row.nis ?? "-"}</TableCell>

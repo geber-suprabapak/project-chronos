@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-015 — Class summary and exports share canonical daily assessment
+
+**Rule:** Dashboard/class membership comes from active enrollments in the sole active period. Class names resolve to canonical class IDs; pending/disabled linked accounts are excluded, while roster-only students retain nullable User IDs and distinct Student IDs. Approved leave applies through its inclusive effective end and overrides physical check-in; late check-ins remain distinct and checkout does not create another student row. UI and authenticated class XLSX/PDF use the same full-class assessment and status/name/NIS/absence filtering before pagination. Failed or incomplete sources cannot produce an empty success artifact.
+**Evidence:** `src/server/attendance/daily-summary.ts`, `src/lib/attendance-status.ts`, `src/app/(main)/absensi/perkelas/page.tsx`, `src/app/api/export/class-attendance/route.ts`, `tests/daily-summary.bun.ts`, `tests/class-attendance-export.bun.ts`.
+
 ## INV-CHRONOS-014 — Monthly recap period selection is deterministic
 
 **Rule:** Implicit monthly recap selects the unique active period overlapping the requested month, or the unique overlapping historical period when none is active. Ambiguous candidates require an explicit academicPeriodId and fail with CONFLICT; a missing period fails with NOT_FOUND. Explicit period selection remains available. UI and workbook exports use the same source selection; exports return JSON 409/404 without a file for these errors.
