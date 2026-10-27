@@ -25,7 +25,7 @@ import {
   dashboardDataUiState,
   type DashboardDataUiState,
 } from "~/server/api/routers/dashboard-data-outcome";
-import { formatDateOnly } from "~/lib/date-utils";
+import { formatDateOnly, schoolDate } from "~/lib/date-utils";
 
 /**
  * Helper: Format date to readable Indonesian format
@@ -139,7 +139,7 @@ async function DashboardContent() {
   // A failing Astra-backed read is classified and rendered as the
   // application-owned error/retry state (C09) instead of escaping as an
   // uncaught rejection or being presented as an empty table.
-  const todayStr = new Date().toISOString().split("T")[0]!; // YYYY-MM-DD (UTC)
+  const todayStr = schoolDate();
   let failureState: DashboardDataUiState | null = null;
   let perizinanToday: Awaited<ReturnType<typeof api.perizinan.list>> | null =
     null;

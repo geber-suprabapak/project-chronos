@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-016 — Dashboard pending leave uses the school day
+
+**Rule:** The dashboard's today-only pending-leave query uses the shared `schoolDate` helper in Asia/Jakarta, including WIB midnight and month/year boundaries, independently of the server timezone. Older pending requests remain in the collection; they are not today's widget rows. Dependency failures still render the existing error state rather than an empty result.
+**Evidence:** `src/app/(main)/dashboard/page.tsx`, `src/lib/date-utils.ts`, `tests/dashboard-pending-date.bun.ts`, `tests/date-utils.test.ts`.
+
 ## INV-CHRONOS-015 — Class summary and exports share canonical daily assessment
 
 **Rule:** Dashboard/class membership comes from active enrollments in the sole active period. Class names resolve to canonical class IDs; pending/disabled linked accounts are excluded, while roster-only students retain nullable User IDs and distinct Student IDs. Approved leave applies through its inclusive effective end and overrides physical check-in; late check-ins remain distinct and checkout does not create another student row. UI and authenticated class XLSX/PDF use the same full-class assessment and status/name/NIS/absence filtering before pagination. Failed or incomplete sources cannot produce an empty success artifact.
