@@ -60,12 +60,24 @@ export async function fetchMonthlyRecapSources(
   )
     .toISOString()
     .slice(0, 10);
+  const overlapping = periods.filter(
+    (candidate) =>
+      candidate.start_date <= monthEnd && candidate.end_date >= monthStart,
+  );
+  const active = overlapping.filter(
+    (candidate) => candidate.is_active === true,
+  );
+  const candidates = active.length > 0 ? active : overlapping;
+  if (!academicPeriodId && candidates.length > 1) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "Multiple academic periods match the selected month. Specify academicPeriodId.",
+    });
+  }
   const period = academicPeriodId
     ? periods.find((candidate) => candidate.id === academicPeriodId)
-    : periods.find(
-        (candidate) =>
-          candidate.start_date <= monthEnd && candidate.end_date >= monthStart,
-      );
+    : candidates[0];
   if (!period) {
     throw new TRPCError({
       code: "NOT_FOUND",

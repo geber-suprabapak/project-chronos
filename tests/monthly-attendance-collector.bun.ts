@@ -54,6 +54,97 @@ function response(data: unknown, pagination?: Record<string, unknown>) {
 }
 
 describe("Monthly recap source collection", () => {
+  it("selects the unique active overlapping period and rejects ambiguous implicit selection", async () => {
+    const originalFetch = globalThis.fetch;
+    const inactive = { ...period, is_active: false };
+    const active = { ...period, id: "active-period", is_active: true };
+    let available = [inactive, active];
+    const scopedPeriods: Array<string | null> = [];
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url,
+      );
+      if (url.pathname === "/v1/admin/academic-periods")
+        return response(available);
+      if (url.searchParams.has("academic_period_id"))
+        scopedPeriods.push(url.searchParams.get("academic_period_id"));
+      if (url.pathname === "/v1/admin/attendance/export")
+        return response([], { limit: 0, offset: 0, has_more: false });
+      assert.ok(
+        [
+          "classes",
+          "students",
+          "enrollments",
+          "schedules",
+          "calendar-exceptions",
+          "leave-requests",
+        ].some((resource) => url.pathname === `/v1/admin/${resource}`),
+      );
+      return response([]);
+    };
+
+    try {
+      for (const candidates of [
+        [inactive, active],
+        [active, inactive],
+      ]) {
+        available = candidates;
+        scopedPeriods.length = 0;
+        assert.equal(
+          (await fetchMonthlyRecapSources("2026-09")).period.id,
+          active.id,
+        );
+        assert.deepEqual(scopedPeriods, Array(4).fill(active.id));
+      }
+      assert.equal(
+        (await fetchMonthlyRecapSources("2026-09", inactive.id)).period.id,
+        inactive.id,
+      );
+
+      available = [
+        inactive,
+        { ...active, start_date: "2027-01-01", end_date: "2027-06-30" },
+      ];
+      assert.equal(
+        (await fetchMonthlyRecapSources("2026-09")).period.id,
+        inactive.id,
+      );
+
+      for (const candidates of [
+        [inactive, { ...inactive, id: "other-inactive" }],
+        [active, { ...active, id: "other-active" }],
+      ]) {
+        available = candidates;
+        scopedPeriods.length = 0;
+        await assert.rejects(fetchMonthlyRecapSources("2026-09"), {
+          code: "CONFLICT",
+        });
+        assert.deepEqual(scopedPeriods, []);
+        assert.equal(
+          (await fetchMonthlyRecapSources("2026-09", candidates[0]!.id)).period
+            .id,
+          candidates[0]!.id,
+        );
+      }
+      available = [inactive];
+      for (const [month, id] of [
+        ["2027-09", undefined],
+        ["2026-09", "missing"],
+      ] as const) {
+        await assert.rejects(fetchMonthlyRecapSources(month, id), {
+          code: "NOT_FOUND",
+        });
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("collects every class page and rejects an incomplete non-final page", async () => {
     const originalFetch = globalThis.fetch;
     let incomplete = false;

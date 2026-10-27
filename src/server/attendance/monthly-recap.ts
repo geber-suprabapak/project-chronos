@@ -6,6 +6,7 @@ export type DailyAttendanceState = (typeof DAILY_ATTENDANCE_STATES)[number];
 export interface MonthlyRecapPeriod {
   id: string;
   name?: string | null;
+  is_active?: boolean | null;
   start_date: string;
   end_date: string;
 }

@@ -68,6 +68,48 @@ function notFoundResponse() {
 }
 
 describe("Monthly attendance workbook export route", () => {
+  it("returns a truthful JSON error for missing or ambiguous academic periods", async () => {
+    const originalFetch = globalThis.fetch;
+    const period = {
+      id: "period-1",
+      start_date: "2026-07-01",
+      end_date: "2026-12-31",
+      is_active: true,
+    };
+    let periods = [period, { ...period, id: "period-2" }];
+    globalThis.fetch = async (input) => {
+      const url = new URL(
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url,
+      );
+      assert.equal(url.pathname, "/v1/admin/academic-periods");
+      return response(periods);
+    };
+    try {
+      for (const status of [409, 404]) {
+        if (status === 404) periods = [];
+        const result = await GET(
+          new Request(
+            "http://localhost:3000/api/export/monthly-attendance?month=2026-09",
+          ) as never,
+        );
+        assert.equal(result.status, status);
+        assert.match(
+          result.headers.get("Content-Type") ?? "",
+          /application\/json/,
+        );
+        assert.equal(result.headers.get("Content-Disposition"), null);
+        assert.equal(result.headers.get("Cache-Control"), "no-store");
+        assert.ok((await result.json()).error);
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("rejects invalid month input before querying Astra", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async () => {

@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { TRPCError } from "@trpc/server";
+import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 import { AstraRequestError } from "~/lib/astra/client";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
@@ -92,7 +94,12 @@ export async function GET(request: NextRequest) {
       error instanceof Error
         ? error.message
         : "Gagal mengekspor rekap absensi bulanan";
-    const status = error instanceof AstraRequestError ? error.status : 502;
+    const status =
+      error instanceof AstraRequestError
+        ? error.status
+        : error instanceof TRPCError
+          ? getHTTPStatusCodeFromError(error)
+          : 502;
     writeOperationalEvent({
       event: "export.failure",
       outcome: "failure",

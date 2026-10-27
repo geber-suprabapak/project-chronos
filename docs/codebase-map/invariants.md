@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-014 — Monthly recap period selection is deterministic
+
+**Rule:** Implicit monthly recap selects the unique active period overlapping the requested month, or the unique overlapping historical period when none is active. Ambiguous candidates require an explicit academicPeriodId and fail with CONFLICT; a missing period fails with NOT_FOUND. Explicit period selection remains available. UI and workbook exports use the same source selection; exports return JSON 409/404 without a file for these errors.
+**Evidence:** `src/server/api/routers/monthly-attendance.ts`, `src/app/api/export/monthly-attendance/route.ts`, `tests/monthly-attendance-collector.bun.ts`, `tests/monthly-attendance-export-route.bun.ts`.
+
 ## INV-CHRONOS-013 — Raw attendance exports honor visible filters
 
 **Rule:** `/absensi` sends status and trimmed search together with class/date filters to both XLSX and PDF exports. The authoritative collector applies the same name/email/NIS matching and legacy Datang/Hadir equivalence as the list, across all rows rather than the current page. Monthly backups omit these optional filters and retain their full-month scope.
