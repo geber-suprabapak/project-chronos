@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
   const className = searchParams.get("className");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
+  const status = searchParams.get("status");
+  const query = searchParams.get("query");
   const formatParam = (searchParams.get("format") ?? "xlsx").toLowerCase();
 
   // Validate format
@@ -105,6 +107,8 @@ export async function GET(request: NextRequest) {
         className,
         startDate,
         endDate,
+        status,
+        query,
       }),
     );
 

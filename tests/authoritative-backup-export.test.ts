@@ -550,6 +550,55 @@ test("Authoritative Backup & Absences Export Suite", async (t) => {
   // 11. Complete Authoritative Collection: 1505 Records + Profiles
   // --------------------------------------------------------------------------
   await t.test(
+    "Attendance export matches status and name/email/NIS filters, including legacy Datang",
+    async () => {
+      const records: AstraAttendanceRecord[] = [
+        { id: "in", user_id: "u1", date: "2026-10-27", status: "Hadir" },
+        { id: "out", user_id: "u1", date: "2026-10-27", status: "Pulang" },
+        { id: "legacy", user_id: "u2", date: "2026-10-27", status: "Datang" },
+      ];
+      const deps = {
+        fetchAttendance: async () => records,
+        fetchStudents: async () => [
+          {
+            user_id: "u1",
+            full_name: "Siswa Dummy",
+            email: "qa@example.test",
+            nis: "24002",
+            class_name: "X PPLG 1",
+          },
+          {
+            user_id: "u2",
+            full_name: "Legacy Student",
+            email: "other@example.test",
+            nis: "24003",
+            class_name: "X PPLG 2",
+          },
+        ],
+      };
+      for (const [filter, expected] of [
+        [{ status: "Pulang" }, ["out"]],
+        [{ status: "Hadir" }, ["in", "legacy"]],
+        [{ status: "Datang" }, ["in", "legacy"]],
+        [{ query: "  DUMMY " }, ["in", "out"]],
+        [{ query: "QA@EXAMPLE" }, ["in", "out"]],
+        [{ query: "24003" }, ["legacy"]],
+        [{ status: "Hadir", query: "24002", className: "X PPLG 1" }, ["in"]],
+        [{ query: "missing" }, []],
+        [{ status: "Terlambat" }, []],
+        [{ query: "   " }, ["in", "out", "legacy"]],
+      ] as const) {
+        const rows = await collectAuthoritativeAttendanceRows(filter, deps);
+        assert.deepEqual(
+          rows.map((row) => row.id).sort(),
+          [...expected].sort(),
+          JSON.stringify(filter),
+        );
+      }
+    },
+  );
+
+  await t.test(
     "Authoritative collection: 1505 Astra attendance records + profiles survive mapping/sorting and audit record_count=1505",
     async () => {
       const studentCount = 50;

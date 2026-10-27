@@ -1,5 +1,10 @@
 # Invariants
 
+## INV-CHRONOS-013 — Raw attendance exports honor visible filters
+
+**Rule:** `/absensi` sends status and trimmed search together with class/date filters to both XLSX and PDF exports. The authoritative collector applies the same name/email/NIS matching and legacy Datang/Hadir equivalence as the list, across all rows rather than the current page. Monthly backups omit these optional filters and retain their full-month scope.
+**Evidence:** `src/app/(main)/absensi/page.tsx`, `src/app/api/export/absences/route.ts`, `src/server/export/collector.ts`, `tests/authoritative-backup-export.test.ts`.
+
 ## INV-CHRONOS-012 — Accepted roster refreshes the server-rendered page
 
 **Rule:** A successful roster acceptance refreshes the current route so server-rendered student rows and statistics reflect the committed import. Preserve the accepted panel state to prevent duplicate submission; failed imports do not refresh or announce success.

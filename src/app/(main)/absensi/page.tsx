@@ -197,6 +197,8 @@ export default function AbsensiPage() {
   // Build export URLs with optional filters
   const exportParams = new URLSearchParams();
   if (selectedClass) exportParams.set("className", selectedClass);
+  if (status) exportParams.set("status", status);
+  if (query.trim()) exportParams.set("query", query.trim());
   if (date) exportParams.set("startDate", date);
   if (date) exportParams.set("endDate", date);
 

@@ -33,7 +33,7 @@ async function defaultFetchStudents(): Promise<AstraStudentProfile[]> {
 
 /**
  * Collects all attendance records and student profiles from Astra, applies
- * optional class/date filters, maps them to normalized display rows, and performs
+ * optional class/date/status/search filters, maps them to display rows, and performs
  * deterministic stable ordering.
  */
 export async function collectAuthoritativeAttendanceRows(
@@ -69,6 +69,23 @@ export async function collectAuthoritativeAttendanceRows(
     filtered = filtered.filter((a) => {
       const student = studentMap.get(a.user_id);
       return (student?.class_name ?? "").toLowerCase().includes(classQuery);
+    });
+  }
+
+  if (filter.status) {
+    const status = filter.status === "Datang" ? "Hadir" : filter.status;
+    filtered = filtered.filter(
+      (a) => (a.status === "Datang" ? "Hadir" : a.status) === status,
+    );
+  }
+
+  const query = filter.query?.trim().toLowerCase();
+  if (query) {
+    filtered = filtered.filter((a) => {
+      const student = studentMap.get(a.user_id);
+      return [student?.full_name, student?.email, student?.nis].some((value) =>
+        value?.toLowerCase().includes(query),
+      );
     });
   }
 

@@ -5,6 +5,8 @@ export interface AttendanceExportFilter {
   startDate?: string | null;
   endDate?: string | null;
   userId?: string | null;
+  status?: string | null;
+  query?: string | null;
 }
 
 export interface AstraStudentProfile {
