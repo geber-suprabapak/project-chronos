@@ -15,6 +15,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,8 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
   >(undefined);
   // Default ke tanggal sekolah WIB, bukan tanggal UTC dari jam browser.
   const [date, setDate] = useState(() => schoolDate());
+  const [reason, setReason] = useState("");
+  const [attemptId, setAttemptId] = useState("");
   const [isCheckingNis, setIsCheckingNis] = useState(false);
 
   const utils = api.useUtils();
@@ -52,6 +55,17 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
   const { refetch: refetchSiswa } = api.biodataSiswa.getByNis.useQuery(
     { nis: nis || "0" },
     { enabled: false },
+  );
+
+  const attemptsQuery = api.absences.listManualAttempts.useQuery(
+    {
+      nis,
+      actionType:
+        status === "Pulang" || status === "Dipulangkan"
+          ? "check_out"
+          : "check_in",
+    },
+    { enabled: open && Boolean(siswaData && status) },
   );
 
   // Auto-check NIS saat mengetik (debounced)
@@ -99,6 +113,8 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
       setSiswaData(null);
       setStatus(undefined);
       setDate(schoolDate());
+      setReason("");
+      setAttemptId("");
       setOpen(false);
     },
     onError: (error) => {
@@ -124,10 +140,22 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
       return;
     }
 
+    if (reason.trim().length < 3) {
+      toast.error("Isi alasan manual minimal 3 karakter");
+      return;
+    }
+
+    if (!attemptId) {
+      toast.error("Pilih percobaan presensi terkait");
+      return;
+    }
+
     createAbsence.mutate({
       nis: nis,
       status: status,
       date: date,
+      reason: reason.trim(),
+      attemptId,
     });
   };
 
@@ -139,6 +167,8 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
       setSiswaData(null);
       setStatus(undefined);
       setDate(schoolDate());
+      setReason("");
+      setAttemptId("");
       setIsCheckingNis(false);
     }
   };
@@ -174,7 +204,12 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                 type="text"
                 placeholder="Masukkan NIS (min 3 digit)"
                 value={nis}
-                onChange={(e) => setNis(e.target.value)}
+                onChange={(e) => {
+                  setNis(e.target.value);
+                  setSiswaData(null);
+                  setStatus(undefined);
+                  setAttemptId("");
+                }}
                 disabled={createAbsence.isPending}
                 className="pr-10"
               />
@@ -222,10 +257,13 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
               <div className="space-y-2">
                 <Label htmlFor="status">Status Absensi</Label>
                 <Select
-                  value={status}
+                  value={status ?? ""}
                   onValueChange={(
                     v: "Hadir" | "Terlambat" | "Pulang" | "Dipulangkan",
-                  ) => setStatus(v)}
+                  ) => {
+                    setStatus(v);
+                    setAttemptId("");
+                  }}
                 >
                   <SelectTrigger id="status">
                     <SelectValue placeholder="Pilih status" />
@@ -250,6 +288,61 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="attendance-attempt">
+                  Percobaan Presensi Terkait
+                </Label>
+                <Select value={attemptId} onValueChange={setAttemptId}>
+                  <SelectTrigger id="attendance-attempt">
+                    <SelectValue placeholder="Pilih percobaan presensi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(attemptsQuery.data ?? []).map((attempt) => (
+                      <SelectItem key={attempt.id} value={attempt.id}>
+                        {`${attempt.status === "failed" ? "Gagal" : attempt.status === "error" ? "Gangguan" : "Berhasil"} · ${new Date(attempt.created_at).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} · ${(attempt.reason ?? "Tanpa keterangan").slice(0, 80)}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {attemptsQuery.isLoading && (
+                  <p className="text-xs text-muted-foreground">
+                    Memuat percobaan presensi…
+                  </p>
+                )}
+                {attemptsQuery.isError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    Percobaan presensi gagal dimuat.{" "}
+                    <button
+                      type="button"
+                      className="underline underline-offset-2"
+                      onClick={() => void attemptsQuery.refetch()}
+                    >
+                      Coba lagi
+                    </button>
+                  </p>
+                )}
+                {!attemptsQuery.isLoading &&
+                  !attemptsQuery.isError &&
+                  attemptsQuery.data?.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Belum ada percobaan untuk aksi ini pada data siswa
+                      tersebut.
+                    </p>
+                  )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual-attendance-reason">Alasan</Label>
+                <Textarea
+                  id="manual-attendance-reason"
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  maxLength={500}
+                  required
+                  disabled={createAbsence.isPending}
+                />
+              </div>
+
               {/* Submit Button */}
               <div className="flex gap-2 pt-2">
                 <Button
@@ -265,7 +358,13 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                   type="submit"
                   variant="success"
                   className="flex-1"
-                  disabled={createAbsence.isPending || !status}
+                  disabled={
+                    createAbsence.isPending ||
+                    !status ||
+                    reason.trim().length < 3 ||
+                    !attemptId ||
+                    attemptsQuery.isError
+                  }
                 >
                   {createAbsence.isPending ? (
                     <>

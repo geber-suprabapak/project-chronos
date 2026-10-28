@@ -4,6 +4,7 @@ import { parse as parseUrl } from "node:url";
 import {
   createInitialMockData,
   type MockAttendance,
+  type MockAttendanceAttempt,
   type MockLeaveRequest,
   type MockLocation,
 } from "./data.ts";
@@ -60,6 +61,7 @@ interface ParsedRequestBody {
   academic_period_id?: string;
   rows?: unknown;
   user_id?: string;
+  attempt_id?: string;
   date?: string;
   status?: string;
   action_type?: string;
@@ -673,6 +675,24 @@ export class MockAstraLogtoServer {
     }
 
     // 5. ATTENDANCES
+    if (pathname === "/v1/admin/attendance/attempts" && method === "GET") {
+      let result = [...this.data.attendanceAttempts];
+      if (query.user_id || query.userId) {
+        const userId = String(query.user_id ?? query.userId);
+        result = result.filter((attempt) => attempt.user_id === userId);
+      }
+      if (query.action_type || query.actionType) {
+        const actionType = String(query.action_type ?? query.actionType);
+        result = result.filter((attempt) => attempt.action_type === actionType);
+      }
+      if (query.status) {
+        result = result.filter((attempt) => attempt.status === query.status);
+      }
+      const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 100);
+      this.sendAstraJson(res, 200, result.slice(0, limit));
+      return;
+    }
+
     if (
       (pathname === "/v1/admin/attendance" ||
         pathname === "/v1/admin/attendances") &&
@@ -718,6 +738,8 @@ export class MockAstraLogtoServer {
           body.user_id,
           "00000000-0000-0000-0000-000000000001",
         );
+        const attemptId = asString(body.attempt_id);
+        const reason = asString(body.reason).trim();
         const date = asString(
           body.date,
           new Date().toISOString().split("T")[0]!,
@@ -732,6 +754,23 @@ export class MockAstraLogtoServer {
         const actionTypeRaw = asString(body.action_type, "check_in");
         const actionType: MockAttendance["action_type"] =
           actionTypeRaw === "check_out" ? "check_out" : "check_in";
+        const attempt = this.data.attendanceAttempts.find(
+          (candidate: MockAttendanceAttempt) => candidate.id === attemptId,
+        );
+        if (
+          reason.length < 3 ||
+          !attempt ||
+          attempt.user_id !== userId ||
+          attempt.action_type !== actionType
+        ) {
+          this.sendAstraJson(
+            res,
+            422,
+            null,
+            "Valid reason and attendance attempt are required.",
+          );
+          return;
+        }
 
         const newRec: MockAttendance = {
           id: `a0000000-0000-4000-8000-${String(this.data.attendances.length + 1).padStart(12, "0")}`,

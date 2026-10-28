@@ -49,6 +49,15 @@ interface AstraAttendanceRecord {
   created_at?: string | null;
 }
 
+interface AstraAttendanceAttempt {
+  id: string;
+  user_id: string;
+  action_type: "check_in" | "check_out";
+  status: "success" | "failed" | "error";
+  reason?: string | null;
+  created_at: string;
+}
+
 interface AstraLeaveRequest {
   id: string;
   user_id: string;
@@ -138,6 +147,29 @@ function mapAstraAttendance(
  *  - getClassAttendanceSummary: Ringkasan kehadiran per kelas
  */
 export const absencesRouter = createTRPCRouter({
+  listManualAttempts: adminProcedure
+    .input(
+      z.object({
+        nis: z.string().min(1),
+        actionType: z.enum(["check_in", "check_out"]),
+      }),
+    )
+    .query(async ({ input }) => {
+      const students =
+        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+      const student = students.find((candidate) => candidate.nis === input.nis);
+      if (!student) return [];
+
+      const query = new URLSearchParams({
+        user_id: student.user_id,
+        action_type: input.actionType,
+        limit: "100",
+      });
+      // shortcut: the Astra list is capped at 100; add date-filtered paging if older attempts must be selectable.
+      return astraRequest<AstraAttendanceAttempt[]>(
+        `/v1/admin/attendance/attempts?${query.toString()}`,
+      );
+    }),
   // CREATE MANUAL: Admin input absensi manual
   createManual: adminProcedure
     .input(
@@ -145,6 +177,8 @@ export const absencesRouter = createTRPCRouter({
         nis: z.string(),
         status: z.enum(["Hadir", "Terlambat", "Pulang", "Dipulangkan"]),
         date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+        reason: z.string().trim().min(3).max(500),
+        attemptId: z.string().min(1),
       }),
     )
     .mutation(async ({ input }) => {
@@ -190,7 +224,8 @@ export const absencesRouter = createTRPCRouter({
             status: statusAndAction.status,
             action_type: statusAndAction.action_type,
             date: input.date,
-            reason: "Manual attendance recorded by Chronos administrator.",
+            reason: input.reason,
+            attempt_id: input.attemptId,
           }),
         });
       } catch (error) {

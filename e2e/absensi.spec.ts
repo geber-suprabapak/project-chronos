@@ -56,7 +56,7 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       }
     });
 
-    test("opens AbsenManualDialog and records a new attendance entry", async ({
+    test("records manual attendance with a reason and related attempt", async ({
       page,
     }) => {
       const absenButton = page.getByRole("button", { name: /Absen Manual/i });
@@ -75,13 +75,25 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       // Verify student details auto-populate
       await expect(dialog.getByText("Ahmad Dahlan")).toBeVisible();
 
-      // Submit form
+      await dialog.locator("#status").click();
+      await page.getByRole("option", { name: "Hadir", exact: true }).click();
+      await dialog.locator("#attendance-attempt").click();
+      await page.getByRole("option", { name: /Gagal/ }).click();
+      await dialog
+        .locator("#manual-attendance-reason")
+        .fill(
+          "Kehadiran diverifikasi langsung oleh wali kelas setelah kamera gagal.",
+        );
+
       const submitButton = dialog.locator(
         'button[type="submit"]:has-text("Simpan Absensi"), button:has-text("Simpan")',
       );
-      if (await submitButton.isEnabled()) {
-        await submitButton.click();
-      }
+      await expect(submitButton).toBeEnabled();
+      await submitButton.click();
+      await expect(
+        page.getByText("Absensi berhasil ditambahkan!"),
+      ).toBeVisible();
+      await expect(dialog).not.toBeVisible();
     });
 
     test("handles single attendance deletion with confirmation dialog", async ({

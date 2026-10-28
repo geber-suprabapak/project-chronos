@@ -39,6 +39,15 @@ export interface MockAttendance {
   created_at: string;
 }
 
+export interface MockAttendanceAttempt {
+  id: string;
+  user_id: string;
+  action_type: "check_in" | "check_out";
+  status: "success" | "failed" | "error";
+  reason: string | null;
+  created_at: string;
+}
+
 export interface MockLeaveRequest {
   id: string;
   user_id: string;
@@ -250,6 +259,25 @@ export function createInitialMockData() {
     },
   ];
 
+  const attendanceAttempts: MockAttendanceAttempt[] = [
+    {
+      id: "attempt-check-in-1001",
+      user_id: "00000000-0000-0000-0000-000000000001",
+      action_type: "check_in",
+      status: "failed",
+      reason: "Verifikasi wajah tidak berhasil",
+      created_at: `${today}T06:40:00.000Z`,
+    },
+    {
+      id: "attempt-check-out-1001",
+      user_id: "00000000-0000-0000-0000-000000000001",
+      action_type: "check_out",
+      status: "error",
+      reason: "Koneksi kamera terputus",
+      created_at: `${today}T15:30:00.000Z`,
+    },
+  ];
+
   const leaveRequests: MockLeaveRequest[] = [
     {
       id: "b0000000-0000-4000-8000-000000000001",
@@ -423,6 +451,7 @@ export function createInitialMockData() {
     staff,
     classes,
     attendances,
+    attendanceAttempts,
     leaveRequests,
     locations,
     schedules,
