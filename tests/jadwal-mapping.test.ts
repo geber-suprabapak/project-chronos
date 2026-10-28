@@ -19,4 +19,24 @@ describe("Astra schedule mapping", () => {
     assert.equal(mapped.hari, "jumat");
     assert.equal(mapped.mulaiPulang, "11:00:00");
   });
+
+  it("keeps duplicate weekday schedules separately addressable", () => {
+    const first = mapAstraSchedule({
+      id: "schedule-monday-first",
+      day_of_week: "senin",
+      start_time: "00:00:00",
+      end_time: "11:59:00",
+      is_active: true,
+    });
+    const second = mapAstraSchedule({
+      id: "schedule-monday-second",
+      day_of_week: "senin",
+      start_time: "06:00:00",
+      end_time: "07:15:00",
+      is_active: true,
+    });
+
+    assert.equal(first.id, second.id);
+    assert.notEqual(first.astraId, second.astraId);
+  });
 });

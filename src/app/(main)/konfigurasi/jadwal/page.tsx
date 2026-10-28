@@ -67,7 +67,9 @@ function isDayKey(key: string | undefined): key is DayKey {
 }
 
 export default function JadwalPage() {
-  const [selectedDayId, setSelectedDayId] = useState<number | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const [showResetDialog, setShowResetDialog] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
@@ -114,7 +116,7 @@ export default function JadwalPage() {
   const resetMutation = api.jadwal.reset.useMutation({
     onSuccess: () => {
       toast.success("Jadwal berhasil direset ke nilai default!");
-      setSelectedDayId(null);
+      setSelectedScheduleId(null);
       void refetchSchedules();
       void refetchStats();
     },
@@ -127,10 +129,10 @@ export default function JadwalPage() {
     },
   });
 
-  // Load selected day data
+  // Load selected schedule data
   useEffect(() => {
-    if (selectedDayId && schedules) {
-      const schedule = schedules.find((s) => s.id === selectedDayId);
+    if (selectedScheduleId && schedules) {
+      const schedule = schedules.find((s) => s.astraId === selectedScheduleId);
       if (schedule) {
         setFormData({
           mulaiMasuk: schedule.mulaiMasuk.slice(0, 5), // HH:MM
@@ -140,7 +142,7 @@ export default function JadwalPage() {
           kompensasiWaktu: schedule.kompensasiWaktu.toString(),
         });
       }
-    } else if (selectedDayId === null) {
+    } else if (selectedScheduleId === null) {
       setFormData({
         mulaiMasuk: "",
         selesaiMasuk: "",
@@ -149,12 +151,12 @@ export default function JadwalPage() {
         kompensasiWaktu: "",
       });
     }
-  }, [selectedDayId, schedules]);
+  }, [selectedScheduleId, schedules]);
 
   useEffect(() => {
-    if (selectedDayId && editFormRef.current) {
-      console.debug("[jadwal] selectedDayId change -> scroll/focus", {
-        selectedDayId,
+    if (selectedScheduleId && editFormRef.current) {
+      console.debug("[jadwal] selectedScheduleId change -> scroll/focus", {
+        selectedScheduleId,
         hasRef: !!editFormRef.current,
       });
       editFormRef.current.scrollIntoView({
@@ -165,7 +167,7 @@ export default function JadwalPage() {
         .querySelector<HTMLInputElement>("#mulaiMasuk")
         ?.focus();
     }
-  }, [selectedDayId]);
+  }, [selectedScheduleId]);
 
   const handleInputChange = useCallback(
     (field: keyof typeof formData, value: string) => {
@@ -177,7 +179,7 @@ export default function JadwalPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedDayId) {
+    if (!selectedScheduleId) {
       toast.error("Pilih hari terlebih dahulu");
       return;
     }
@@ -208,7 +210,7 @@ export default function JadwalPage() {
     }
 
     updateMutation.mutate({
-      id: selectedDayId,
+      astraId: selectedScheduleId,
       data: {
         mulaiMasuk: formData.mulaiMasuk + ":00",
         selesaiMasuk: formData.selesaiMasuk + ":00",
@@ -219,8 +221,8 @@ export default function JadwalPage() {
     });
   };
 
-  const handleToggleActive = (id: number) => {
-    toggleActiveMutation.mutate({ id });
+  const handleToggleActive = (astraId: string) => {
+    toggleActiveMutation.mutate({ astraId });
   };
 
   const handleReset = () => {
@@ -369,7 +371,7 @@ export default function JadwalPage() {
                         ? DAY_MAP[schedule.hari]
                         : { id: 0, label: schedule.hari, color: "gray" };
                       return (
-                        <TableRow key={schedule.id}>
+                        <TableRow key={schedule.astraId}>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Badge variant="outline">#{schedule.id}</Badge>
@@ -404,10 +406,10 @@ export default function JadwalPage() {
                               <Switch
                                 checked={schedule.isActive}
                                 onCheckedChange={() =>
-                                  handleToggleActive(schedule.id)
+                                  handleToggleActive(schedule.astraId)
                                 }
                                 disabled={toggleActiveMutation.isPending}
-                                aria-label={`Status aktif jadwal ${dayInfo.label}`}
+                                aria-label={`Status aktif jadwal ${dayInfo.label} ${schedule.mulaiMasuk.slice(0, 5)}-${schedule.selesaiMasuk.slice(0, 5)}`}
                                 className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-red-600"
                               />
                               <Badge
@@ -438,8 +440,10 @@ export default function JadwalPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              aria-label={`Edit jadwal ${dayInfo.label}`}
-                              onClick={() => setSelectedDayId(schedule.id)}
+                              aria-label={`Edit jadwal ${dayInfo.label} ${schedule.mulaiMasuk.slice(0, 5)}-${schedule.selesaiMasuk.slice(0, 5)}`}
+                              onClick={() =>
+                                setSelectedScheduleId(schedule.astraId)
+                              }
                             >
                               <Edit className="h-3 w-3 mr-1" />
                               Edit
@@ -457,7 +461,7 @@ export default function JadwalPage() {
       </div>
 
       {/* Edit Form - Only show when a day is selected */}
-      {selectedDayId && (
+      {selectedScheduleId && (
         <Card ref={editFormRef} className="w-full">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -466,7 +470,7 @@ export default function JadwalPage() {
                 Edit Jadwal -{" "}
                 {(() => {
                   const schedule = schedules?.find(
-                    (s) => s.id === selectedDayId,
+                    (s) => s.astraId === selectedScheduleId,
                   );
                   return isDayKey(schedule?.hari)
                     ? DAY_MAP[schedule.hari].label
@@ -607,7 +611,7 @@ export default function JadwalPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setSelectedDayId(null)}
+                      onClick={() => setSelectedScheduleId(null)}
                     >
                       Batal
                     </Button>

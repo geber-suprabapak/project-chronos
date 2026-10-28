@@ -168,7 +168,7 @@ export const jadwalRouter = createTRPCRouter({
   update: adminProcedure
     .input(
       z.object({
-        id: z.number().min(1).max(7),
+        astraId: z.string().min(1).max(128),
         data: z.object({
           mulaiMasuk: z
             .string()
@@ -207,47 +207,24 @@ export const jadwalRouter = createTRPCRouter({
       const schedules = await astraRequest<AstraSchedule[]>(
         "/v1/admin/schedules",
       );
-      const targetHari = isDayId(input.id) ? ID_TO_HARI[input.id] : "senin";
-      const idStr = String(input.id);
-      const target = schedules.find(
-        (s, idx) =>
-          s.id === idStr ||
-          (targetHari &&
-            (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
-          idx + 1 === input.id,
-      );
-
-      if (target) {
-        const payload = buildScheduleUpdatePayload(input.data);
-        if (Object.keys(payload).length === 0) {
-          throw new Error(
-            "Pilih setidaknya satu nilai jadwal untuk diperbarui.",
-          );
-        }
-
-        const updated = await astraRequest<AstraSchedule>(
-          `/v1/admin/schedules/${target.id}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          },
-        );
-        return mapAstraSchedule(updated, input.id);
+      const target = schedules.find((s) => s.id === input.astraId);
+      if (!target) {
+        throw new Error("Jadwal tidak ditemukan");
       }
 
-      const created = await astraRequest<AstraSchedule>("/v1/admin/schedules", {
-        method: "POST",
-        body: JSON.stringify({
-          day_of_week: targetHari,
-          start_time: input.data.mulaiMasuk ?? "06:30:00",
-          end_time: input.data.selesaiMasuk ?? "07:30:00",
-          start_checkout: input.data.mulaiPulang ?? "15:00:00",
-          end_checkout: input.data.selesaiPulang ?? "16:00:00",
-          grace_period_minutes: input.data.kompensasiWaktu ?? 0,
-          is_active: input.data.isActive ?? true,
-        }),
-      });
-      return mapAstraSchedule(created, input.id);
+      const payload = buildScheduleUpdatePayload(input.data);
+      if (Object.keys(payload).length === 0) {
+        throw new Error("Pilih setidaknya satu nilai jadwal untuk diperbarui.");
+      }
+
+      const updated = await astraRequest<AstraSchedule>(
+        `/v1/admin/schedules/${encodeURIComponent(target.id)}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        },
+      );
+      return mapAstraSchedule(updated);
     }),
 
   // Update multiple schedules at once (batch update)
@@ -315,27 +292,18 @@ export const jadwalRouter = createTRPCRouter({
 
   // Toggle active status
   toggleActive: adminProcedure
-    .input(z.object({ id: z.number().min(1).max(7) }))
+    .input(z.object({ astraId: z.string().min(1).max(128) }))
     .mutation(async ({ input }) => {
       const schedules = await astraRequest<AstraSchedule[]>(
         "/v1/admin/schedules",
       );
-      const targetHari = isDayId(input.id) ? ID_TO_HARI[input.id] : "senin";
-      const idStr = String(input.id);
-      const target = schedules.find(
-        (s, idx) =>
-          s.id === idStr ||
-          (targetHari &&
-            (s.hari ?? s.day_of_week)?.toLowerCase() === targetHari) ||
-          idx + 1 === input.id,
-      );
-
+      const target = schedules.find((s) => s.id === input.astraId);
       if (!target) {
         throw new Error("Jadwal tidak ditemukan");
       }
 
       const updated = await astraRequest<AstraSchedule>(
-        `/v1/admin/schedules/${target.id}`,
+        `/v1/admin/schedules/${encodeURIComponent(target.id)}`,
         {
           method: "PUT",
           body: JSON.stringify({
@@ -344,7 +312,7 @@ export const jadwalRouter = createTRPCRouter({
         },
       );
 
-      return mapAstraSchedule(updated, input.id);
+      return mapAstraSchedule(updated);
     }),
 
   // Reset all schedules to default
