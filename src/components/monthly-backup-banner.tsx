@@ -274,7 +274,7 @@ export function MonthlyBackupBanner({
   if (statusState === "unavailable") {
     return (
       <Card
-        className="fixed bottom-4 right-4 sm:top-4 sm:bottom-auto w-[calc(100vw-2rem)] sm:w-96 z-50 border-rose-200/90 bg-rose-50/95 text-rose-950 shadow-md backdrop-blur-sm dark:border-rose-800/80 dark:bg-rose-950/90 dark:text-rose-100 transition-all duration-200"
+        className="pointer-events-none [&_button]:pointer-events-auto fixed bottom-4 right-4 sm:top-4 sm:bottom-auto w-[calc(100vw-2rem)] sm:w-96 z-50 border-rose-200/90 bg-rose-50/95 text-rose-950 shadow-md backdrop-blur-sm dark:border-rose-800/80 dark:bg-rose-950/90 dark:text-rose-100 transition-all duration-200"
         role="alert"
         aria-live="polite"
         aria-label="Pemberitahuan Gangguan Status Backup Bulanan"
@@ -332,7 +332,7 @@ export function MonthlyBackupBanner({
 
   return (
     <Card
-      className="fixed bottom-4 right-4 sm:top-4 sm:bottom-auto w-[calc(100vw-2rem)] sm:w-96 z-50 border-amber-200/90 bg-amber-50/95 text-amber-950 shadow-md backdrop-blur-sm dark:border-amber-800/80 dark:bg-amber-950/90 dark:text-amber-100 transition-all duration-200"
+      className="pointer-events-none [&_button]:pointer-events-auto fixed bottom-4 right-4 sm:top-4 sm:bottom-auto w-[calc(100vw-2rem)] sm:w-96 z-50 border-amber-200/90 bg-amber-50/95 text-amber-950 shadow-md backdrop-blur-sm dark:border-amber-800/80 dark:bg-amber-950/90 dark:text-amber-100 transition-all duration-200"
       role="alert"
       aria-live="polite"
       aria-label="Pemberitahuan Backup Bulanan"
