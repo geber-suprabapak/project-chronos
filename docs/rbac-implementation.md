@@ -197,3 +197,14 @@ role-based authorization.
 Revert the Chronos deployment and preserve the Logto role assignments. Do not
 restore the retired Supabase custom-access-token hook as part of this rollback;
 it is not part of the Logto authorization boundary.
+
+### Manual Leave Request creation
+
+Owner decision, 28 October 2026: every approved role admitted to Chronos
+(`platform_admin`, `school_admin`, `teacher`, `staff`) may create a pending Leave
+Request for an approved Student through `IzinManualDialog`. The existing
+`privilegedProcedure` and Astra admin API scope remain required. An optional
+attachment must belong to the creating actor and use `permit_attachment`; the
+audit records that actor separately from the target Student. Creation does not
+grant status-decision privileges. Astra enforces this at
+`POST /v1/admin/leave-requests` and its `/v1/admin/permits` alias.
