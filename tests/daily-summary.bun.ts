@@ -60,9 +60,34 @@ function response(data: unknown, pagination?: Record<string, unknown>) {
   );
 }
 
+function rateLimitResponse() {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: {
+        code: "RATE_LIMITED",
+        message: "Rate limit exceeded. Please slow down.",
+      },
+      meta: { request_id: "daily-test" },
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Astra-Contract-Version": "v1",
+      },
+    },
+  );
+}
+
 function sources(
   overrides: Record<string, unknown[]> = {},
-  options: { paged?: boolean; fail?: string; malformed?: boolean } = {},
+  options: {
+    paged?: boolean;
+    fail?: string;
+    malformed?: boolean;
+    rateLimited?: string;
+  } = {},
 ) {
   const requests: URL[] = [];
   const data: Record<string, unknown[]> = {
@@ -83,6 +108,7 @@ function sources(
     requests.push(url);
     const resource = url.pathname.replace("/v1/admin/", "");
     assert.ok(resource in data, `Unexpected resource: ${resource}`);
+    if (options.rateLimited === resource) return rateLimitResponse();
     if (options.fail === resource) throw new Error("fixture outage");
     const rows = data[resource]!;
     if (resource === "attendance/export")
@@ -124,6 +150,30 @@ const leave = (index: number, category = "pergi") => ({
 });
 
 describe("daily summary membership and WIB defaults", () => {
+  it("maps Astra rate limits to a safe retryable error for both summaries", async () => {
+    for (const query of [
+      () => caller.getTodaySummary({ date: "2026-10-06" }),
+      () =>
+        caller.getClassAttendanceSummary({
+          className: "X PPLG 1",
+          date: "2026-10-06",
+        }),
+    ]) {
+      const requests = sources({}, { rateLimited: "academic-periods" });
+      await assert.rejects(query(), (error: unknown) => {
+        const caught = error as { code?: string; message?: string };
+        assert.equal(caught.code, "SERVICE_UNAVAILABLE");
+        assert.equal(
+          caught.message,
+          "Layanan absensi sedang sibuk. Coba lagi beberapa saat.",
+        );
+        assert.ok(!caught.message.includes("Rate limit exceeded"));
+        return true;
+      });
+      assert.equal(requests.length, 1);
+    }
+  });
+
   it("rejects impossible class-summary dates before contacting sources", async () => {
     const requests = sources();
     await assert.rejects(

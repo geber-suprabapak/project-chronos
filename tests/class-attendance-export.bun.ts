@@ -23,7 +23,7 @@ afterEach(() => {
   role = "school_admin";
 });
 
-function sources(fail = "") {
+function sources(fail = "", rateLimited = false) {
   const requests: string[] = [];
   const data: Record<string, unknown[]> = {
     "academic-periods": [{ id: "p", is_active: true }],
@@ -89,6 +89,25 @@ function sources(fail = "") {
     const resource = url.pathname.replace("/v1/admin/", "");
     requests.push(resource);
     assert.ok(resource in data, resource);
+    if (rateLimited && resource === "academic-periods") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "Rate limit exceeded. Please slow down.",
+          },
+          meta: { request_id: "class-test" },
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Astra-Contract-Version": "v1",
+          },
+        },
+      );
+    }
     if (resource === fail) throw new Error("fixture outage");
     const rows = data[resource]!;
     return new Response(
@@ -190,5 +209,15 @@ describe("authoritative per-class summary exports", () => {
     assert.equal(result.status, 503);
     assert.equal(result.headers.get("Content-Disposition"), null);
     assert.match(result.headers.get("Content-Type") ?? "", /application\/json/);
+  });
+
+  it("preserves HTTP 429 without returning Astra's raw rate-limit message", async () => {
+    sources("", true);
+    const result = await GET(request());
+    assert.equal(result.status, 429);
+    assert.equal(result.headers.get("Content-Disposition"), null);
+    assert.deepEqual(await result.json(), {
+      error: "Layanan absensi sedang sibuk. Coba lagi beberapa saat.",
+    });
   });
 });

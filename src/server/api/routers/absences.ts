@@ -596,6 +596,13 @@ export const absencesRouter = createTRPCRouter({
         return await getDailyAttendanceSummary(date);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (error instanceof AstraRequestError && error.status === 429) {
+          throw new TRPCError({
+            code: "SERVICE_UNAVAILABLE",
+            message: "Layanan absensi sedang sibuk. Coba lagi beberapa saat.",
+            cause: error,
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: `Gagal memuat ringkasan harian absensi dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -617,6 +624,13 @@ export const absencesRouter = createTRPCRouter({
         return await getClassAttendanceSummary(input);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
+        if (error instanceof AstraRequestError && error.status === 429) {
+          throw new TRPCError({
+            code: "SERVICE_UNAVAILABLE",
+            message: "Layanan absensi sedang sibuk. Coba lagi beberapa saat.",
+            cause: error,
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: `Gagal memuat ringkasan absensi kelas dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,

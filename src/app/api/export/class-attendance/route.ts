@@ -77,14 +77,17 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    const rateLimited =
+      error instanceof AstraRequestError && error.status === 429;
     const status =
       error instanceof AstraRequestError
         ? error.status
         : error instanceof TRPCError
           ? getHTTPStatusCodeFromError(error)
           : 502;
-    const message =
-      error instanceof Error
+    const message = rateLimited
+      ? "Layanan absensi sedang sibuk. Coba lagi beberapa saat."
+      : error instanceof Error
         ? error.message
         : "Gagal mengekspor ringkasan absensi kelas.";
     writeOperationalEvent({
