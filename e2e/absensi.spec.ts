@@ -43,6 +43,96 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       ).toBeVisible();
     });
 
+    test("paginates attendance beyond 50 rows", async ({ page }) => {
+      await page.route("**/api/trpc/*absences.list*", async (route) => {
+        const response = await route.fetch();
+        const responseText = await response.text();
+        const chunks = responseText
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line));
+        const url = new URL(route.request().url());
+        const procedureNames = url.pathname.split("/").at(-1)?.split(",") ?? [];
+        const procedureIndex = procedureNames.indexOf("absences.list");
+        const input = JSON.parse(
+          url.searchParams.get("input") ?? "{}",
+        ) as Record<string, { json?: { offset?: number } }>;
+        const requestInput = input[String(procedureIndex)] ?? input;
+        const offset = Number(requestInput.json?.offset ?? 0);
+        const result = chunks
+          .map((chunk) => chunk.json?.[2]?.[0]?.[0])
+          .find((value) => Array.isArray(value?.rows));
+
+        if (!result)
+          throw new Error("absences.list tRPC stream result was not found");
+
+        result.rows = Array.from(
+          { length: Math.min(20, 51 - offset) },
+          (_, index) => {
+            const rowNumber = offset + index + 1;
+            return {
+              id: `qa-pagination-${rowNumber}`,
+              userId: `qa-pagination-${rowNumber}`,
+              date: "2026-10-29",
+              status: "Hadir",
+              actionType: "check_in",
+              latitude: null,
+              longitude: null,
+              createdAt: "2026-10-29T00:00:00.000Z",
+              userProfile: { fullName: `QA Pagination ${rowNumber}` },
+            };
+          },
+        );
+        Object.assign(result, {
+          total: 51,
+          limit: 20,
+          offset,
+          hasMore: offset + result.rows.length < 51,
+        });
+
+        await route.fulfill({
+          response,
+          body: `${chunks.map((chunk) => JSON.stringify(chunk)).join("\n")}\n`,
+        });
+      });
+
+      await page.reload();
+      await expect(
+        page.getByText("Halaman 1 - Menampilkan 20 dari 51 data"),
+      ).toBeVisible();
+      await expect(page.getByRole("row")).toHaveCount(21);
+      await expect(
+        page.getByRole("cell", { name: "QA Pagination 1", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: "QA Pagination 21", exact: true }),
+      ).toHaveCount(0);
+
+      const next = page.getByRole("button", { name: "Halaman berikutnya" });
+      const previous = page.getByRole("button", { name: "Halaman sebelumnya" });
+      await next.click();
+      await expect(
+        page.getByText("Halaman 2 - Menampilkan 20 dari 51 data"),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: "QA Pagination 21", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: "QA Pagination 1", exact: true }),
+      ).toHaveCount(0);
+
+      await next.click();
+      await expect(
+        page.getByText("Halaman 3 - Menampilkan 11 dari 51 data"),
+      ).toBeVisible();
+      await expect(page.getByRole("row")).toHaveCount(12);
+      await expect(
+        page.getByRole("cell", { name: "QA Pagination 51", exact: true }),
+      ).toBeVisible();
+      await expect(next).toBeDisabled();
+      await expect(previous).toBeEnabled();
+    });
+
     test("filters attendance by live query search", async ({ page }) => {
       const searchInput = page.locator(
         'input[placeholder*="Search" i], input[placeholder*="Cari" i]',
