@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { cn } from "~/lib/utils";
@@ -48,6 +49,7 @@ interface IzinManualDialogProps {
 }
 
 export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -115,6 +117,8 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
       // Reset form
       resetForm();
       setOpen(false);
+      // The dashboard pending list is rendered on the server.
+      router.refresh();
     },
     onError: (error) => {
       toast.error(`Gagal menambahkan izin: ${error.message}`);

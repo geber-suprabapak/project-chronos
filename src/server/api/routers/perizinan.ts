@@ -477,10 +477,7 @@ export const perizinanRouter = createTRPCRouter({
         reason: z.string().trim().min(1).max(500),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      if (ctx.userRole !== "school_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+    .mutation(async ({ input }) => {
       const finished = await astraLeaveMutationRequest<AstraLeaveRequest>(
         `/v1/admin/leave-requests/${input.id}/force-finish`,
         {
