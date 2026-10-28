@@ -150,6 +150,58 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
   });
 
   test.describe("Leave Request Detail & Approval/Rejection Lifecycle", () => {
+    test("all Chronos roles can access Leave creation and each decision affordance", async ({
+      page,
+    }) => {
+      const roles = [
+        "platform_admin",
+        "school_admin",
+        "teacher",
+        "staff",
+        "admin",
+        "kepala_sekolah",
+        "guru",
+        "wali_kelas",
+      ] as const;
+      const details = [
+        {
+          id: "b0000000-0000-4000-8000-000000000001",
+          action: /Setujui/,
+        },
+        {
+          id: "b0000000-0000-4000-8000-000000000002",
+          action: /Force-finish Leave Period/,
+        },
+        {
+          id: "b0000000-0000-4000-8000-000000000003",
+          action: /Batalkan Penolakan/,
+        },
+      ];
+
+      for (const role of roles) {
+        await loginAs(page, role);
+        await page.goto("/perizinan");
+        await expect(
+          page.getByRole("button", { name: /Izin Manual/i }),
+        ).toBeVisible();
+
+        for (const detail of details) {
+          await page.goto(`/perizinan/show/${detail.id}`);
+          await expect(
+            page.getByTestId("perizinan-detail-loaded"),
+            `${role} loads ${detail.id}`,
+          ).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: detail.action }),
+          ).toBeVisible();
+        }
+      }
+
+      await loginAs(page, "student");
+      await page.goto("/perizinan");
+      await expect(page).toHaveURL(/\/login\?error=forbidden_role/);
+    });
+
     test("navigates to detail page, approves pending leave, and verifies status update", async ({
       page,
     }) => {

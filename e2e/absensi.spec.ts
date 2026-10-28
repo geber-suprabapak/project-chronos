@@ -54,11 +54,14 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
         const url = new URL(route.request().url());
         const procedureNames = url.pathname.split("/").at(-1)?.split(",") ?? [];
         const procedureIndex = procedureNames.indexOf("absences.list");
+        type RequestInput = { json?: { offset?: number }; offset?: number };
         const input = JSON.parse(
           url.searchParams.get("input") ?? "{}",
-        ) as Record<string, { json?: { offset?: number } }>;
+        ) as Record<string, RequestInput> & RequestInput;
         const requestInput = input[String(procedureIndex)] ?? input;
-        const offset = Number(requestInput.json?.offset ?? 0);
+        const offset = Number(
+          requestInput.json?.offset ?? requestInput.offset ?? 0,
+        );
         const result = chunks
           .map((chunk) => chunk.json?.[2]?.[0]?.[0])
           .find((value) => Array.isArray(value?.rows));

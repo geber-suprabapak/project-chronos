@@ -42,8 +42,8 @@ const { createCallerFactory } = await import("../src/server/api/trpc.ts");
 const { perizinanRouter } =
   await import("../src/server/api/routers/perizinan.ts");
 
-describe("perizinan.forceFinish authorization", () => {
-  it("rejects privileged non-school-admin roles before Astra mutation and allows school_admin", async () => {
+describe("perizinan Leave mutation authorization", () => {
+  it("allows every Chronos role to make decisions and force-finish, and denies students before Astra", async () => {
     mutationRequests.length = 0;
     globalThis.fetch = async (input, init) => {
       const url = String(input);
@@ -87,25 +87,78 @@ describe("perizinan.forceFinish authorization", () => {
       reason: "Student returned early",
     };
 
-    await assert.rejects(caller.forceFinish(input), (error: unknown) => {
-      return error instanceof TRPCError && error.code === "FORBIDDEN";
-    });
-    assert.equal(mutationRequests.length, 0);
+    const chronosRoles = [
+      "platform_admin",
+      "school_admin",
+      "teacher",
+      "staff",
+      "admin",
+      "kepala_sekolah",
+      "guru",
+      "wali_kelas",
+    ];
+    const decisions = [
+      {
+        input: { approvalStatus: "approved" as const, durationDays: 1 },
+        path: "/approve",
+      },
+      {
+        input: {
+          approvalStatus: "rejected" as const,
+          rejectionReason: "Synthetic rejection",
+        },
+        path: "/reject",
+      },
+      {
+        input: { approvalStatus: "pending" as const },
+        path: "/reopen",
+      },
+    ];
 
-    currentRole = "school_admin";
-    const finished = await caller.forceFinish(input);
+    for (const role of chronosRoles) {
+      currentRole = role;
+      for (const decision of decisions) {
+        const result = await caller.updateStatus({
+          id: input.id,
+          ...decision.input,
+        });
+        assert.equal(result.id, input.id, `${role} can ${decision.path}`);
+        assert.equal(
+          mutationRequests.at(-1)?.url.endsWith(decision.path),
+          true,
+          `${role} reaches ${decision.path}`,
+        );
+      }
 
-    assert.equal(finished.effectiveEndDate, "2026-09-02");
-    assert.equal(mutationRequests.length, 1);
-    assert.equal(
-      mutationRequests[0]?.url.endsWith(
-        "/v1/admin/leave-requests/b0000000-0000-4000-8000-000000000001/force-finish",
-      ),
-      true,
-    );
-    assert.deepEqual(JSON.parse(mutationRequests[0]?.body ?? "{}"), {
-      effective_end_date: "2026-09-02",
-      reason: "Student returned early",
-    });
+      const finished = await caller.forceFinish(input);
+      assert.equal(finished.effectiveEndDate, "2026-09-02");
+      assert.equal(
+        mutationRequests.at(-1)?.url.endsWith("/force-finish"),
+        true,
+        `${role} reaches force-finish`,
+      );
+      assert.deepEqual(JSON.parse(mutationRequests.at(-1)?.body ?? "{}"), {
+        effective_end_date: "2026-09-02",
+        reason: "Student returned early",
+      });
+    }
+
+    const allowedMutationCount = mutationRequests.length;
+    for (const role of ["student", "siswa"]) {
+      currentRole = role;
+      await assert.rejects(caller.forceFinish(input), (error: unknown) => {
+        return error instanceof TRPCError && error.code === "FORBIDDEN";
+      });
+      await assert.rejects(
+        caller.updateStatus({
+          id: input.id,
+          approvalStatus: "approved",
+          durationDays: 1,
+        }),
+        (error: unknown) =>
+          error instanceof TRPCError && error.code === "FORBIDDEN",
+      );
+      assert.equal(mutationRequests.length, allowedMutationCount);
+    }
   });
 });
