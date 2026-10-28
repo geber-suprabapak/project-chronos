@@ -78,6 +78,9 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       await dialog.locator("#status").click();
       await page.getByRole("option", { name: "Hadir", exact: true }).click();
       await dialog.locator("#attendance-attempt").click();
+      await expect(page.getByRole("option", { name: /Berhasil/ })).toHaveCount(
+        0,
+      );
       await page.getByRole("option", { name: /Gagal/ }).click();
       await dialog
         .locator("#manual-attendance-reason")

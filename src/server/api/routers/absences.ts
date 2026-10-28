@@ -160,15 +160,24 @@ export const absencesRouter = createTRPCRouter({
       const student = students.find((candidate) => candidate.nis === input.nis);
       if (!student) return [];
 
-      const query = new URLSearchParams({
-        user_id: student.user_id,
-        action_type: input.actionType,
-        limit: "100",
-      });
-      // shortcut: the Astra list is capped at 100; add date-filtered paging if older attempts must be selectable.
-      return astraRequest<AstraAttendanceAttempt[]>(
-        `/v1/admin/attendance/attempts?${query.toString()}`,
+      // shortcut: each status is capped at 100; add date-filtered paging if older attempts must be selectable.
+      const attemptsByStatus = await Promise.all(
+        (["failed", "error"] as const).map((status) => {
+          const query = new URLSearchParams({
+            user_id: student.user_id,
+            action_type: input.actionType,
+            status,
+            limit: "100",
+          });
+          return astraRequest<AstraAttendanceAttempt[]>(
+            `/v1/admin/attendance/attempts?${query.toString()}`,
+          );
+        }),
       );
+      return attemptsByStatus
+        .flat()
+        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+        .slice(0, 100);
     }),
   // CREATE MANUAL: Admin input absensi manual
   createManual: adminProcedure

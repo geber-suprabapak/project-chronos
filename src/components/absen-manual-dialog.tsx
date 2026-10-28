@@ -325,8 +325,8 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                   !attemptsQuery.isError &&
                   attemptsQuery.data?.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Belum ada percobaan untuk aksi ini pada data siswa
-                      tersebut.
+                      Belum ada percobaan gagal atau gangguan untuk aksi ini
+                      pada data siswa tersebut.
                     </p>
                   )}
               </div>
