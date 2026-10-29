@@ -3,7 +3,7 @@
 1. Attendance pages call `absencesRouter` through tRPC.
 2. The router pushes supported date/user/status filters to Astra and uses `collectAstraPages` to follow the canonical offset metadata until the dataset is complete.
 3. Chronos maps user/profile fields, normalizes legacy attendance values, applies remaining view filters, and uses stable tie-break ordering before UI pagination.
-4. Manual create and delete operations use admin procedures and Astra management routes.
+4. Manual Attendance uses `schoolAdminProcedure`; legacy `admin` and `kepala_sekolah` normalize to `school_admin`, while `platform_admin` is denied. The form lists only failed/error Attempts for the same Student, action, and WIB date; Astra enforces the same boundary at create time. Attendance deletion remains an admin procedure.
 5. PDF and XLSX Route Handlers authorize export access, collect complete Astra data server-side, and stream generated binary artifacts independent of the browser DOM.
 6. Monthly backup completion is persisted by Astra with actor, scope, range, checksum, byte length, record count, and result; the banner hides only after validating that authoritative record.
 

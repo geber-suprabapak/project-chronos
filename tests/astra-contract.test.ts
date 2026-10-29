@@ -703,8 +703,45 @@ describe("Published Astra artifact", () => {
     ) as {
       version?: string;
       response?: { contract_header?: { value?: string } };
+      admin_routes?: string[];
+      leave_decision_history?: {
+        route?: string;
+        authorization?: string;
+        response?: { fields?: string[]; actions?: string[] };
+        actor?: string;
+        retention?: string;
+      };
     };
     assert.equal(artifact.version, "v1");
     assert.equal(artifact.response?.contract_header?.value, "v1");
+    assert.ok(
+      artifact.admin_routes?.includes(
+        "GET /v1/admin/leave-requests/{id}/history",
+      ),
+    );
+    assert.equal(
+      artifact.leave_decision_history?.route,
+      "GET /v1/admin/leave-requests/{id}/history",
+    );
+    assert.deepEqual(artifact.leave_decision_history?.response?.fields, [
+      "action",
+      "occurred_at",
+      "actor_name",
+      "actor_role",
+    ]);
+    assert.deepEqual(artifact.leave_decision_history?.response?.actions, [
+      "approve_leave_request",
+      "reject_leave_request",
+      "reopen_leave_request",
+      "force_finish_leave_request",
+    ]);
+    assert.match(
+      artifact.leave_decision_history?.actor ?? "",
+      /actor_id.*never exposed/,
+    );
+    assert.match(
+      artifact.leave_decision_history?.retention ?? "",
+      /existing audit_logs/,
+    );
   });
 });

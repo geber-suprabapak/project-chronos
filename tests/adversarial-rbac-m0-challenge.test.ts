@@ -164,8 +164,11 @@ describe("Adversarial Challenge M0: Chronos Authorization & Export Boundaries", 
         assert.equal(canPerformMonthlyBackup(role), false);
       }
 
-      for (const role of adminRoles) {
+      for (const role of ["school_admin", "admin", "kepala_sekolah"] as const) {
         assert.equal(canManageManualAttendance(role), true);
+      }
+      assert.equal(canManageManualAttendance("platform_admin"), false);
+      for (const role of adminRoles) {
         assert.equal(canDeleteAttendance(role), true);
         assert.equal(canPerformMonthlyBackup(role), true);
       }

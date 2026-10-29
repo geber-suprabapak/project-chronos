@@ -8,7 +8,7 @@ import {
 test.describe("Dashboard & Metrics Overview", () => {
   test.beforeEach(async ({ page }) => {
     await blockExternalBrowserRequests(page);
-    await loginAs(page, "platform_admin");
+    await loginAs(page, "school_admin");
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/dashboard/);
   });

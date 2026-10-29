@@ -311,6 +311,22 @@
     "revoke": "DELETE sets is_active=false immediately and retains eligibility metadata and student report history; revocation does not require current eligibility",
     "listing": "GET returns search matches and all existing eligibility rows, including inactive rows; class is resolved from the current Astra enrollment and is never copied into eligibility"
   },
+  "leave_decision_history": {
+    "route": "GET /v1/admin/leave-requests/{id}/history",
+    "authorization": "Bearer Logto access token with admin:read; approved Astra profile role is platform_admin, school_admin, teacher, or staff",
+    "response": {
+      "shape": "array",
+      "fields": ["action", "occurred_at", "actor_name", "actor_role"],
+      "actions": [
+        "approve_leave_request",
+        "reject_leave_request",
+        "reopen_leave_request",
+        "force_finish_leave_request"
+      ]
+    },
+    "actor": "actor_name and actor_role are snapshots in the existing audit_logs details; legacy events without snapshots return null; actor_id and raw audit details are never exposed",
+    "retention": "Uses existing audit_logs retention behavior; no separate history store or TTL"
+  },
   "admin_routes": [
     "GET /v1/admin/bootstrap/status",
     "POST /v1/admin/bootstrap/roster",
@@ -353,6 +369,7 @@
     "GET /v1/admin/leave-requests",
     "POST /v1/admin/leave-requests",
     "GET /v1/admin/leave-requests/{id}",
+    "GET /v1/admin/leave-requests/{id}/history",
     "PATCH /v1/admin/leave-requests/{id}",
     "POST /v1/admin/leave-requests/{id}/approve",
     "POST /v1/admin/leave-requests/{id}/force-finish",

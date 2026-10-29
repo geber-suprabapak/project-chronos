@@ -64,7 +64,7 @@ legacy aliases are mapped to canonical roles:
 | **Configuration (`/konfigurasi/*`)** | Allowed | Allowed | Denied (Redirect) | Denied (Redirect) | Denied | Denied |
 | **Profiles Management (`/profiles/*`)** | Allowed | Allowed | Denied (Redirect) | Denied (Redirect) | Denied | Denied |
 | **Attendance Read (`/absensi`)** | Allowed | Allowed | Allowed | Allowed | Denied | Denied |
-| **Manual Attendance (`AbsenManualDialog`)** | Allowed | Allowed | Hidden / Blocked | Hidden / Blocked | Denied | Denied |
+| **Manual Attendance (`AbsenManualDialog`)** | Denied | Allowed | Hidden / Blocked | Hidden / Blocked | Denied | Denied |
 | **Attendance Delete / Bulk Actions** | Allowed | Allowed | Hidden / Blocked | Hidden / Blocked | Denied | Denied |
 | **Monthly Backup Banner (`MonthlyBackupBanner`)** | Allowed | Allowed | Hidden | Hidden | Denied | Denied |
 | **Leave Management (`/perizinan`, `IzinManualDialog`)** | Allowed | Allowed | Allowed | Allowed | Denied | Denied |
@@ -97,7 +97,8 @@ legacy aliases are mapped to canonical roles:
   "Profiles" via `canAccessProfiles(role)`.
 - **Manual Attendance Creation:** `AbsenManualDialog` is rendered conditionally
   via `canManageManualAttendance(role)` in the dashboard action card and
-  attendance page.
+  attendance page. Only canonical `school_admin` and its documented Chronos
+  aliases (`admin`, `kepala_sekolah`) are allowed; `platform_admin` is denied.
 - **Attendance Record Deletion & Bulk Actions:** The attendance page hides row
   selection, delete buttons, and bulk delete actions when
   `canDeleteAttendance(role)` is false.

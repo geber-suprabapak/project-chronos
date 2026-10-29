@@ -13,17 +13,15 @@ import {
 
 export function DashboardActionCard({
   role,
-  isAdmin: directIsAdmin,
 }: {
   role?: AppRole | null;
-  isAdmin?: boolean;
 } = {}) {
   const [canManualAttendance, setCanManualAttendance] = React.useState<boolean>(
-    directIsAdmin ?? canManageManualAttendance(role),
+    canManageManualAttendance(role),
   );
 
   React.useEffect(() => {
-    if (directIsAdmin !== undefined || role !== undefined) return;
+    if (role !== undefined) return;
     let active = true;
     void fetch("/api/logto/user")
       .then(async (response) => {
@@ -49,7 +47,7 @@ export function DashboardActionCard({
     return () => {
       active = false;
     };
-  }, [directIsAdmin, role]);
+  }, [role]);
 
   return (
     <Card className="h-full min-w-0 w-full">

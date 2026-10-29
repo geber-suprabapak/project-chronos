@@ -200,6 +200,9 @@ test.describe("Perizinan (Leave Requests Management) Workflows", () => {
           await expect(
             page.getByRole("button", { name: detail.action }),
           ).toBeVisible();
+          await expect(
+            page.getByText("Kepala Sekolah Test · school_admin"),
+          ).toBeVisible();
         }
       }
 

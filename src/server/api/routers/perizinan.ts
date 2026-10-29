@@ -91,6 +91,17 @@ interface AstraLeaveRequest {
   updated_at?: string | null;
 }
 
+interface AstraLeaveDecisionHistoryEvent {
+  action:
+    | "approve_leave_request"
+    | "reject_leave_request"
+    | "reopen_leave_request"
+    | "force_finish_leave_request";
+  occurred_at: string;
+  actor_name: string | null;
+  actor_role: string | null;
+}
+
 async function astraLeaveMutationRequest<T>(
   path: string,
   init: RequestInit,
@@ -417,6 +428,25 @@ export const perizinanRouter = createTRPCRouter({
       }
 
       return mapAstraLeaveRequestToPerizinan(lr);
+    }),
+
+  getDecisionHistory: privilegedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ input }) => {
+      try {
+        const history = await astraRequest<AstraLeaveDecisionHistoryEvent[]>(
+          `/v1/admin/leave-requests/${input.id}/history`,
+        );
+        return history.map((event) => ({
+          action: event.action,
+          occurredAt: event.occurred_at,
+          actorName: event.actor_name,
+          actorRole: event.actor_role,
+        }));
+      } catch (error) {
+        const upstream = error instanceof AstraRequestError ? error : null;
+        failLeaveDependency(upstream, upstream ?? undefined);
+      }
     }),
 
   // Memperbarui status persetujuan perizinan melalui Astra API.

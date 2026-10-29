@@ -143,10 +143,10 @@ describe("Issue 04 Role & Action Enforcement Matrix", () => {
     });
 
     it("restricts Manual Attendance to admin roles only", () => {
-      for (const role of adminRoles) {
+      for (const role of ["school_admin", "admin", "kepala_sekolah"] as const) {
         assert.equal(canManageManualAttendance(role), true);
       }
-      for (const role of teacherStaffRoles) {
+      for (const role of ["platform_admin", ...teacherStaffRoles] as const) {
         assert.equal(canManageManualAttendance(role), false);
       }
       for (const role of studentRoles) {

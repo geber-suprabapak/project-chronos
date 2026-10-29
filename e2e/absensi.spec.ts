@@ -8,7 +8,7 @@ import {
 test.describe("Absensi (Attendance Management) Workflows", () => {
   test.beforeEach(async ({ page }) => {
     await blockExternalBrowserRequests(page);
-    await loginAs(page, "platform_admin");
+    await loginAs(page, "school_admin");
   });
 
   test.describe("Daily Attendance Listing & Search", () => {
@@ -177,6 +177,12 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
       await dialog.locator("#status").click();
       await page.getByRole("option", { name: "Hadir", exact: true }).click();
       await dialog.locator("#attendance-attempt").click();
+      await expect(
+        page.getByRole("option", { name: /Percobaan lama/ }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("option", { name: /Verifikasi wajah/ }),
+      ).toHaveCount(1);
       await expect(page.getByRole("option", { name: /Berhasil/ })).toHaveCount(
         0,
       );
@@ -196,6 +202,14 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
         page.getByText("Absensi berhasil ditambahkan!"),
       ).toBeVisible();
       await expect(dialog).not.toBeVisible();
+    });
+
+    test("platform admin cannot access Manual Attendance", async ({ page }) => {
+      await loginAs(page, "platform_admin");
+      await page.goto("/absensi");
+      await expect(
+        page.getByRole("button", { name: /Absen Manual/i }),
+      ).toHaveCount(0);
     });
 
     test("handles single attendance deletion with confirmation dialog", async ({
@@ -287,7 +301,7 @@ test.describe("Absensi (Attendance Management) Workflows", () => {
     test("Absen Manual defaults to the WIB school date at 01:00 WIB", async ({
       page,
     }) => {
-      await loginAs(page, "platform_admin");
+      await loginAs(page, "school_admin");
       // 2026-10-06T18:00:00Z is 01:00 WIB on 2026-10-07 and still 11:00 on
       // 2026-10-06 in the browser timezone: the prior UTC date must not win.
       await page.clock.setFixedTime(new Date("2026-10-06T18:00:00Z"));

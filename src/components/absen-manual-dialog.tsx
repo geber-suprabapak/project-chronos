@@ -64,8 +64,9 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
         status === "Pulang" || status === "Dipulangkan"
           ? "check_out"
           : "check_in",
+      date,
     },
-    { enabled: open && Boolean(siswaData && status) },
+    { enabled: open && Boolean(siswaData && status && date) },
   );
 
   // Auto-check NIS saat mengetik (debounced)
@@ -284,7 +285,10 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                   id="date"
                   type="date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setAttemptId("");
+                  }}
                 />
               </div>
 
@@ -326,7 +330,7 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                   attemptsQuery.data?.length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       Belum ada percobaan gagal atau gangguan untuk aksi ini
-                      pada data siswa tersebut.
+                      pada tanggal WIB yang dipilih.
                     </p>
                   )}
               </div>

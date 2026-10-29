@@ -123,7 +123,7 @@ export function canAccessProfiles(
 export function canManageManualAttendance(
   role: AppRole | null | undefined,
 ): role is AppRole {
-  return role != null && isAdminRole(role);
+  return role != null && hasRequiredRole(role, ["school_admin"]);
 }
 
 export function canDeleteAttendance(

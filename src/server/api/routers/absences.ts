@@ -4,6 +4,7 @@ import {
   adminProcedure,
   createTRPCRouter,
   protectedProcedure,
+  schoolAdminProcedure,
 } from "~/server/api/trpc";
 import {
   actionableAttendanceBlockedMessage,
@@ -147,11 +148,12 @@ function mapAstraAttendance(
  *  - getClassAttendanceSummary: Ringkasan kehadiran per kelas
  */
 export const absencesRouter = createTRPCRouter({
-  listManualAttempts: adminProcedure
+  listManualAttempts: schoolAdminProcedure
     .input(
       z.object({
         nis: z.string().min(1),
         actionType: z.enum(["check_in", "check_out"]),
+        date: z.string().refine(isDateOnlyValue),
       }),
     )
     .query(async ({ input }) => {
@@ -176,16 +178,23 @@ export const absencesRouter = createTRPCRouter({
       );
       return attemptsByStatus
         .flat()
+        .filter((attempt) => {
+          const timestamp = Date.parse(attempt.created_at);
+          return (
+            Number.isFinite(timestamp) &&
+            schoolDate(new Date(timestamp)) === input.date
+          );
+        })
         .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
         .slice(0, 100);
     }),
   // CREATE MANUAL: Admin input absensi manual
-  createManual: adminProcedure
+  createManual: schoolAdminProcedure
     .input(
       z.object({
         nis: z.string(),
         status: z.enum(["Hadir", "Terlambat", "Pulang", "Dipulangkan"]),
-        date: z.string().regex(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/), // YYYY-MM-DD
+        date: z.string().refine(isDateOnlyValue),
         reason: z.string().trim().min(3).max(500),
         attemptId: z.string().min(1),
       }),

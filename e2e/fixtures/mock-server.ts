@@ -8,6 +8,7 @@ import {
   type MockLeaveRequest,
   type MockLocation,
 } from "./data.ts";
+import { schoolDate } from "../../src/lib/date-utils.ts";
 
 export interface MockServerOptions {
   astraPort?: number;
@@ -792,6 +793,9 @@ export class MockAstraLogtoServer {
         if (
           reason.length < 3 ||
           !attempt ||
+          (attempt.status !== "failed" && attempt.status !== "error") ||
+          !Number.isFinite(Date.parse(attempt.created_at)) ||
+          schoolDate(new Date(attempt.created_at)) !== date ||
           attempt.user_id !== userId ||
           attempt.action_type !== actionType
         ) {
@@ -900,6 +904,28 @@ export class MockAstraLogtoServer {
         result = result.filter((lr) => lr.date === query.date);
       }
       this.sendAstraJson(res, 200, result);
+      return;
+    }
+
+    const leaveHistoryMatch = pathname.match(
+      /^\/v1\/admin\/leave-requests\/([^/]+)\/history$/,
+    );
+    if (leaveHistoryMatch && method === "GET") {
+      const lr = this.data.leaveRequests.find(
+        (r) => r.id === leaveHistoryMatch[1],
+      );
+      if (!lr) {
+        this.sendAstraJson(res, 404, null, "Leave request not found");
+      } else {
+        this.sendAstraJson(res, 200, [
+          {
+            action: "approve_leave_request",
+            occurred_at: "2026-10-29T01:23:00.000Z",
+            actor_name: "Kepala Sekolah Test",
+            actor_role: "school_admin",
+          },
+        ]);
+      }
       return;
     }
 

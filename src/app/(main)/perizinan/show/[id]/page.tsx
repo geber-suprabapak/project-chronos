@@ -55,8 +55,7 @@ const formatDate = (input: string | Date | null | undefined) => {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    // If you want a fixed timezone regardless of client device, uncomment:
-    // timeZone: "Asia/Jakarta",
+    timeZone: "Asia/Jakarta",
   }).format(date);
 };
 
@@ -201,10 +200,21 @@ export default function ShowPerizinanPage() {
     refetch,
     isRefetching,
   } = api.perizinan.getById.useQuery({ id }, { enabled: !!id, retry: false });
+  const {
+    data: decisionHistory,
+    isLoading: isDecisionHistoryLoading,
+    error: decisionHistoryError,
+    refetch: refetchDecisionHistory,
+    isRefetching: isDecisionHistoryRefetching,
+  } = api.perizinan.getDecisionHistory.useQuery(
+    { id },
+    { enabled: !!id, retry: false },
+  );
 
   const updateStatusMutation = api.perizinan.updateStatus.useMutation({
     onSuccess: (data) => {
       void utils.perizinan.getById.invalidate({ id });
+      void utils.perizinan.getDecisionHistory.invalidate({ id });
       void utils.perizinan.listRaw.invalidate();
       setRejectDialogOpen(false);
       if (data) {
@@ -229,6 +239,7 @@ export default function ShowPerizinanPage() {
   const forceFinishMutation = api.perizinan.forceFinish.useMutation({
     onSuccess: (data) => {
       void utils.perizinan.getById.invalidate({ id });
+      void utils.perizinan.getDecisionHistory.invalidate({ id });
       void utils.perizinan.listRaw.invalidate();
       setForceFinishDate(data.effectiveEndDate ?? "");
       setForceFinishReason("");
@@ -503,38 +514,55 @@ export default function ShowPerizinanPage() {
                   </p>
                 </div>
               </div>
-              {perizinan.approvalStatus === "approved" && (
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-green-500" />
-                  <div className="text-sm">
-                    <p className="font-medium">Disetujui</p>
-                    <p className="text-muted-foreground">
-                      {formatDate(perizinan.approvedAt)}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {perizinan.approvalStatus === "rejected" && (
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-red-500" />
-                  <div className="text-sm">
-                    <p className="font-medium">Ditolak</p>
-                    <p className="text-muted-foreground">
-                      {formatDate(perizinan.rejectedAt)}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {perizinan.approvalStatus === "pending" && (
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500" />
-                  <div className="text-sm">
-                    <p className="font-medium">Menunggu Persetujuan</p>
-                    <p className="text-muted-foreground">
-                      Status saat ini: pending
-                    </p>
-                  </div>
-                </div>
+              {isDecisionHistoryLoading ? (
+                <Skeleton className="h-12 w-full" />
+              ) : decisionHistoryError ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertTitle>Riwayat keputusan gagal dimuat</AlertTitle>
+                  <AlertDescription className="flex flex-wrap items-center gap-2">
+                    <span>{decisionHistoryError.message}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isDecisionHistoryRefetching}
+                      onClick={() => void refetchDecisionHistory()}
+                    >
+                      Coba lagi
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : decisionHistory?.length ? (
+                decisionHistory.map((event, index) => {
+                  const label = {
+                    approve_leave_request: "Disetujui",
+                    reject_leave_request: "Ditolak",
+                    reopen_leave_request: "Dibuka kembali",
+                    force_finish_leave_request: "Masa izin diakhiri lebih awal",
+                  }[event.action];
+                  return (
+                    <div
+                      key={`${event.occurredAt}-${event.action}-${index}`}
+                      className="flex items-start gap-3"
+                    >
+                      <span className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" />
+                      <div className="text-sm">
+                        <p className="font-medium">{label}</p>
+                        <p className="text-muted-foreground">
+                          {formatDate(event.occurredAt)}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {event.actorName ?? "Nama tidak tersedia"} ·{" "}
+                          {event.actorRole ?? "Role tidak tersedia"}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Belum ada riwayat keputusan dalam audit Astra.
+                </p>
               )}
               {perizinan.rejectionReason && (
                 <Alert className="mt-3">

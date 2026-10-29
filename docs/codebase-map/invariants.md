@@ -1,5 +1,15 @@
 # Invariants
 
+## INV-CHRONOS-018 — Leave decision history is Astra-authoritative
+
+**Rule:** The Leave detail timeline reads only the four decision actions from Astra's authorized history endpoint. It displays persisted actor name/role snapshots and event time in Asia/Jakarta; missing legacy snapshots remain unavailable, and actor IDs/raw audit details are never exposed.
+**Evidence:** `contracts/astra-v1.json`, `src/server/api/routers/perizinan.ts`, `src/app/(main)/perizinan/show/[id]/page.tsx`, `e2e/perizinan.spec.ts`.
+
+## INV-CHRONOS-017 — Manual Attendance requires a same-day eligible Attempt
+
+**Rule:** Only `school_admin` and its documented Chronos aliases may list eligible Attempts or create Manual Attendance. `platform_admin` is denied. The Attempt must be `failed` or `error` for the same Student/action and Asia/Jakarta calendar date as the manual Attendance; Astra independently enforces these conditions.
+**Evidence:** `src/server/auth/rbac.ts`, `src/server/api/routers/absences.ts`, `src/components/absen-manual-dialog.tsx`, `tests/rbac-matrix.test.ts`, `e2e/absensi.spec.ts`.
+
 ## INV-CHRONOS-016 — Dashboard pending leave uses the school day
 
 **Rule:** The dashboard's today-only pending-leave query uses the shared `schoolDate` helper in Asia/Jakarta, including WIB midnight and month/year boundaries, independently of the server timezone. Older pending requests remain in the collection; they are not today's widget rows. Dependency failures still render the existing error state rather than an empty result.
