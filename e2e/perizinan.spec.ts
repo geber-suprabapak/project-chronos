@@ -36,6 +36,14 @@ async function getLeaveControl(): Promise<{
 
 test.describe("Perizinan (Leave Requests Management) Workflows", () => {
   test.beforeEach(async ({ page }) => {
+    await page.route("**/*", async (route) => {
+      const hostname = new URL(route.request().url()).hostname;
+      if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
+        await route.continue();
+      } else {
+        await route.abort();
+      }
+    });
     await loginAs(page, "platform_admin");
   });
 
