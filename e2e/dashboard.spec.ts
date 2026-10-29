@@ -1,7 +1,13 @@
-import { test, expect, loginAs } from "./fixtures/auth.ts";
+import {
+  blockExternalBrowserRequests,
+  test,
+  expect,
+  loginAs,
+} from "./fixtures/auth.ts";
 
 test.describe("Dashboard & Metrics Overview", () => {
   test.beforeEach(async ({ page }) => {
+    await blockExternalBrowserRequests(page);
     await loginAs(page, "platform_admin");
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/dashboard/);

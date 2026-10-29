@@ -1,4 +1,9 @@
-import { test, expect, loginAs } from "./fixtures/auth.ts";
+import {
+  blockExternalBrowserRequests,
+  test,
+  expect,
+  loginAs,
+} from "./fixtures/auth.ts";
 import AxeBuilder from "@axe-core/playwright";
 
 const OWNED_ROUTES = [
@@ -13,14 +18,7 @@ const OWNED_ROUTES = [
 
 test.describe("Responsive & Accessibility Quality Gates", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/*", async (route) => {
-      const hostname = new URL(route.request().url()).hostname;
-      if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
-        await route.continue();
-      } else {
-        await route.abort();
-      }
-    });
+    await blockExternalBrowserRequests(page);
     await loginAs(page, "platform_admin");
   });
 

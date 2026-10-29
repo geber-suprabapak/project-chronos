@@ -1,4 +1,9 @@
-import { test, expect, loginAs } from "./fixtures/auth.ts";
+import {
+  blockExternalBrowserRequests,
+  test,
+  expect,
+  loginAs,
+} from "./fixtures/auth.ts";
 
 const MOCK_ASTRA_PORT = process.env.MOCK_ASTRA_PORT || "23500";
 const MOCK_ASTRA_BASE = `http://127.0.0.1:${MOCK_ASTRA_PORT}`;
@@ -36,14 +41,7 @@ async function getLeaveControl(): Promise<{
 
 test.describe("Perizinan (Leave Requests Management) Workflows", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route("**/*", async (route) => {
-      const hostname = new URL(route.request().url()).hostname;
-      if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
-        await route.continue();
-      } else {
-        await route.abort();
-      }
-    });
+    await blockExternalBrowserRequests(page);
     await loginAs(page, "platform_admin");
   });
 

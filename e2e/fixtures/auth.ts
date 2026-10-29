@@ -228,6 +228,17 @@ export type RoleType =
   | "siswa"
   | "must_change_password";
 
+export async function blockExternalBrowserRequests(page: Page): Promise<void> {
+  await page.route("**/*", async (route) => {
+    const hostname = new URL(route.request().url()).hostname;
+    if (["localhost", "127.0.0.1", "::1"].includes(hostname)) {
+      await route.continue();
+    } else {
+      await route.abort();
+    }
+  });
+}
+
 export async function loginAs(
   page: Page,
   role: RoleType = "platform_admin",

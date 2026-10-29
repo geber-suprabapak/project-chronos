@@ -693,8 +693,12 @@ export class MockAstraLogtoServer {
       return;
     }
 
+    const isCompleteAttendanceCollection =
+      pathname === "/v1/admin/attendance/export" ||
+      pathname === "/v1/admin/attendances/export";
     if (
-      (pathname === "/v1/admin/attendance" ||
+      (isCompleteAttendanceCollection ||
+        pathname === "/v1/admin/attendance" ||
         pathname === "/v1/admin/attendances") &&
       method === "GET"
     ) {
@@ -713,12 +717,29 @@ export class MockAstraLogtoServer {
       if (query.status) {
         result = result.filter((a) => a.status === query.status);
       }
+      const actionType = query.action_type ?? query.actionType;
+      if (actionType) {
+        result = result.filter((a) => a.action_type === actionType);
+      }
       if (query.userId) {
         result = result.filter((a) => a.user_id === query.userId);
       }
       if (query.user_id) {
         result = result.filter((a) => a.user_id === query.user_id);
       }
+      if (isCompleteAttendanceCollection) {
+        this.sendAstraJson(
+          res,
+          200,
+          result,
+          "Complete attendances collection retrieved successfully.",
+          {
+            pagination: { limit: result.length, offset: 0, has_more: false },
+          },
+        );
+        return;
+      }
+
       const limit = Math.min(Math.max(Number(query.limit ?? 50), 1), 100);
       const offset = Math.max(Number(query.offset ?? 0), 0);
       const page = result.slice(offset, offset + limit);
