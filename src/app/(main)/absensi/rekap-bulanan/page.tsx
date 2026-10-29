@@ -178,7 +178,11 @@ export default function MonthlyAttendanceRecapPage() {
       </Card>
 
       {recap.isLoading ? (
-        <Card className="space-y-3 p-4" aria-label="Memuat rekap">
+        <Card
+          className="space-y-3 p-4"
+          role="status"
+          aria-label="Memuat rekap absensi bulanan"
+        >
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-40 w-full" />
         </Card>

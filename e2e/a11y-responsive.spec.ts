@@ -9,8 +9,12 @@ import AxeBuilder from "@axe-core/playwright";
 const OWNED_ROUTES = [
   "/dashboard",
   "/absensi",
+  "/absensi/perkelas",
+  "/absensi/rekap-bulanan",
   "/perizinan",
+  "/perizinan/show/b0000000-0000-4000-8000-000000000001",
   "/profiles",
+  "/profiles/show/00000000-0000-0000-0000-000000000001",
   "/siswa",
   "/konfigurasi/jadwal",
   "/konfigurasi/lokasi",
@@ -26,9 +30,23 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
     test.describe(`Route: ${routePath}`, () => {
       test(`verifies lang="id", horizontal containment & clipping, nested controls, axe, and keyboard focus`, async ({
         page,
-      }) => {
+      }, testInfo) => {
         await page.goto(routePath);
         await page.waitForLoadState("domcontentloaded");
+
+        if (routePath === "/absensi/perkelas") {
+          await expect(
+            page.getByRole("heading", { name: /Per Kelas/i }),
+          ).toBeVisible();
+        } else if (routePath === "/absensi/rekap-bulanan") {
+          await expect(page.getByRole("table").first()).toBeVisible();
+        } else if (routePath.startsWith("/perizinan/show/")) {
+          await expect(
+            page.getByTestId("perizinan-detail-loaded"),
+          ).toBeVisible();
+        } else if (routePath.startsWith("/profiles/show/")) {
+          await expect(page.getByTestId("profile-detail-loaded")).toBeVisible();
+        }
 
         // 1. Validate document language
         const lang = await page.evaluate(() =>
@@ -153,8 +171,109 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
           );
         });
         expect(isFocusActive).toBe(true);
+
+        if (testInfo.project.name === "mobile") {
+          await page.setViewportSize({ width: 320, height: 844 });
+          const narrowLayout = await page.evaluate(() => {
+            const innerWidth = window.innerWidth;
+            const clipped = Array.from(
+              document.querySelectorAll<HTMLElement>(
+                "main, main > *, [role='region'], .card, [data-slot='card']",
+              ),
+            )
+              .filter((element) => {
+                const style = window.getComputedStyle(element);
+                if (
+                  element.offsetWidth === 0 ||
+                  element.offsetHeight === 0 ||
+                  style.display === "none" ||
+                  style.visibility === "hidden" ||
+                  style.opacity === "0"
+                ) {
+                  return false;
+                }
+                const rect = element.getBoundingClientRect();
+                return rect.left < -2 || rect.right > innerWidth + 2;
+              })
+              .map((element) => ({
+                tag: element.tagName,
+                id: element.id,
+                className: element.className.toString().slice(0, 100),
+                left: Math.round(element.getBoundingClientRect().left),
+                right: Math.round(element.getBoundingClientRect().right),
+              }));
+            return {
+              docScrollWidth: document.documentElement.scrollWidth,
+              bodyScrollWidth: document.body.scrollWidth,
+              innerWidth,
+              clipped,
+            };
+          });
+          expect(
+            narrowLayout.docScrollWidth,
+            `Document overflows at 320 CSS px on ${routePath}: ${JSON.stringify(narrowLayout)}`,
+          ).toBeLessThanOrEqual(narrowLayout.innerWidth + 1);
+          expect(
+            narrowLayout.bodyScrollWidth,
+            `Body overflows at 320 CSS px on ${routePath}: ${JSON.stringify(narrowLayout)}`,
+          ).toBeLessThanOrEqual(narrowLayout.innerWidth + 1);
+          expect(
+            narrowLayout.clipped,
+            `Visible content is clipped at 320 CSS px on ${routePath}`,
+          ).toEqual([]);
+        }
       });
     });
+  }
+
+  for (const role of ["teacher", "staff"] as const) {
+    for (const routePath of ["/dashboard", "/absensi", "/perizinan"]) {
+      test(`${role} accessibility on ${routePath}`, async ({
+        page,
+      }, testInfo) => {
+        await loginAs(page, role);
+        await page.goto(routePath);
+        await expect(page).toHaveURL((url) =>
+          url.pathname.startsWith(routePath),
+        );
+        if (routePath === "/absensi" || routePath === "/perizinan") {
+          await expect(page.getByRole("table").first()).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: "Unduh Excel" }),
+          ).toBeEnabled();
+        }
+        await expect(page.locator("html")).toHaveAttribute("lang", "id");
+
+        const axeResults = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+          .analyze();
+        expect(
+          axeResults.violations.filter(
+            (violation) =>
+              violation.impact === "serious" || violation.impact === "critical",
+          ),
+        ).toEqual([]);
+
+        await page.keyboard.press("Tab");
+        expect(
+          await page.evaluate(
+            () =>
+              !!document.activeElement &&
+              document.activeElement !== document.body &&
+              document.activeElement !== document.documentElement,
+          ),
+        ).toBe(true);
+
+        if (testInfo.project.name === "mobile") {
+          await page.setViewportSize({ width: 320, height: 844 });
+          await expect
+            .poll(() =>
+              page.evaluate(() => document.documentElement.scrollWidth),
+            )
+            .toBeLessThanOrEqual(321);
+        }
+      });
+    }
   }
 
   test.describe("Interactive Modals & Components A11y", () => {
@@ -215,6 +334,7 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
       // Press Escape to dismiss dialog
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden({ timeout: 5000 });
+      await expect(openButton).toBeFocused();
     });
 
     test("Konfigurasi Jadwal reset triggers AlertDialog instead of native confirm", async ({
