@@ -249,7 +249,11 @@ export default function AbsensiPage() {
 
       <Card className="overflow-hidden p-2 sm:p-3">
         {loading ? (
-          <div className="space-y-2">
+          <div
+            className="space-y-2"
+            role="status"
+            aria-label="Memuat daftar absensi"
+          >
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />

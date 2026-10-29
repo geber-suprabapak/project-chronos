@@ -165,7 +165,7 @@ export default function PerizinanPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" role="alert">
               {uiState === "forbidden"
                 ? LEAVE_DETAIL_MESSAGES.forbidden
                 : uiState === "unknown"
@@ -221,6 +221,15 @@ export default function PerizinanPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {loadingState ? (
+            <p
+              className="sr-only"
+              role="status"
+              aria-label="Memuat daftar perizinan"
+            >
+              Memuat daftar perizinan
+            </p>
+          ) : null}
           <FilterBar
             value={filter}
             onChange={(newFilter) => {

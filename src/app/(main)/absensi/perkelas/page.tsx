@@ -295,14 +295,18 @@ export default function AbsensiPerKelasPage() {
             </p>
           </div>
         ) : loading ? (
-          <div className="space-y-2">
+          <div
+            className="space-y-2"
+            role="status"
+            aria-label="Memuat absensi per kelas"
+          >
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
         ) : summaryError ? (
-          <div className="text-red-600">
+          <div className="text-destructive" role="alert">
             {summaryError?.message ?? "Terjadi kesalahan saat memuat data."}
           </div>
         ) : (

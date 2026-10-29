@@ -5,7 +5,12 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import { AstraRequestError, astraRequest } from "~/lib/astra/client";
+import {
+  classifyConfigurationReadFailure,
+  configurationReadSeamCode,
+  SCHEDULE_READ_MESSAGES,
+} from "~/server/api/routers/configuration-read";
 import {
   HARI_ENUM,
   HARI_TO_ID,
@@ -23,6 +28,20 @@ import {
   type ScheduleBatchClient,
   type ScheduleWrite,
 } from "~/server/api/routers/jadwal-batch";
+
+function throwScheduleReadFailure(error: Error): never {
+  if (error instanceof TRPCError) throw error;
+  const upstream = error instanceof AstraRequestError ? error : null;
+  const classified = classifyConfigurationReadFailure(
+    upstream,
+    SCHEDULE_READ_MESSAGES,
+  );
+  throw new TRPCError({
+    code: configurationReadSeamCode(classified),
+    message: classified.message,
+    cause: upstream ?? error,
+  });
+}
 
 export { isDayId, mapAstraSchedule };
 export type { AstraSchedule };
@@ -55,12 +74,11 @@ export const jadwalRouter = createTRPCRouter({
         .map((s, idx) => mapAstraSchedule(s, idx + 1))
         .sort((a, b) => a.id - b.id);
     } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Gagal memuat jadwal dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
-        cause: error,
-      });
+      throwScheduleReadFailure(
+        error instanceof Error
+          ? error
+          : new Error("Unknown schedule read failure"),
+      );
     }
   }),
 
@@ -85,8 +103,12 @@ export const jadwalRouter = createTRPCRouter({
         return schedule
           ? mapAstraSchedule(schedule, HARI_TO_ID[input.hari])
           : null;
-      } catch {
-        return null;
+      } catch (error) {
+        throwScheduleReadFailure(
+          error instanceof Error
+            ? error
+            : new Error("Unknown schedule read failure"),
+        );
       }
     }),
 
@@ -108,8 +130,12 @@ export const jadwalRouter = createTRPCRouter({
             idx + 1 === input.id,
         );
         return schedule ? mapAstraSchedule(schedule, input.id) : null;
-      } catch {
-        return null;
+      } catch (error) {
+        throwScheduleReadFailure(
+          error instanceof Error
+            ? error
+            : new Error("Unknown schedule read failure"),
+        );
       }
     }),
 
@@ -139,8 +165,12 @@ export const jadwalRouter = createTRPCRouter({
       return schedule
         ? mapAstraSchedule(schedule, HARI_TO_ID[currentHari])
         : null;
-    } catch {
-      return null;
+    } catch (error) {
+      throwScheduleReadFailure(
+        error instanceof Error
+          ? error
+          : new Error("Unknown schedule read failure"),
+      );
     }
   }),
 
@@ -155,12 +185,11 @@ export const jadwalRouter = createTRPCRouter({
         .map((s, idx) => mapAstraSchedule(s, idx + 1))
         .sort((a, b) => a.id - b.id);
     } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Gagal memuat jadwal aktif dari layanan Astra: ${error instanceof Error ? error.message : "Unknown error"}`,
-        cause: error,
-      });
+      throwScheduleReadFailure(
+        error instanceof Error
+          ? error
+          : new Error("Unknown schedule read failure"),
+      );
     }
   }),
 
@@ -429,31 +458,28 @@ export const jadwalRouter = createTRPCRouter({
 
   // Get statistics
   getStats: protectedProcedure.query(async () => {
+    let schedules: AstraSchedule[];
     try {
-      const schedules = await astraRequest<AstraSchedule[]>(
-        "/v1/admin/schedules",
+      schedules = await astraRequest<AstraSchedule[]>("/v1/admin/schedules");
+    } catch (error) {
+      throwScheduleReadFailure(
+        error instanceof Error
+          ? error
+          : new Error("Unknown schedule read failure"),
       );
-      const mapped = schedules.map((s, idx) => mapAstraSchedule(s, idx + 1));
-      const activeCount = mapped.filter((s) => s.isActive).length;
-      const avgKompensasi =
-        mapped.length > 0
-          ? mapped.reduce((sum, s) => sum + s.kompensasiWaktu, 0) /
-            mapped.length
-          : 0;
-
-      return {
-        total: mapped.length,
-        active: activeCount,
-        inactive: mapped.length - activeCount,
-        avgKompensasi: Math.round(avgKompensasi),
-      };
-    } catch {
-      return {
-        total: 0,
-        active: 0,
-        inactive: 0,
-        avgKompensasi: 0,
-      };
     }
+    const mapped = schedules.map((s, idx) => mapAstraSchedule(s, idx + 1));
+    const activeCount = mapped.filter((s) => s.isActive).length;
+    const avgKompensasi =
+      mapped.length > 0
+        ? mapped.reduce((sum, s) => sum + s.kompensasiWaktu, 0) / mapped.length
+        : 0;
+
+    return {
+      total: mapped.length,
+      active: activeCount,
+      inactive: mapped.length - activeCount,
+      avgKompensasi: Math.round(avgKompensasi),
+    };
   }),
 });

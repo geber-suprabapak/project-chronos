@@ -1,8 +1,5 @@
 /**
- * Pure status-to-seam mapping for the configuration (location) dependency
- * boundary (`location.get`, `location.getById`, `location.getAll`,
- * `location.getActive`, `location.getStats`, and the
- * `/konfigurasi/lokasi` page).
+ * Pure status-to-seam mapping for configuration and schedule read boundaries.
  *
  * This module is intentionally dependency-free so the classification matrix
  * (403 vs timeout/network vs 5xx) can be verified with `node --test` without
@@ -48,6 +45,12 @@ export const CONFIGURATION_READ_MESSAGES = {
     "Terjadi kesalahan saat memuat konfigurasi. Coba lagi beberapa saat.",
 } as const;
 
+export const SCHEDULE_READ_MESSAGES = {
+  forbidden: "Anda tidak memiliki izin untuk memuat konfigurasi jadwal.",
+  dependency: "Layanan jadwal sedang tidak tersedia. Coba lagi beberapa saat.",
+  unknown: "Terjadi kesalahan saat memuat jadwal. Coba lagi beberapa saat.",
+} as const;
+
 const FORBIDDEN_STATUS = 403;
 const FORBIDDEN_CODE = "FORBIDDEN";
 const TIMEOUT_STATUS = 504;
@@ -67,6 +70,11 @@ const NETWORK_CODES: ReadonlySet<string> = new Set([
  */
 export function classifyConfigurationReadFailure(
   failure: AstraUpstreamFailure | null,
+  messages: {
+    readonly forbidden: string;
+    readonly dependency: string;
+    readonly unknown: string;
+  } = CONFIGURATION_READ_MESSAGES,
 ): ConfigurationReadFailure {
   if (failure !== null) {
     if (
@@ -76,14 +84,14 @@ export function classifyConfigurationReadFailure(
       return {
         kind: "forbidden",
         retryable: false,
-        message: CONFIGURATION_READ_MESSAGES.forbidden,
+        message: messages.forbidden,
       };
     }
     if (failure.status === TIMEOUT_STATUS || failure.code === TIMEOUT_CODE) {
       return {
         kind: "timeout",
         retryable: true,
-        message: CONFIGURATION_READ_MESSAGES.dependency,
+        message: messages.dependency,
       };
     }
     if (
@@ -93,17 +101,14 @@ export function classifyConfigurationReadFailure(
       return {
         kind: "network",
         retryable: true,
-        message: CONFIGURATION_READ_MESSAGES.dependency,
+        message: messages.dependency,
       };
     }
   }
   return {
     kind: failure === null ? "unknown" : "upstream_failure",
     retryable: true,
-    message:
-      failure === null
-        ? CONFIGURATION_READ_MESSAGES.unknown
-        : CONFIGURATION_READ_MESSAGES.dependency,
+    message: failure === null ? messages.unknown : messages.dependency,
   };
 }
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   CONFIGURATION_READ_MESSAGES,
+  SCHEDULE_READ_MESSAGES,
   classifyConfigurationReadFailure,
   configurationReadSeamCode,
   configurationReadUiState,
@@ -33,6 +34,16 @@ function astraLikeError(
 
 describe("Configuration read failure mapping (C07)", () => {
   describe("single-outcome classification matrix (403 vs timeout/network vs 5xx)", () => {
+    it("uses schedule-specific safe messages with the same retry classification", () => {
+      const failure = classifyConfigurationReadFailure(
+        astraLikeError(503, "DEPENDENCY_UNAVAILABLE"),
+        SCHEDULE_READ_MESSAGES,
+      );
+      assert.equal(failure.kind, "network");
+      assert.equal(failure.retryable, true);
+      assert.equal(failure.message, SCHEDULE_READ_MESSAGES.dependency);
+    });
+
     it("classifies HTTP 403 as an authorization failure that is not retryable", () => {
       const failure = classifyConfigurationReadFailure(
         astraLikeError(403, "FORBIDDEN"),

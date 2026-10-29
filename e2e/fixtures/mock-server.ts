@@ -91,6 +91,7 @@ interface ParsedRequestBody {
   byte_length?: number;
   result?: string;
   mode?: string;
+  readMode?: string;
   failNext?: number;
   empty?: boolean;
   target?: string;
@@ -106,6 +107,8 @@ export class MockAstraLogtoServer {
   public rosterAcceptCount = 0;
   public scheduleWriteFailAt = 0;
   public scheduleWriteCount = 0;
+  public scheduleReadFailStatus = 0;
+  public scheduleReadFailRemaining = 0;
   // C01b profile-detail fail-then-recover fixture state.
   public profileDetailFailStatus = 0;
   public profileDetailFailRemaining = 0;
@@ -201,6 +204,8 @@ export class MockAstraLogtoServer {
     this.rosterAcceptCount = 0;
     this.scheduleWriteFailAt = 0;
     this.scheduleWriteCount = 0;
+    this.scheduleReadFailStatus = 0;
+    this.scheduleReadFailRemaining = 0;
     this.profileDetailFailStatus = 0;
     this.profileDetailFailRemaining = 0;
     this.profileDetailMutations = 0;
@@ -464,6 +469,12 @@ export class MockAstraLogtoServer {
         }
         this.scheduleWriteFailAt = Number(body.failAt ?? 0);
         this.scheduleWriteCount = 0;
+        const readMode = asString(body.readMode, "off");
+        this.scheduleReadFailStatus = readMode === "off" ? 0 : Number(readMode);
+        this.scheduleReadFailRemaining = Math.max(
+          Number(body.failNext ?? 0),
+          0,
+        );
         this.sendJson(res, 200, { ready: true });
       });
       return;
@@ -1079,6 +1090,19 @@ export class MockAstraLogtoServer {
 
     // 8. SCHEDULES
     if (pathname === "/v1/admin/schedules" && method === "GET") {
+      if (
+        this.scheduleReadFailRemaining > 0 &&
+        this.scheduleReadFailStatus > 0
+      ) {
+        this.scheduleReadFailRemaining -= 1;
+        this.sendAstraJson(
+          res,
+          this.scheduleReadFailStatus,
+          null,
+          "Simulated schedule read failure",
+        );
+        return;
+      }
       let scheds = [...this.data.schedules];
       if (query.day_of_week) {
         scheds = scheds.filter(

@@ -534,7 +534,7 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
   // Task 2: Router Fail-Safe Behavior
   // ==========================================================================
   describe("Task 2: Router Fail-Safe Behavior", () => {
-    it("2.1 jadwal.reset during Astra outage: throws TRPCError and DOES NOT create duplicate schedules", async () => {
+    it("2.1 jadwal reads fail during Astra outage without defaults or writes", async () => {
       serverMode = "outage";
       serverPostCalls = [];
       currentRole = "school_admin";
@@ -553,6 +553,23 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
         caughtError = err;
       }
 
+      const readErrors: unknown[] = [];
+      const scheduleReads: Array<() => Promise<unknown>> = [
+        () => caller.getAll(),
+        () => caller.getByHari({ hari: "senin" }),
+        () => caller.getById({ id: 1 }),
+        () => caller.getCurrentDay(),
+        () => caller.getActive(),
+        () => caller.getStats(),
+      ];
+      for (const read of scheduleReads) {
+        try {
+          await read();
+        } catch (err) {
+          readErrors.push(err);
+        }
+      }
+
       serverMode = "normal";
 
       assert.ok(
@@ -564,6 +581,11 @@ describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
         caughtError.message.includes("Gagal memuat jadwal dari Astra"),
         `Unexpected error message: ${caughtError.message}`,
       );
+      assert.equal(readErrors.length, scheduleReads.length);
+      for (const error of readErrors) {
+        assert.ok(error instanceof TRPCError);
+        assert.equal(error.code, "SERVICE_UNAVAILABLE");
+      }
 
       // Crucial invariant: 0 POST requests were sent! Zero duplicate schedules created!
       assert.equal(

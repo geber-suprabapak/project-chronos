@@ -83,9 +83,15 @@ export default function JadwalPage() {
   const {
     data: schedules,
     isLoading: schedulesLoading,
+    error: schedulesError,
     refetch: refetchSchedules,
   } = api.jadwal.getAll.useQuery();
-  const { data: stats, refetch: refetchStats } = api.jadwal.getStats.useQuery();
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = api.jadwal.getStats.useQuery();
 
   // Mutations
   const updateMutation = api.jadwal.update.useMutation({
@@ -228,11 +234,15 @@ export default function JadwalPage() {
     setShowResetDialog(true);
   };
 
-  const isLoading = schedulesLoading;
+  const isLoading = schedulesLoading || statsLoading;
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div
+        className="container mx-auto p-6 space-y-6"
+        role="status"
+        aria-label="Memuat konfigurasi jadwal"
+      >
         <div className="space-y-2">
           <div className="h-8 bg-muted rounded animate-pulse"></div>
           <div className="h-4 bg-muted rounded w-3/4 animate-pulse"></div>
@@ -251,6 +261,33 @@ export default function JadwalPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+    );
+  }
+
+  if (schedulesError || statsError) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="mx-auto max-w-lg">
+          <CardHeader>
+            <CardTitle>Konfigurasi jadwal tidak tersedia</CardTitle>
+            <CardDescription role="alert">
+              Jadwal absensi gagal dimuat. Coba lagi beberapa saat.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              onClick={() => {
+                void refetchSchedules();
+                void refetchStats();
+              }}
+              data-testid="jadwal-retry"
+            >
+              Coba Lagi
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

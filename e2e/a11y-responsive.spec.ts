@@ -5,6 +5,7 @@ import {
   loginAs,
 } from "./fixtures/auth.ts";
 import AxeBuilder from "@axe-core/playwright";
+import { expectAxeCleanInBothThemes, holdTrpcQuery } from "./fixtures/a11y.ts";
 
 const OWNED_ROUTES = [
   "/dashboard",
@@ -19,6 +20,31 @@ const OWNED_ROUTES = [
   "/konfigurasi/jadwal",
   "/konfigurasi/lokasi",
 ];
+const MOCK_ASTRA_BASE = `http://127.0.0.1:${process.env.MOCK_ASTRA_PORT || "23500"}`;
+
+async function setFixtureControl(
+  path: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const response = await fetch(`${MOCK_ASTRA_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  expect(response.ok).toBe(true);
+}
+
+async function resetC11FixtureControls(): Promise<void> {
+  await Promise.all([
+    setFixtureControl("/__control/profile-detail", { mode: "off" }),
+    setFixtureControl("/__control/leave-requests", { mode: "off" }),
+    setFixtureControl("/__control/locations", { mode: "off", empty: false }),
+    setFixtureControl("/__control/schedules", {
+      readMode: "off",
+      failNext: 0,
+    }),
+  ]);
+}
 
 test.describe("Responsive & Accessibility Quality Gates", () => {
   test.beforeEach(async ({ page }) => {
@@ -165,51 +191,8 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
           content:
             "*, *::before, *::after { animation: none !important; transition: none !important; }",
         });
-        await page.locator("html").evaluate((element) => {
-          element.classList.remove("dark");
-        });
-        await page.evaluate(
-          () =>
-            new Promise<void>((resolve) =>
-              requestAnimationFrame(() => resolve()),
-            ),
-        );
-
-        // 5. Automated WCAG Accessibility scan with Axe (failing on serious or critical only)
-        const axeResults = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-          .analyze();
-
-        const seriousOrCritical = axeResults.violations.filter(
-          (v) => v.impact === "serious" || v.impact === "critical",
-        );
-        expect(
-          seriousOrCritical,
-          `Axe WCAG violations (serious/critical) on ${routePath}: ${JSON.stringify(seriousOrCritical, null, 2)}`,
-        ).toEqual([]);
-
-        await page
-          .locator("html")
-          .evaluate((element) => element.classList.add("dark"));
-        await page.evaluate(
-          () =>
-            new Promise<void>((resolve) =>
-              requestAnimationFrame(() => resolve()),
-            ),
-        );
-        const darkAxeResults = await new AxeBuilder({ page })
-          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-          .analyze();
-        expect(
-          darkAxeResults.violations.filter(
-            (violation) =>
-              violation.impact === "serious" || violation.impact === "critical",
-          ),
-          `Dark theme axe violations on ${routePath}`,
-        ).toEqual([]);
-        await page
-          .locator("html")
-          .evaluate((element) => element.classList.remove("dark"));
+        // 5. Automated WCAG scan in both themes (serious/critical only).
+        await expectAxeCleanInBothThemes(page, routePath);
         // 6. Keyboard tab navigation reachability
         await page.keyboard.press("Tab");
         const isFocusActive = await page.evaluate(() => {
@@ -376,6 +359,308 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
       });
     });
   }
+
+  test.describe("C11 loading, empty, dependency error and retry states", () => {
+    test.afterEach(resetC11FixtureControls);
+
+    test("configuration empty state remains accessible", async ({ page }) => {
+      await setFixtureControl("/__control/locations", {
+        mode: "off",
+        empty: true,
+      });
+      await page.goto("/konfigurasi/lokasi");
+      await expect(page.getByText("Belum Ada Lokasi")).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "location first-use empty state");
+    });
+
+    test("configuration dependency error and retry remain accessible", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/locations", {
+        mode: "503",
+        failNext: 5,
+      });
+      await page.goto("/konfigurasi/lokasi");
+      await expect(page.getByText("Konfigurasi tidak tersedia")).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "location dependency error");
+
+      await setFixtureControl("/__control/locations", { mode: "off" });
+      await page.getByTestId("konfigurasi-list-retry").click();
+      await expect(page.getByText("Kantor Pusat")).toBeVisible();
+    });
+
+    test("schedule loading and dependency error states remain accessible", async ({
+      page,
+    }) => {
+      const query = await holdTrpcQuery(page, "jadwal.");
+      try {
+        await page.goto("/konfigurasi/jadwal");
+        await query.requestStarted;
+        await expect(
+          page.getByRole("status", { name: "Memuat konfigurasi jadwal" }),
+        ).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "schedule loading");
+
+        query.release();
+        await expect(
+          page.getByText("Jadwal absensi gagal dimuat"),
+        ).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "schedule query error");
+      } finally {
+        query.release();
+      }
+    });
+
+    test("schedule dependency error retries and recovers the same view", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/schedules", {
+        readMode: "503",
+        failNext: 20,
+      });
+      await page.goto("/konfigurasi/jadwal");
+      await expect(page.getByText("Jadwal absensi gagal dimuat")).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "schedule dependency error");
+
+      await setFixtureControl("/__control/schedules", {
+        readMode: "off",
+        failNext: 0,
+      });
+      await page.getByTestId("jadwal-retry").click();
+      await expect(
+        page.getByRole("row").filter({ hasText: "Senin" }).first(),
+      ).toBeVisible();
+    });
+
+    test("Leave detail dependency error and retry remain accessible", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/leave-requests", {
+        mode: "503",
+        failNext: 5,
+      });
+      await page.goto("/perizinan/show/b0000000-0000-4000-8000-000000000001");
+      await expect(
+        page.getByText("Layanan perizinan tidak tersedia"),
+      ).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "Leave detail dependency error");
+
+      await setFixtureControl("/__control/leave-requests", { mode: "off" });
+      await page.getByTestId("perizinan-detail-retry").click();
+      await expect(page.getByTestId("perizinan-detail-loaded")).toBeVisible();
+    });
+
+    test("Leave list dependency error and retry remain accessible", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/leave-requests", {
+        mode: "503",
+        failNext: 5,
+      });
+      await page.goto("/perizinan");
+      await expect(page.locator('p[role="alert"]')).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "Leave list dependency error");
+
+      await setFixtureControl("/__control/leave-requests", { mode: "off" });
+      await page.getByTestId("perizinan-list-retry").click();
+      await expect(page.getByRole("table").first()).toContainText(
+        "Siti Rahmawati",
+      );
+    });
+
+    test("Leave list loading and query error states remain accessible", async ({
+      page,
+    }) => {
+      const query = await holdTrpcQuery(page, "perizinan.list");
+      try {
+        await page.goto("/perizinan");
+        await query.requestStarted;
+        await expect(
+          page.getByRole("status", { name: "Memuat daftar perizinan" }),
+        ).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "Leave list loading");
+
+        query.release();
+        await expect(page.locator('p[role="alert"]')).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "Leave list query error");
+      } finally {
+        query.release();
+      }
+    });
+
+    test("profile detail dependency error and retry remain accessible", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/profile-detail", {
+        mode: "503",
+        failNext: 5,
+      });
+      await page.goto("/profiles/show/00000000-0000-0000-0000-000000000001");
+      await expect(
+        page.getByText("Layanan profil tidak tersedia"),
+      ).toBeVisible();
+      await expectAxeCleanInBothThemes(page, "profile detail dependency error");
+
+      await setFixtureControl("/__control/profile-detail", { mode: "off" });
+      await page.getByTestId("profile-detail-retry").click();
+      await expect(page.getByTestId("profile-detail-loaded")).toBeVisible();
+    });
+
+    test("dashboard dependency error and retry remain accessible", async ({
+      page,
+    }) => {
+      await setFixtureControl("/__control/leave-requests", {
+        mode: "503",
+        failNext: 4,
+      });
+      await page.goto("/dashboard");
+      await expect(page.locator('p[role="alert"]')).toContainText(
+        "Data dashboard sedang tidak tersedia.",
+      );
+      await expectAxeCleanInBothThemes(page, "dashboard dependency error");
+
+      await setFixtureControl("/__control/leave-requests", { mode: "off" });
+      await page
+        .getByRole("button", { name: "Muat ulang data dashboard" })
+        .click();
+      await expect(page.getByText("Perizinan Tertunda")).toBeVisible();
+    });
+
+    test("daily attendance loading and error states remain accessible", async ({
+      page,
+    }) => {
+      const query = await holdTrpcQuery(page, "absences.list");
+      try {
+        await page.goto("/absensi");
+        await query.requestStarted;
+        await expect(
+          page.getByRole("status", { name: "Memuat daftar absensi" }),
+        ).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "daily attendance loading");
+
+        query.release();
+        await expect(page.locator("main [role=alert]")).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "daily attendance query error");
+      } finally {
+        query.release();
+      }
+    });
+
+    test("per-class attendance loading and error states remain accessible", async ({
+      page,
+    }) => {
+      const query = await holdTrpcQuery(
+        page,
+        "absences.getClassAttendanceSummary",
+      );
+      try {
+        await page.goto("/absensi/perkelas");
+        const classSelect = page.locator("#filter-class");
+        await expect(classSelect).toBeEnabled();
+        await classSelect.click();
+        await page.getByRole("option", { name: /XII RPL 1/i }).click();
+        await query.requestStarted;
+        await expect(
+          page.getByRole("status", { name: "Memuat absensi per kelas" }),
+        ).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "per-class attendance loading");
+
+        query.release();
+        await expect(page.locator("main [role=alert]")).toBeVisible();
+        await expectAxeCleanInBothThemes(
+          page,
+          "per-class attendance query error",
+        );
+      } finally {
+        query.release();
+      }
+    });
+
+    test("monthly recap loading and dependency error states remain accessible", async ({
+      page,
+    }) => {
+      const query = await holdTrpcQuery(page, "monthlyAttendance.get");
+      try {
+        await page.goto("/absensi/rekap-bulanan");
+        await query.requestStarted;
+        const loading = page.getByRole("status", {
+          name: "Memuat rekap absensi bulanan",
+        });
+        await expect(loading).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "monthly recap loading");
+
+        query.release();
+        await expect(page.getByText(/^Gagal memuat rekap/)).toBeVisible();
+        await expectAxeCleanInBothThemes(page, "monthly recap query error");
+      } finally {
+        query.release();
+      }
+    });
+
+    test("backup status loading, unavailable and retry states remain accessible", async ({
+      page,
+    }) => {
+      let simulateOutage = true;
+      let holdFirstResponse = true;
+      let releaseFirstResponse = () => {};
+      let signalFirstRequest = () => {};
+      const firstResponseGate = new Promise<void>((resolve) => {
+        releaseFirstResponse = resolve;
+      });
+      const firstRequest = new Promise<void>((resolve) => {
+        signalFirstRequest = resolve;
+      });
+      await page.route("**/api/export/backup/status*", async (route) => {
+        if (!simulateOutage) {
+          await route.continue();
+          return;
+        }
+        if (holdFirstResponse) {
+          holdFirstResponse = false;
+          signalFirstRequest();
+          await firstResponseGate;
+        }
+        await route.fulfill({
+          status: 502,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Astra unavailable" }),
+        });
+      });
+
+      try {
+        await page.goto("/dashboard?showBackupBanner=true&month=2099-01");
+        await firstRequest;
+        const pending = page.getByRole("alert", {
+          name: "Pemberitahuan Backup Bulanan",
+        });
+        await expect(pending).toBeVisible();
+        await expect(pending).toContainText(
+          "Memeriksa status pencadangan absensi...",
+        );
+        await expectAxeCleanInBothThemes(page, "backup status loading");
+
+        releaseFirstResponse();
+        const unavailable = page.getByRole("alert", {
+          name: "Pemberitahuan Gangguan Status Backup Bulanan",
+        });
+        await expect(unavailable).toContainText(
+          "Status Tidak Dapat Diverifikasi",
+        );
+        await expectAxeCleanInBothThemes(page, "backup status unavailable");
+
+        simulateOutage = false;
+        await unavailable
+          .getByRole("button", {
+            name: "Coba lagi verifikasi status backup",
+          })
+          .click();
+        await expect(pending).toContainText("Backup Bulanan (2099-01)");
+        await expectAxeCleanInBothThemes(page, "backup status recovered");
+      } finally {
+        releaseFirstResponse();
+      }
+    });
+  });
 
   for (const role of ["teacher", "staff"] as const) {
     for (const routePath of ["/dashboard", "/absensi", "/perizinan"]) {
