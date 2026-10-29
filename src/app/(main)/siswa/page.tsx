@@ -325,12 +325,7 @@ export default async function SiswaPage({
                           </TableCell>
                           <TableCell>
                             {siswa.activated ? (
-                              <Badge
-                                variant="default"
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white"
-                              >
-                                Aktif
-                              </Badge>
+                              <Badge variant="success">Aktif</Badge>
                             ) : (
                               <Badge variant="secondary">Belum Aktif</Badge>
                             )}

@@ -127,7 +127,7 @@ export default function MonthlyAttendanceRecapPage() {
               type="month"
               value={month}
               onChange={(event) => setMonth(event.target.value)}
-              className="h-9 rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
             />
           </label>
           <label
@@ -140,7 +140,7 @@ export default function MonthlyAttendanceRecapPage() {
               aria-label="Filter kelas rekap"
               value={className}
               onChange={(event) => setClassName(event.target.value)}
-              className="h-9 rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
             >
               <option value="">Semua kelas</option>
               {(classes.data ?? []).map((value) => (
@@ -160,7 +160,7 @@ export default function MonthlyAttendanceRecapPage() {
               aria-label="Filter siswa rekap"
               value={nis}
               onChange={(event) => setNis(event.target.value)}
-              className="h-9 rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
             >
               <option value="">Semua siswa</option>
               {(students.data ?? []).map((student) => (

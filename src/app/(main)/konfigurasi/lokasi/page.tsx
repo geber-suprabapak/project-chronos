@@ -33,7 +33,6 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import {
   MapPin,
@@ -847,11 +846,7 @@ export default function ConfigurationPage() {
                                 variant={
                                   location.isActive ? "success" : "destructive"
                                 }
-                                className={cn(
-                                  "flex items-center gap-1.5",
-                                  location.isActive &&
-                                    "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white",
-                                )}
+                                className="flex items-center gap-1.5"
                               >
                                 {location.isActive ? "Aktif" : "Nonaktif"}
                               </Badge>

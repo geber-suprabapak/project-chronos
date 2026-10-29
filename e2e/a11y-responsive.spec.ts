@@ -48,6 +48,20 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
           await expect(page.getByTestId("profile-detail-loaded")).toBeVisible();
         }
 
+        const statusLabelsByRoute: Record<string, RegExp> = {
+          "/perizinan": /^(Disetujui|Ditolak|Menunggu)$/,
+          "/siswa": /^(Aktif|Belum Aktif)$/,
+          "/konfigurasi/jadwal": /^(Aktif|Nonaktif)$/,
+          "/konfigurasi/lokasi": /^(Aktif|Nonaktif)$/,
+        };
+        const expectedStatusLabel = statusLabelsByRoute[routePath];
+        if (expectedStatusLabel) {
+          await expect(
+            page.getByText(expectedStatusLabel).first(),
+            `Status on ${routePath} must have a text label independent of color`,
+          ).toBeVisible();
+        }
+
         // 1. Validate document language
         const lang = await page.evaluate(() =>
           document.documentElement.getAttribute("lang"),
@@ -147,6 +161,20 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
           `Found ${nestedInteractiveCount} nested interactive controls on ${routePath}`,
         ).toBe(0);
 
+        const stableLayout = await page.addStyleTag({
+          content:
+            "*, *::before, *::after { animation: none !important; transition: none !important; }",
+        });
+        await page.locator("html").evaluate((element) => {
+          element.classList.remove("dark");
+        });
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            ),
+        );
+
         // 5. Automated WCAG Accessibility scan with Axe (failing on serious or critical only)
         const axeResults = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
@@ -160,6 +188,28 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
           `Axe WCAG violations (serious/critical) on ${routePath}: ${JSON.stringify(seriousOrCritical, null, 2)}`,
         ).toEqual([]);
 
+        await page
+          .locator("html")
+          .evaluate((element) => element.classList.add("dark"));
+        await page.evaluate(
+          () =>
+            new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            ),
+        );
+        const darkAxeResults = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+          .analyze();
+        expect(
+          darkAxeResults.violations.filter(
+            (violation) =>
+              violation.impact === "serious" || violation.impact === "critical",
+          ),
+          `Dark theme axe violations on ${routePath}`,
+        ).toEqual([]);
+        await page
+          .locator("html")
+          .evaluate((element) => element.classList.remove("dark"));
         // 6. Keyboard tab navigation reachability
         await page.keyboard.press("Tab");
         const isFocusActive = await page.evaluate(() => {
@@ -173,7 +223,105 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
         expect(isFocusActive).toBe(true);
 
         if (testInfo.project.name === "mobile") {
+          await page.setViewportSize({ width: 640, height: 844 });
+          await page.evaluate(() => {
+            document.documentElement.style.fontSize = "200%";
+          });
+          await page.evaluate(
+            () =>
+              new Promise<void>((resolve) =>
+                requestAnimationFrame(() => resolve()),
+              ),
+          );
+          const textZoomLayout = await page.evaluate(() => {
+            const innerWidth = window.innerWidth;
+            const clipped = Array.from(
+              document.querySelectorAll<HTMLElement>(
+                "main, main > *, [role='region'], [data-slot='card']",
+              ),
+            ).some((element) => {
+              const style = getComputedStyle(element);
+              if (
+                element.offsetWidth === 0 ||
+                element.offsetHeight === 0 ||
+                style.display === "none" ||
+                style.visibility === "hidden" ||
+                style.opacity === "0"
+              ) {
+                return false;
+              }
+              const rect = element.getBoundingClientRect();
+              return rect.left < -2 || rect.right > innerWidth + 2;
+            });
+            return {
+              docScrollWidth: document.documentElement.scrollWidth,
+              bodyScrollWidth: document.body.scrollWidth,
+              innerWidth,
+              clipped,
+            };
+          });
+          expect(
+            textZoomLayout.docScrollWidth,
+            `Document overflows at 200% text on ${routePath}: ${JSON.stringify(textZoomLayout)}`,
+          ).toBeLessThanOrEqual(textZoomLayout.innerWidth + 1);
+          expect(
+            textZoomLayout.bodyScrollWidth,
+            `Body overflows at 200% text on ${routePath}: ${JSON.stringify(textZoomLayout)}`,
+          ).toBeLessThanOrEqual(textZoomLayout.innerWidth + 1);
+          expect(
+            textZoomLayout.clipped,
+            `Visible content is clipped at 200% text on ${routePath}`,
+          ).toBe(false);
+          await page.evaluate(() => {
+            document.documentElement.style.removeProperty("font-size");
+          });
           await page.setViewportSize({ width: 320, height: 844 });
+          await page.evaluate(
+            () =>
+              new Promise<void>((resolve) =>
+                requestAnimationFrame(() => resolve()),
+              ),
+          );
+          const undersizedTargets = await page.evaluate(() =>
+            Array.from(
+              document.querySelectorAll<HTMLElement>(
+                "main button:not(:disabled), main a[href], main input:not([type=hidden]), main select, main textarea, main [role=button], main [role=link]",
+              ),
+            )
+              .filter((element) => {
+                const style = getComputedStyle(element);
+                const rect = element.getBoundingClientRect();
+                const after = getComputedStyle(element, "::after");
+                const inset = (value: string) => Number.parseFloat(value) || 0;
+                const hitWidth = Math.max(
+                  rect.width,
+                  rect.width - inset(after.left) - inset(after.right),
+                );
+                const hitHeight = Math.max(
+                  rect.height,
+                  rect.height - inset(after.top) - inset(after.bottom),
+                );
+                return (
+                  rect.width > 0 &&
+                  rect.height > 0 &&
+                  style.display !== "none" &&
+                  style.visibility !== "hidden" &&
+                  (hitWidth < 44 || hitHeight < 44)
+                );
+              })
+              .map((element) => ({
+                text: element.innerText.trim().slice(0, 60),
+                ariaLabel: element.getAttribute("aria-label"),
+                width: Math.round(element.getBoundingClientRect().width),
+                height: Math.round(element.getBoundingClientRect().height),
+                minWidth: getComputedStyle(element).minWidth,
+                minHeight: getComputedStyle(element).minHeight,
+              })),
+          );
+          expect(
+            undersizedTargets,
+            `Visible primary touch targets are below 44×44 CSS px on ${routePath}`,
+          ).toEqual([]);
           const narrowLayout = await page.evaluate(() => {
             const innerWidth = window.innerWidth;
             const clipped = Array.from(
@@ -222,6 +370,9 @@ test.describe("Responsive & Accessibility Quality Gates", () => {
             `Visible content is clipped at 320 CSS px on ${routePath}`,
           ).toEqual([]);
         }
+        await stableLayout.evaluate((style) =>
+          style.parentNode?.removeChild(style),
+        );
       });
     });
   }

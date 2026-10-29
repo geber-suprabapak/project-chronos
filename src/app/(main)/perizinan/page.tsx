@@ -3,7 +3,6 @@ import { DownloadPdfButton } from "~/components/download-pdf-button";
 import { DownloadExcelButton } from "~/components/download-excel-button";
 
 import Link from "next/link";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { useState } from "react";
 import {
@@ -366,11 +365,7 @@ export default function PerizinanPage() {
                           <TableCell>
                             <Badge
                               variant={getBadgeVariant(item.approvalStatus)}
-                              className={cn(
-                                "rounded-full px-2.5 py-1 capitalize",
-                                item.approvalStatus === "approved" &&
-                                  "bg-emerald-700 hover:bg-emerald-800 text-white dark:bg-emerald-600 dark:text-white",
-                              )}
+                              className="rounded-full px-2.5 py-1 capitalize"
                             >
                               {item.approvalStatus === "approved"
                                 ? "Disetujui"

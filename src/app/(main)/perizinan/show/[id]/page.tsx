@@ -81,7 +81,7 @@ function AttachmentFallback({
   return (
     <div
       role="status"
-      className="flex h-full min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded bg-slate-50 p-4 text-center text-muted-foreground"
+      className="flex h-full min-h-[140px] w-full flex-col items-center justify-center gap-2 rounded bg-muted p-4 text-center text-muted-foreground"
     >
       <ImageIcon aria-hidden="true" className="h-5 w-5" />
       <p className="text-sm">Bukti foto tidak dapat ditampilkan.</p>
@@ -560,7 +560,7 @@ export default function ShowPerizinanPage() {
                       onChange={(event) =>
                         setDurationDays(Number(event.target.value))
                       }
-                      className="rounded-md border bg-background px-2 py-1"
+                      className="min-h-[44px] rounded-md border bg-background px-2 py-1"
                       aria-label="Durasi cuti dalam hari kalender"
                     >
                       {Array.from({ length: 30 }, (_, index) => index + 1).map(
