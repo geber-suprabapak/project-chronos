@@ -1,3 +1,5 @@
+import { schoolDate } from "../../src/lib/date-utils.ts";
+
 export interface MockStudent {
   user_id: string;
   full_name: string;
@@ -114,7 +116,7 @@ export interface MockCalendarException {
 }
 
 export function getTodayDateStr(): string {
-  return new Date().toISOString().split("T")[0]!;
+  return schoolDate();
 }
 
 export function createInitialMockData() {

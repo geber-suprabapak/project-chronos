@@ -106,7 +106,9 @@ test.describe("Authentication, Session & Route Protection", () => {
       // Navigate to Perizinan
       await page.goto("/perizinan");
       await expect(page).toHaveURL(/\/perizinan/);
-      await expect(page.getByText("Daftar Perizinan")).toBeVisible();
+      await expect(
+        page.getByText("Daftar Perizinan", { exact: true }),
+      ).toBeVisible();
 
       // Navigate to Profiles
       await page.goto("/profiles");

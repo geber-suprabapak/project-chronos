@@ -30,6 +30,11 @@ const EXPECTED_SECURITY_HEADERS: Record<string, string> = {
     "form-action 'self'",
   ].join("; "),
 };
+const EXPECTED_STATIC_SECURITY_HEADERS = Object.fromEntries(
+  Object.entries(EXPECTED_SECURITY_HEADERS).filter(
+    ([key]) => key !== "content-security-policy",
+  ),
+);
 
 describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => {
   // =========================================================================
@@ -453,7 +458,7 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
       );
     });
 
-    it("4.5 Static next.config.js configuration defines all 7 security headers for /:path*", async () => {
+    it("4.5 Static next.config.js defines the 6 non-CSP headers; CSP stays runtime-configured", async () => {
       const nextConfigModule = await import("../next.config.js");
       const config = nextConfigModule.default;
       assert.ok(
@@ -471,12 +476,16 @@ describe("Milestone M3 Empirical Adversarial Challenge (Issues 08 & 09)", () => 
         wildCardRule.headers.map((h: any) => h.key.toLowerCase()),
       );
 
-      for (const requiredKey of Object.keys(EXPECTED_SECURITY_HEADERS)) {
+      for (const requiredKey of Object.keys(EXPECTED_STATIC_SECURITY_HEADERS)) {
         assert.ok(
           definedHeaderKeys.has(requiredKey.toLowerCase()),
           `next.config.js missing security header: ${requiredKey}`,
         );
       }
+      assert.ok(
+        !definedHeaderKeys.has("content-security-policy"),
+        "CSP must stay in the runtime proxy so the storage origin is not frozen at build time",
+      );
     });
   });
 
