@@ -7,7 +7,11 @@
     "path": "contracts/astra-v1.json"
   },
   "request": {
-    "required_headers": ["Authorization", "X-Request-ID", "X-Astra-Contract-Version"],
+    "required_headers": [
+      "Authorization",
+      "X-Request-ID",
+      "X-Astra-Contract-Version"
+    ],
     "contract_header": {
       "name": "X-Astra-Contract-Version",
       "value": "v1"
@@ -95,7 +99,10 @@
     }
   },
   "attendance_collection": {
-    "routes": ["GET /v1/admin/attendance/export", "GET /v1/admin/attendances/export"],
+    "routes": [
+      "GET /v1/admin/attendance/export",
+      "GET /v1/admin/attendances/export"
+    ],
     "purpose": "Return a complete server-authoritative attendance snapshot for trusted clients and exports without requiring unbounded client pagination.",
     "parameters": {
       "date": "string YYYY-MM-DD optional",
@@ -205,7 +212,10 @@
     "GET /v1/mobile/files/{file_id}",
     "DELETE /v1/mobile/files/{file_id}"
   ],
-  "adiwiyata_routes": ["GET /v1/adiwiyata/dashboard", "POST /v1/adiwiyata/reports"],
+  "adiwiyata_routes": [
+    "GET /v1/adiwiyata/dashboard",
+    "POST /v1/adiwiyata/reports"
+  ],
   "adiwiyata_dashboard": {
     "authorization": "Bearer Logto access token with mobile:access; approved Astra student profile and active Eligibility keyed by user_id",
     "period_and_enrollment": "Requires exactly one active Academic Period and exactly one active Class Enrollment for the caller in that Period; the Class is never caller-supplied",
@@ -220,7 +230,12 @@
       "class": "The caller's unique active Astra Class Enrollment",
       "school_day": ["scheduled", "not_scheduled", "holiday"],
       "sites": "Active Sites for the caller's Class or general Sites only; each includes coverage_status, own_report, and can_report",
-      "site_coverage_status": ["not_scheduled", "missing", "reported", "verified"],
+      "site_coverage_status": [
+        "not_scheduled",
+        "missing",
+        "reported",
+        "verified"
+      ],
       "own_report": "Only this student's report fields, canonical file_created_at and signed photo URL; null when the student has not submitted",
       "can_report": "True only on a school day before this student submits and before the Class-Site is verified"
     }
@@ -229,7 +244,10 @@
     "authorization": "Bearer Logto access token with mobile:access; approved student profile, one active current-period enrollment, and active Adiwiyata eligibility",
     "request": {
       "content_type": "multipart/form-data",
-      "fields": { "site_id": "UUID", "image": "Exactly one JPEG or PNG file, maximum 5 MiB" },
+      "fields": {
+        "site_id": "UUID",
+        "image": "Exactly one JPEG or PNG file, maximum 5 MiB"
+      },
       "extra_fields": "Rejected; client date, name, class, and captions are never accepted",
       "image_validation": "Astra checks the decoded JPEG/PNG format and limits decoded pixels to 20 million",
       "authority": "Astra resolves the active Class and profile name; server WIB time/date are captured after image decoding; uploads have no schedule-hour restriction"
@@ -406,7 +424,12 @@
     },
     "acceptance": {
       "creates": ["Student", "Class Enrollment"],
-      "does_not_create": ["User", "Profile", "Logto identity", "Student Binding"],
+      "does_not_create": [
+        "User",
+        "Profile",
+        "Logto identity",
+        "Student Binding"
+      ],
       "absence_number_owner": "Class Enrollment",
       "atomic": true,
       "add_only": true,
