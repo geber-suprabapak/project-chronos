@@ -207,7 +207,9 @@ test.describe("Konfigurasi (Location & Schedule) Workflows", () => {
     test("treats an Astra timeout (504) as a recoverable dependency failure with retry recovery", async ({
       page,
     }) => {
-      await setLocationsFailure("504", 5);
+      // Active/stats reads share the same endpoint and may consume failures
+      // before getAll renders; keep the mock failed until this test resets it.
+      await setLocationsFailure("504", 100);
       await page.reload();
 
       await expect(page.getByText("Konfigurasi tidak tersedia")).toBeVisible();
