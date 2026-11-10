@@ -7,20 +7,13 @@
     "path": "contracts/astra-v1.json"
   },
   "request": {
-    "required_headers": [
-      "Authorization",
-      "X-Request-ID",
-      "X-Astra-Contract-Version"
-    ],
+    "required_headers": ["Authorization", "X-Request-ID", "X-Astra-Contract-Version"],
     "contract_header": {
       "name": "X-Astra-Contract-Version",
       "value": "v1"
     },
     "authorization": "Logto OIDC access token",
-    "admin_scopes": [
-      "mobile:access",
-      "admin:read"
-    ]
+    "admin_scopes": ["mobile:access", "admin:read"]
   },
   "response": {
     "content_type": "application/json",
@@ -69,10 +62,7 @@
   },
   "pagination": {
     "strategy": "offset",
-    "routes": [
-      "GET /v1/admin/attendance",
-      "GET /v1/admin/attendances"
-    ],
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
     "query": {
       "limit": "integer 1..100",
       "offset": "integer >= 0",
@@ -89,10 +79,7 @@
     "stable_order_required": true
   },
   "attendance_query": {
-    "routes": [
-      "GET /v1/admin/attendance",
-      "GET /v1/admin/attendances"
-    ],
+    "routes": ["GET /v1/admin/attendance", "GET /v1/admin/attendances"],
     "parameters": {
       "limit": "integer 1..100 optional (default 50)",
       "offset": "integer >= 0 optional (default 0)",
@@ -108,10 +95,7 @@
     }
   },
   "attendance_collection": {
-    "routes": [
-      "GET /v1/admin/attendance/export",
-      "GET /v1/admin/attendances/export"
-    ],
+    "routes": ["GET /v1/admin/attendance/export", "GET /v1/admin/attendances/export"],
     "purpose": "Return a complete server-authoritative attendance snapshot for trusted clients and exports without requiring unbounded client pagination.",
     "parameters": {
       "date": "string YYYY-MM-DD optional",
@@ -165,41 +149,24 @@
     "response": "Existing v1 success/error envelope; request and response fields are unchanged."
   },
   "backup_audit": {
-    "routes": [
-      "POST /v1/admin/backups",
-      "GET /v1/admin/backups/status"
-    ],
-    "allowed_roles": [
-      "platform_admin",
-      "school_admin"
-    ],
+    "routes": ["POST /v1/admin/backups", "GET /v1/admin/backups/status"],
+    "allowed_roles": ["platform_admin", "school_admin"],
     "entity_type": "backup",
     "entity_id": "year_month",
     "post_fields": {
       "year_month": "strict real YYYY-MM required",
-      "scope": [
-        "absences"
-      ],
-      "format": [
-        "xlsx",
-        "pdf"
-      ],
+      "scope": ["absences"],
+      "format": ["xlsx", "pdf"],
       "start_date": "YYYY-MM-DD within month required",
       "end_date": "YYYY-MM-DD within month required, start_date <= end_date",
       "checksum": "sha256 lowercase 64-character hex required for both completed and failed results",
       "record_count": "integer >= 0",
       "byte_length": "integer > 0",
-      "result": [
-        "completed",
-        "failed"
-      ]
+      "result": ["completed", "failed"]
     },
     "status_query": {
       "year_month": "strict real YYYY-MM required",
-      "scope": [
-        "absences",
-        "optional"
-      ]
+      "scope": ["absences", "optional"]
     },
     "status_response": {
       "http_status": 200,
@@ -211,9 +178,7 @@
     }
   },
   "idempotency": {
-    "safe_methods": [
-      "GET"
-    ],
+    "safe_methods": ["GET"],
     "delete_by_id": "Repeated deletion leaves the resource absent; a later call may return RESOURCE_NOT_FOUND.",
     "leave_reopen": "Repeated reopen leaves the request pending and clears rejection state.",
     "other_mutations": "Not retryable unless an operation-specific idempotency key is documented."
@@ -240,10 +205,7 @@
     "GET /v1/mobile/files/{file_id}",
     "DELETE /v1/mobile/files/{file_id}"
   ],
-  "adiwiyata_routes": [
-    "GET /v1/adiwiyata/dashboard",
-    "POST /v1/adiwiyata/reports"
-  ],
+  "adiwiyata_routes": ["GET /v1/adiwiyata/dashboard", "POST /v1/adiwiyata/reports"],
   "adiwiyata_dashboard": {
     "authorization": "Bearer Logto access token with mobile:access; approved Astra student profile and active Eligibility keyed by user_id",
     "period_and_enrollment": "Requires exactly one active Academic Period and exactly one active Class Enrollment for the caller in that Period; the Class is never caller-supplied",
@@ -256,18 +218,9 @@
       "student": "Astra profile display name only",
       "academic_period": "The unique active Astra Academic Period",
       "class": "The caller's unique active Astra Class Enrollment",
-      "school_day": [
-        "scheduled",
-        "not_scheduled",
-        "holiday"
-      ],
+      "school_day": ["scheduled", "not_scheduled", "holiday"],
       "sites": "Active Sites for the caller's Class or general Sites only; each includes coverage_status, own_report, and can_report",
-      "site_coverage_status": [
-        "not_scheduled",
-        "missing",
-        "reported",
-        "verified"
-      ],
+      "site_coverage_status": ["not_scheduled", "missing", "reported", "verified"],
       "own_report": "Only this student's report fields, canonical file_created_at and signed photo URL; null when the student has not submitted",
       "can_report": "True only on a school day before this student submits and before the Class-Site is verified"
     }
@@ -276,10 +229,7 @@
     "authorization": "Bearer Logto access token with mobile:access; approved student profile, one active current-period enrollment, and active Adiwiyata eligibility",
     "request": {
       "content_type": "multipart/form-data",
-      "fields": {
-        "site_id": "UUID",
-        "image": "Exactly one JPEG or PNG file, maximum 5 MiB"
-      },
+      "fields": { "site_id": "UUID", "image": "Exactly one JPEG or PNG file, maximum 5 MiB" },
       "extra_fields": "Rejected; client date, name, class, and captions are never accepted",
       "image_validation": "Astra checks the decoded JPEG/PNG format and limits decoded pixels to 20 million",
       "authority": "Astra resolves the active Class and profile name; server WIB time/date are captured after image decoding; uploads have no schedule-hour restriction"
@@ -304,10 +254,7 @@
     "class_mapping": "class_id is null for a general Site or references a Class in the unique active Academic Period and same school; rollover mapping is explicit and never inferred by class name",
     "fields": {
       "name": "trimmed non-empty string, maximum 120 characters",
-      "category": [
-        "tanaman",
-        "lele"
-      ],
+      "category": ["tanaman", "lele"],
       "class_id": "UUID or null; optional on create and patch",
       "sort_order": "finite non-negative 32-bit integer; defaults to 0 on create"
     },
@@ -364,12 +311,7 @@
     "authorization": "Bearer Logto access token with admin:read; approved Astra profile role is platform_admin, school_admin, teacher, or staff",
     "response": {
       "shape": "array",
-      "fields": [
-        "action",
-        "occurred_at",
-        "actor_name",
-        "actor_role"
-      ],
+      "fields": ["action", "occurred_at", "actor_name", "actor_role"],
       "actions": [
         "approve_leave_request",
         "reject_leave_request",
@@ -448,38 +390,23 @@
       "GET /v1/admin/bootstrap/roster/{id}",
       "POST /v1/admin/bootstrap/roster/{id}/accept"
     ],
-    "stage_roles": [
-      "school_admin"
-    ],
-    "accept_roles": [
-      "school_admin"
-    ],
+    "stage_roles": ["school_admin"],
+    "accept_roles": ["school_admin"],
     "request": {
       "academic_period_id": "existing academic period id, required",
       "rows": "non-empty array",
       "row": {
         "nis": "non-empty digit string",
         "full_name": "non-empty string",
-        "gender": [
-          "L",
-          "P"
-        ],
+        "gender": ["L", "P"],
         "class_id": "existing class id optional when class_name is supplied",
         "class_name": "existing class name",
         "absence_number": "positive integer"
       }
     },
     "acceptance": {
-      "creates": [
-        "Student",
-        "Class Enrollment"
-      ],
-      "does_not_create": [
-        "User",
-        "Profile",
-        "Logto identity",
-        "Student Binding"
-      ],
+      "creates": ["Student", "Class Enrollment"],
+      "does_not_create": ["User", "Profile", "Logto identity", "Student Binding"],
       "absence_number_owner": "Class Enrollment",
       "atomic": true,
       "add_only": true,
@@ -502,142 +429,10 @@
     "POST /v1/auth/student/reset-password",
     "POST /v1/auth/password"
   ],
-  "cms_routes": [
-    "GET /v1/cms/session",
-    "GET /v1/cms/resources",
-    "GET /v1/cms/accounts",
-    "GET /v1/cms/accounts/{id}",
-    "POST /v1/cms/accounts",
-    "PATCH /v1/cms/accounts/{id}",
-    "POST /v1/cms/accounts/{id}/password",
-    "GET /v1/cms/public/{resource}",
-    "GET /v1/cms/content/{resource}",
-    "GET /v1/cms/content/{resource}/{id}",
-    "POST /v1/cms/content/{resource}",
-    "PATCH /v1/cms/content/{resource}/{id}",
-    "DELETE /v1/cms/content/{resource}/{id}",
-    "POST /v1/cms/content/{resource}/import",
-    "GET /v1/cms/content/{resource}/count"
-  ],
-  "cms_session": {
-    "authorization": "Logto access token with cms:access and an explicit enabled cms.profiles binding; no mobile profile or mobile:access required",
-    "authority": "cms.profiles role, jurusan binding and authz_version; Logto role names and user metadata never grant CMS permissions",
-    "revocation": "Honor global revocation by verified Logto subject and read current CMS profile for every request; tokens issued at or before session_valid_after are rejected, as are tokens without a valid iat",
-    "response_fields": [
-      "id",
-      "full_name",
-      "email",
-      "role",
-      "jurusan_id",
-      "jurusan_slug",
-      "authz_version"
-    ],
-    "identity_binding": "Stable legacy profile UUID maps explicitly and uniquely to a Logto subject; no automatic binding, account creation or enablement"
-  },
   "ownership": {
     "domain_state": "Astra PostgreSQL",
     "object_metadata": "Astra",
     "face_artifacts": "Robin through Astra",
     "clients": "must not access PostgreSQL, storage, Robin, or Logto Management API"
-  },
-  "cms_content_resources": [
-    "school_info",
-    "hero_slides",
-    "school_stats",
-    "guru_staff",
-    "jurusan",
-    "berita",
-    "galeri",
-    "sarpras",
-    "prestasi",
-    "agenda",
-    "keunggulan",
-    "layanan",
-    "sejarah",
-    "struktur_organisasi",
-    "akreditasi",
-    "visi_misi",
-    "jurusan_berita",
-    "jurusan_produk",
-    "guru_produktif",
-    "mitra_industri_jurusan",
-    "fasilitas_praktik",
-    "prestasi_jurusan",
-    "sertifikasi_jurusan",
-    "teaching_factory",
-    "organisasi",
-    "ekstrakurikuler",
-    "spmb_timeline",
-    "spmb_persyaratan",
-    "spmb_jadwal",
-    "spmb_biaya",
-    "spmb_faq",
-    "spmb_pengumuman",
-    "spmb_settings",
-    "kalender_akademik",
-    "kurikulum",
-    "kkm",
-    "materi_pembelajaran",
-    "bank_soal",
-    "jadwal_ujian",
-    "tata_tertib",
-    "poin_pelanggaran",
-    "waka_akademik",
-    "waka_kesiswaan",
-    "waka_hubin",
-    "beasiswa",
-    "alumni_inspiratif",
-    "mitra_dudi",
-    "mou_kerjasama",
-    "guru_tamu",
-    "testimoni_dudi",
-    "tracer_alumni",
-    "bkk_lowongan",
-    "download_dokumen",
-    "keunggulan_sekolah",
-    "tujuan_sekolah",
-    "kriteria_kelulusan",
-    "lsp",
-    "ukk",
-    "jadwal_pelajaran",
-    "modul_ajar",
-    "pkl_alur_steps",
-    "documents"
-  ],
-  "pkl_routes": [
-    "GET /v1/pkl/certificates/verify/{code}",
-    "GET /v1/pkl/{resource}",
-    "GET /v1/pkl/{resource}/count",
-    "GET /v1/pkl/{resource}/{id}",
-    "POST /v1/pkl/{resource}",
-    "PATCH /v1/pkl/{resource}/{id}",
-    "DELETE /v1/pkl/{resource}/{id}",
-    "POST /v1/pkl/registrations/{id}/transition",
-    "POST /v1/pkl/{resource}/import",
-    "POST /v1/pkl/attendance/check-in",
-    "POST /v1/pkl/internships/{id}/assessment",
-    "POST /v1/pkl/industries/{id}/supervisor",
-    "POST /v1/pkl/attendance/{id}/check-out"
-  ],
-  "pkl_resources": [
-    "academic_years",
-    "industries",
-    "students",
-    "supervisors",
-    "internships",
-    "daily_journals",
-    "assessment_indicators",
-    "assessment_scores",
-    "certificates",
-    "registrations",
-    "applications",
-    "attendance",
-    "monitoring",
-    "documents",
-    "journal_comments",
-    "status_history",
-    "industry_accounts",
-    "certificate_templates",
-    "roster"
-  ]
+  }
 }
