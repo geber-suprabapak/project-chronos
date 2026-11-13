@@ -8,6 +8,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Development and verification
+
+This is a pnpm-managed Next.js application (`pnpm-lock.yaml`). Use `pnpm dev` for local development, `pnpm typecheck` (or `pnpm check-types`), `pnpm lint`, `pnpm test:unit` (or `pnpm test`), `pnpm contract:check`, `pnpm build`, and `pnpm test:e2e` for verification. Use `package.json` as the source of truth for commands.
+
+## Execution boundary
+
+Chronos is the web administration portal backed by Logto and Astra. Do not introduce direct database writes that bypass Astra's domain authority, and do not modify production secrets or database state without explicit approval.
+
 <!-- repo-map:start -->
 ## Codebase semantic map
 
