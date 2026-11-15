@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLogtoContext } from "@logto/next/server-actions";
 import {
   executeGeocode,
   GeocodingError,
@@ -7,11 +8,72 @@ import {
 } from "~/server/geocoding/proxy";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { writeOperationalEvent } from "~/lib/observability";
+import { logtoConfig } from "~/lib/logto/config";
+import {
+  extractExtendedClaims,
+  isPasswordChangeRequired,
+  resolveLogtoRole,
+} from "~/lib/logto/claims";
+import { canAccessConfiguration } from "~/server/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
+async function authorizeGeocodeRequest(
+  requestId: string,
+): Promise<NextResponse | null> {
+  const denied = (status: 401 | 403, error: string, code: string) => {
+    writeOperationalEvent({
+      event: "http.request",
+      outcome: "failure",
+      requestId,
+      path: "/api/geocoding",
+      status,
+      code,
+      error,
+    });
+    return NextResponse.json(
+      { success: false, error, code },
+      {
+        status,
+        headers: {
+          "X-Request-ID": requestId,
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  };
+
+  let logtoContext;
+  try {
+    logtoContext = await getLogtoContext(logtoConfig);
+  } catch {
+    return denied(401, "Unauthorized", "UNAUTHORIZED");
+  }
+
+  if (!logtoContext.isAuthenticated || !logtoContext.claims) {
+    return denied(401, "Unauthorized", "UNAUTHORIZED");
+  }
+
+  const claims = extractExtendedClaims(logtoContext.claims);
+  if (isPasswordChangeRequired(claims)) {
+    return denied(403, "Password change required", "FORBIDDEN");
+  }
+
+  const role = resolveLogtoRole(claims?.roles ?? []);
+  if (!canAccessConfiguration(role)) {
+    return denied(403, "Forbidden", "FORBIDDEN");
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   const requestId = createAstraRequestId(request.headers.get("X-Request-ID"));
+  const authError = await authorizeGeocodeRequest(requestId);
+  if (authError) {
+    return authError;
+  }
+
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";
 
@@ -23,7 +85,7 @@ export async function GET(request: Request) {
     headers.set("X-Cache", cached ? "HIT" : "MISS");
     headers.set(
       "Cache-Control",
-      "public, max-age=86400, stale-while-revalidate=3600",
+      "private, max-age=86400, stale-while-revalidate=3600",
     );
     if (deduplicated) {
       headers.set("X-Deduplicated", "true");
