@@ -6,6 +6,7 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { AstraRequestError, astraRequest } from "~/lib/astra/client";
+import { schoolWeekday } from "~/lib/date-utils";
 import {
   classifyConfigurationReadFailure,
   configurationReadSeamCode,
@@ -142,7 +143,7 @@ export const jadwalRouter = createTRPCRouter({
   // Get current day schedule
   getCurrentDay: protectedProcedure.query(async () => {
     try {
-      const dayOfWeek = new Date().getDay();
+      const dayOfWeek = schoolWeekday();
       const hariMap = [
         "minggu",
         "senin",

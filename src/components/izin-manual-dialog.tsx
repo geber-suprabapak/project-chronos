@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { toast } from "sonner";
 import { cn } from "~/lib/utils";
+import { schoolDate } from "~/lib/date-utils";
 import {
   Dialog,
   DialogContent,
@@ -59,9 +60,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
   );
   const [deskripsi, setDeskripsi] = useState("");
   const [linkFoto, setLinkFoto] = useState("");
-  const [date, setDate] = useState(
-    new Date().toISOString().split("T")[0] ?? "",
-  );
+  const [date, setDate] = useState(() => schoolDate());
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -131,7 +130,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
     setKategori(undefined);
     setDeskripsi("");
     setLinkFoto("");
-    setDate(new Date().toISOString().split("T")[0] ?? "");
+    setDate(schoolDate());
     setShowDropdown(false);
     setActiveIndex(-1);
     setUploadFile(null);

@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeDateOnly, schoolDate } from "../src/lib/date-utils.ts";
+import {
+  addDaysToSchoolDate,
+  normalizeDateOnly,
+  schoolDate,
+  schoolWeekday,
+} from "../src/lib/date-utils.ts";
 
 describe("date-only normalization", () => {
   it("keeps the calendar date when Astra returns an ISO timestamp", () => {
@@ -41,5 +46,11 @@ describe("school date in Asia/Jakarta", () => {
       if (original === undefined) delete process.env.TZ;
       else process.env.TZ = original;
     }
+  });
+
+  it("shifts school calendar days and computes WIB weekday across UTC midnight (COR-03)", () => {
+    assert.equal(addDaysToSchoolDate("2026-10-06", -6), "2026-09-30");
+    // 2026-10-05T17:30:00Z is 2026-10-06 00:30 WIB (Tuesday = 2, not Monday = 1)
+    assert.equal(schoolWeekday(new Date("2026-10-05T17:30:00Z")), 2);
   });
 });

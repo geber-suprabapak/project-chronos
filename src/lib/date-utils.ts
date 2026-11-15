@@ -13,6 +13,26 @@ export function schoolDate(now: Date = new Date()): string {
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
+/** Shift a YYYY-MM-DD calendar date by `deltaDays` without local-timezone drift. */
+export function addDaysToSchoolDate(
+  dateStr: string,
+  deltaDays: number,
+): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const utcDate = new Date(
+    Date.UTC(year ?? 1970, (month ?? 1) - 1, (day ?? 1) + deltaDays),
+  );
+  return utcDate.toISOString().slice(0, 10);
+}
+
+/** Weekday index (0=Sunday .. 6=Saturday) in Asia/Jakarta timezone. */
+export function schoolWeekday(now: Date = new Date()): number {
+  const [year, month, day] = schoolDate(now).split("-").map(Number);
+  return new Date(
+    Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1),
+  ).getUTCDay();
+}
+
 const DATE_ONLY_PATTERN = /^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/;
 
 function isValidDateOnly(value: string): boolean {

@@ -14,6 +14,7 @@ import {
 import { fetchCompleteList } from "~/lib/astra/complete-list";
 import { normalizeStudentRows } from "~/lib/class-names";
 import {
+  addDaysToSchoolDate,
   isDateOnlyValue,
   normalizeDateOnly,
   schoolDate,
@@ -490,9 +491,8 @@ export const absencesRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const days = input?.days ?? 7;
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
-      const startDateStr = startDate.toISOString().split("T")[0]!;
+      const todayStr = schoolDate();
+      const startDateStr = addDaysToSchoolDate(todayStr, -days);
 
       let students: AstraStudentProfile[];
       let attendances: AstraAttendanceRecord[];
@@ -527,16 +527,12 @@ export const absencesRouter = createTRPCRouter({
       > = {};
 
       for (let i = 0; i < days; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - (days - 1 - i));
-        const dateStr = date.toISOString().split("T")[0];
-        if (dateStr) {
-          dateMap[dateStr] = {
-            hadir: new Set(),
-            izin: new Set(),
-            terlambat: new Set(),
-          };
-        }
+        const dateStr = addDaysToSchoolDate(todayStr, -(days - 1 - i));
+        dateMap[dateStr] = {
+          hadir: new Set(),
+          izin: new Set(),
+          terlambat: new Set(),
+        };
       }
 
       // 1. Process approved leave requests first (ADR-002 precedence rule)
