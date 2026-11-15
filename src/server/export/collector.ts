@@ -27,8 +27,8 @@ async function defaultFetchAttendance(
 }
 
 async function defaultFetchStudents(): Promise<AstraStudentProfile[]> {
-  const { astraRequest } = await import("~/lib/astra/client");
-  return astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+  const { fetchCompleteList } = await import("~/lib/astra/complete-list");
+  return fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
 }
 
 /**

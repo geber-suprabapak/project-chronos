@@ -7,6 +7,7 @@ import {
   protectedProcedure,
 } from "~/server/api/trpc";
 import { astraRequest, AstraRequestError } from "~/lib/astra/client";
+import { fetchCompleteList } from "~/lib/astra/complete-list";
 import { collectUniqueClassNames } from "~/lib/class-names";
 import {
   PROFILE_DETAIL_NOT_FOUND_SIGNAL,
@@ -210,7 +211,7 @@ export const userProfilesRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const isAllJurusan = !input?.className || input.className === "ALL";
       const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
 
       let filtered = students;
 
@@ -278,7 +279,7 @@ export const userProfilesRouter = createTRPCRouter({
   // LIST RAW: semua data (hati-hati untuk dataset besar)
   listRaw: adminProcedure.query(async () => {
     const students =
-      await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+      await fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
     return students.map((s) => ({
       id: s.user_id,
       userId: s.user_id,
@@ -298,8 +299,8 @@ export const userProfilesRouter = createTRPCRouter({
   // GET UNIQUE CLASS NAMES: untuk filter dropdown jurusan
   getUniqueClassNames: privilegedProcedure.query(async () => {
     const [classes, students] = await Promise.all([
-      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => null),
-      astraRequest<Array<{ class_name?: string | null }>>(
+      fetchCompleteList<AstraClassItem>("/v1/admin/classes").catch(() => null),
+      fetchCompleteList<{ class_name?: string | null }>(
         "/v1/admin/students",
       ).catch(() => null),
     ]);

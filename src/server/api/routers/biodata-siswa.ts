@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, privilegedProcedure } from "~/server/api/trpc";
-import { astraRequest } from "~/lib/astra/client";
+import { fetchCompleteList } from "~/lib/astra/complete-list";
 import {
   collectUniqueClassNames,
   normalizeStudentRows,
@@ -34,7 +34,7 @@ export const biodataSiswaRouter = createTRPCRouter({
     .input(z.object({ nis: z.string() }))
     .query(async ({ input }) => {
       const students = normalizeStudentRows(
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students"),
       );
 
       const student = students.find((s) => s.nis === input.nis);
@@ -70,7 +70,7 @@ export const biodataSiswaRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const students = normalizeStudentRows(
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students"),
       );
 
       let filtered = students;
@@ -148,7 +148,7 @@ export const biodataSiswaRouter = createTRPCRouter({
   // STATISTICS: get overview statistics dari Astra
   getStatistics: privilegedProcedure.query(async () => {
     const students = normalizeStudentRows(
-      await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+      await fetchCompleteList<AstraStudentProfile>("/v1/admin/students"),
     );
 
     let laki = 0;
@@ -177,7 +177,7 @@ export const biodataSiswaRouter = createTRPCRouter({
   // LIST RAW: semua data dari Astra
   listRaw: privilegedProcedure.query(async () => {
     const students = normalizeStudentRows(
-      await astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+      await fetchCompleteList<AstraStudentProfile>("/v1/admin/students"),
     );
 
     const sorted = [...students].sort((a, b) => {
@@ -204,8 +204,8 @@ export const biodataSiswaRouter = createTRPCRouter({
   // GET UNIQUE CLASSES: untuk filter dropdown dari Astra
   getUniqueClasses: privilegedProcedure.query(async () => {
     const [classes, students] = await Promise.all([
-      astraRequest<AstraClassItem[]>("/v1/admin/classes").catch(() => null),
-      astraRequest<Array<{ class_name?: string | null }>>(
+      fetchCompleteList<AstraClassItem>("/v1/admin/classes").catch(() => null),
+      fetchCompleteList<{ class_name?: string | null }>(
         "/v1/admin/students",
       ).catch(() => null),
     ]);

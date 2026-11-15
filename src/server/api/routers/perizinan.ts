@@ -12,6 +12,7 @@ import {
   astraRequest,
   isLeaveConflictError,
 } from "~/lib/astra/client";
+import { fetchCompleteList } from "~/lib/astra/complete-list";
 import { normalizeDateOnly } from "~/lib/date-utils";
 import { buildLeaveRequestsListPath } from "~/server/api/routers/history-query";
 import {
@@ -229,7 +230,7 @@ export const perizinanRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       let leaveRequests: AstraLeaveRequest[];
       try {
-        leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+        leaveRequests = await fetchCompleteList<AstraLeaveRequest>(
           buildLeaveRequestsListPath("leave-requests", input?.userId),
         );
       } catch (error) {
@@ -304,7 +305,7 @@ export const perizinanRouter = createTRPCRouter({
   listRaw: protectedProcedure.query(async ({ ctx }) => {
     let leaveRequests: AstraLeaveRequest[];
     try {
-      leaveRequests = await astraRequest<AstraLeaveRequest[]>(
+      leaveRequests = await fetchCompleteList<AstraLeaveRequest>(
         "/v1/admin/leave-requests",
       );
     } catch (error) {
@@ -346,7 +347,7 @@ export const perizinanRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
 
       const student = students.find((candidate) => candidate.nis === input.nis);
       if (!student) {

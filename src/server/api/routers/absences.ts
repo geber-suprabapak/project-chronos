@@ -11,6 +11,7 @@ import {
   AstraRequestError,
   astraRequest,
 } from "~/lib/astra/client";
+import { fetchCompleteList } from "~/lib/astra/complete-list";
 import { normalizeStudentRows } from "~/lib/class-names";
 import {
   isDateOnlyValue,
@@ -158,7 +159,7 @@ export const absencesRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
       const student = students.find((candidate) => candidate.nis === input.nis);
       if (!student?.user_id) return [];
 
@@ -202,7 +203,7 @@ export const absencesRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       const students =
-        await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
+        await fetchCompleteList<AstraStudentProfile>("/v1/admin/students");
       const student = students.find((candidate) => candidate.nis === input.nis);
       if (!student) {
         throw new Error("Siswa dengan NIS tersebut tidak ditemukan di Astra.");
@@ -328,7 +329,7 @@ export const absencesRouter = createTRPCRouter({
           startDate: input?.startDate,
           endDate: input?.endDate,
         }),
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+        fetchCompleteList<AstraStudentProfile>("/v1/admin/students").catch(
           () => null,
         ),
       ]);
@@ -438,7 +439,7 @@ export const absencesRouter = createTRPCRouter({
   listRaw: protectedProcedure.query(async () => {
     const [attendances, students] = await Promise.all([
       fetchAllAttendanceRecords<AstraAttendanceRecord>(),
-      astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+      fetchCompleteList<AstraStudentProfile>("/v1/admin/students").catch(
         () => null,
       ),
     ]);
@@ -466,7 +467,7 @@ export const absencesRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const [record, students] = await Promise.all([
         fetchAttendanceRecordById<AstraAttendanceRecord>(input.id),
-        astraRequest<AstraStudentProfile[]>("/v1/admin/students").catch(
+        fetchCompleteList<AstraStudentProfile>("/v1/admin/students").catch(
           () => [],
         ),
       ]);
@@ -498,11 +499,11 @@ export const absencesRouter = createTRPCRouter({
       let leaveRequests: AstraLeaveRequest[];
       try {
         [students, attendances, leaveRequests] = await Promise.all([
-          astraRequest<AstraStudentProfile[]>("/v1/admin/students"),
+          fetchCompleteList<AstraStudentProfile>("/v1/admin/students"),
           fetchAllAttendanceRecords<AstraAttendanceRecord>({
             startDate: startDateStr,
           }),
-          astraRequest<AstraLeaveRequest[]>("/v1/admin/leave-requests"),
+          fetchCompleteList<AstraLeaveRequest>("/v1/admin/leave-requests"),
         ]);
       } catch (error) {
         if (error instanceof TRPCError) throw error;
