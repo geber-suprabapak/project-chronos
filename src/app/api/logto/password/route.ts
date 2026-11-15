@@ -53,11 +53,34 @@ export async function POST(request: Request) {
     requestId,
   );
 
-  const response = await fetch(`${env.ASTRA_API_URL}/v1/auth/password`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ new_password: parsed.data.password }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${env.ASTRA_API_URL}/v1/auth/password`, {
+      method: "POST",
+      headers,
+      signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({ new_password: parsed.data.password }),
+    });
+  } catch (error) {
+    const isTimeout =
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+    return NextResponse.json(
+      {
+        error: isTimeout
+          ? "Permintaan pembaruan password melebihi batas waktu."
+          : "Gagal menghubungi layanan autentikasi.",
+        request_id: requestId,
+      },
+      {
+        status: isTimeout ? 504 : 502,
+        headers: {
+          "X-Request-ID": requestId,
+          "Cache-Control": "no-store",
+        },
+      },
+    );
+  }
   const responseRequestId = getAstraResponseRequestId(response, requestId);
   if (
     !response.ok ||
@@ -69,7 +92,13 @@ export async function POST(request: Request) {
           error: "Password contract is unavailable or incompatible.",
           request_id: responseRequestId,
         },
-        { status: 502, headers: { "X-Request-ID": responseRequestId } },
+        {
+          status: 502,
+          headers: {
+            "X-Request-ID": responseRequestId,
+            "Cache-Control": "no-store",
+          },
+        },
       );
     }
     // SAFETY: Astra returns its documented error envelope for non-success responses.
@@ -85,13 +114,21 @@ export async function POST(request: Request) {
       },
       {
         status: response.status,
-        headers: { "X-Request-ID": responseRequestId },
+        headers: {
+          "X-Request-ID": responseRequestId,
+          "Cache-Control": "no-store",
+        },
       },
     );
   }
 
   return NextResponse.json(
     { success: true, request_id: responseRequestId },
-    { headers: { "X-Request-ID": responseRequestId } },
+    {
+      headers: {
+        "X-Request-ID": responseRequestId,
+        "Cache-Control": "no-store",
+      },
+    },
   );
 }

@@ -37,12 +37,16 @@ export function ChangePasswordForm() {
         body: JSON.stringify({ password: newPassword }),
       });
       // SAFETY: The API returns a JSON error envelope on both success and failure.
-      const result = (await response.json()) as { error?: string };
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        setError(result.error ?? "Password tidak dapat diperbarui.");
+        setError(result?.error ?? "Password tidak dapat diperbarui.");
         return;
       }
       window.location.href = "/api/logto/sign-out";
+    } catch {
+      setError("Terjadi kesalahan jaringan. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
     }

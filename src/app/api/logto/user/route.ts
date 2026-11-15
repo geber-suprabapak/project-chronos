@@ -6,5 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const context = await getLogtoContext(logtoConfig);
-  return NextResponse.json(context);
+  return NextResponse.json(context, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -15,6 +15,19 @@ import { writeOperationalEvent } from "~/lib/observability";
 
 export const dynamic = "force-dynamic";
 
+const ASTRA_FILE_TIMEOUT_MS = 10_000;
+const OBJECT_UPLOAD_TIMEOUT_MS = 15_000;
+
+function isHttpUploadUrl(candidate: string | undefined): candidate is string {
+  if (!candidate) return false;
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   const requestId = createAstraRequestId(request.headers.get("X-Request-ID"));
   const access = await requireFileUploadAccess(requestId);
@@ -43,6 +56,7 @@ export async function POST(request: Request) {
       {
         method: "POST",
         headers,
+        signal: AbortSignal.timeout(ASTRA_FILE_TIMEOUT_MS),
         body: JSON.stringify({
           purpose: "permit_attachment",
           content_type: entry.type || "application/octet-stream",
@@ -86,7 +100,7 @@ export async function POST(request: Request) {
     };
     const fileId = intentEnvelope.data?.file_id;
     const uploadUrl = intentEnvelope.data?.upload_url;
-    if (!fileId || !uploadUrl) {
+    if (!fileId || !isHttpUploadUrl(uploadUrl)) {
       writeOperationalEvent({
         event: "upload.error",
         outcome: "failure",
@@ -107,6 +121,7 @@ export async function POST(request: Request) {
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",
       headers: { "Content-Type": entry.type || "application/octet-stream" },
+      signal: AbortSignal.timeout(OBJECT_UPLOAD_TIMEOUT_MS),
       body: entry,
     });
     if (!uploadResponse.ok) {
@@ -128,6 +143,7 @@ export async function POST(request: Request) {
       `${env.ASTRA_API_URL}/v1/mobile/files/${encodeURIComponent(fileId)}/confirm`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(ASTRA_FILE_TIMEOUT_MS),
         headers: buildAstraContractHeaders(
           {
             Authorization: `Bearer ${accessToken}`,

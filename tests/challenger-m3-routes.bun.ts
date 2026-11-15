@@ -72,8 +72,12 @@ function stopLogCapture() {
 let server: http.Server;
 let serverPort: number;
 let mockMode:
-  "normal" | "astra_down" | "s3_fail" | "intent_fail" | "confirm_fail" =
-  "normal";
+  | "normal"
+  | "astra_down"
+  | "s3_fail"
+  | "intent_fail"
+  | "confirm_fail"
+  | "invalid_upload_url" = "normal";
 
 server = http.createServer((req, res) => {
   const url = req.url ?? "";
@@ -123,7 +127,10 @@ server = http.createServer((req, res) => {
         success: true,
         data: {
           file_id: "file-test-m3-123",
-          upload_url: `http://127.0.0.1:${serverPort}/mock-s3-upload/file-test-m3-123`,
+          upload_url:
+            mockMode === "invalid_upload_url"
+              ? "file:///etc/passwd"
+              : `http://127.0.0.1:${serverPort}/mock-s3-upload/file-test-m3-123`,
         },
       }),
     );
@@ -455,5 +462,22 @@ describe("Milestone M3 Empirical Challenge: Export & Upload Error Logging", () =
     );
     assert.equal(errorEvent.outcome, "failure");
     assert.equal(errorEvent.status, 502);
+  });
+
+  it("rejects non-HTTP upload_url intent payloads with 502 (COR-04)", async () => {
+    mockMode = "invalid_upload_url";
+
+    const formData = new FormData();
+    const blob = new Blob(["dummy file content"], { type: "image/jpeg" });
+    formData.append("file", blob, "surat.jpg");
+
+    const req = new Request("http://localhost:3000/api/astra/files", {
+      method: "POST",
+      headers: { "X-Request-ID": "req-upload-bad-scheme" },
+      body: formData,
+    });
+
+    const res = await postFile(req);
+    assert.equal(res.status, 502);
   });
 });
