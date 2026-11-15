@@ -86,7 +86,7 @@ export async function createMockLogtoSessionCookie(
     roles = ["platform_admin"],
     must_change_password = false,
     appId = "chronos-app",
-    secret = "complex_password_at_least_32_characters_long_12345",
+    secret = "e2e-chronos-cookie-secret-at-least-32-chars",
     resource = "https://api.skanida.sch.id",
   } = options;
 
