@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { execSync } from "node:child_process";
@@ -49,7 +49,225 @@ if (bunTest) {
   }));
 }
 
-// Import Astra Client & TRPC Routers after mocking Logto
+let serverPort = 0;
+let serverPostCalls: { path: string; body: unknown }[] = [];
+let serverMode: "normal" | "outage" = "normal";
+
+const server = http.createServer((req, res) => {
+  const url = req.url ?? "";
+
+  // 1. Hanging endpoints for Task 1
+  if (url === "/hanging-15s") {
+    // Deliberately wait 15 seconds before responding
+    setTimeout(() => {
+      if (!res.writableEnded) {
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "X-Astra-Contract-Version": "v1",
+          "X-Request-ID": req.headers["x-request-id"] || "server-req-1",
+        });
+        res.end(
+          JSON.stringify({
+            success: true,
+            data: { status: "slow_ok" },
+            meta: { request_id: "server-req-1" },
+          }),
+        );
+      }
+    }, 15000);
+    return;
+  }
+
+  if (url === "/hanging-300ms") {
+    setTimeout(() => {
+      if (!res.writableEnded) {
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "X-Astra-Contract-Version": "v1",
+          "X-Request-ID": req.headers["x-request-id"] || "server-req-fast",
+        });
+        res.end(
+          JSON.stringify({
+            success: true,
+            data: { status: "fast_slow_ok" },
+            meta: { request_id: "server-req-fast" },
+          }),
+        );
+      }
+    }, 300);
+    return;
+  }
+
+  // If simulated Astra outage
+  if (serverMode === "outage") {
+    res.writeHead(503, {
+      "Content-Type": "application/json",
+      "X-Astra-Contract-Version": "v1",
+      "X-Request-ID": req.headers["x-request-id"] || "outage-req-id",
+    });
+    res.end(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "DEPENDENCY_UNAVAILABLE",
+          message: "Simulated Astra service outage",
+        },
+        meta: { request_id: "outage-req-id" },
+      }),
+    );
+    return;
+  }
+
+  // Track POST schedule creations
+  if (req.method === "POST" && url === "/v1/admin/schedules") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      serverPostCalls.push({
+        path: url,
+        body: body ? JSON.parse(body) : null,
+      });
+      res.writeHead(201, {
+        "Content-Type": "application/json",
+        "X-Astra-Contract-Version": "v1",
+        "X-Request-ID": req.headers["x-request-id"] || "post-sched-id",
+      });
+      res.end(
+        JSON.stringify({
+          success: true,
+          data: { id: "sched-new", ...JSON.parse(body || "{}") },
+          meta: { request_id: "post-sched-id" },
+        }),
+      );
+    });
+    return;
+  }
+
+  // Normal endpoints
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "X-Astra-Contract-Version": "v1",
+    "X-Request-ID": req.headers["x-request-id"] || "normal-req-id",
+  });
+
+  if (url.startsWith("/v1/admin/schedules")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: [
+          {
+            id: "1",
+            day_of_week: "senin",
+            start_time: "06:30:00",
+            end_time: "07:30:00",
+            start_checkout: "15:00:00",
+            end_checkout: "16:00:00",
+            grace_period_minutes: 15,
+            is_active: true,
+          },
+        ],
+        meta: { request_id: "normal-req-id" },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/students")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: [
+          {
+            user_id: "student-1",
+            full_name: "Ahmad Santoso",
+            email: "ahmad@skanida.sch.id",
+            nis: "1001",
+            class_name: "XII RPL 1",
+            absence_number: "1",
+            lifecycle_status: "approved",
+            gender: "L",
+          },
+        ],
+        meta: { request_id: "normal-req-id" },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/attendance")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: [
+          {
+            id: "att-1",
+            user_id: "student-1",
+            date: "2026-09-05",
+            status: "Hadir",
+            action_type: "check_in",
+          },
+        ],
+        meta: {
+          request_id: "normal-req-id",
+          pagination: { limit: 100, offset: 0, has_more: false },
+        },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/leave-requests")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: [],
+        meta: { request_id: "normal-req-id" },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/locations")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: [
+          {
+            id: "loc-1",
+            name: "Kampus Utama",
+            latitude: -7.123,
+            longitude: 110.123,
+            radius_meters: 100,
+            is_active: true,
+          },
+        ],
+        meta: { request_id: "normal-req-id" },
+      }),
+    );
+    return;
+  }
+
+  res.end(
+    JSON.stringify({
+      success: true,
+      data: [],
+      meta: { request_id: "normal-req-id" },
+    }),
+  );
+});
+
+await new Promise<void>((resolve) => {
+  server.listen(0, "127.0.0.1", () => {
+    const addr = server.address();
+    if (typeof addr === "object" && addr !== null) {
+      serverPort = addr.port;
+      process.env.ASTRA_API_URL = `http://127.0.0.1:${serverPort}`;
+    }
+    resolve();
+  });
+});
+
+// Import Astra Client & TRPC Routers after mocking Logto and binding ephemeral port
 const {
   astraRequestEnvelope,
   astraRequest,
@@ -73,222 +291,6 @@ const { collectAstraPages, AstraPaginationError } =
   await import("../src/lib/astra/pagination.ts");
 
 describe("Milestone M1 Empirical Stress-Test & Adversarial Challenge", () => {
-  let server: http.Server;
-  let serverPort = 3000;
-  let serverPostCalls: { path: string; body: unknown }[] = [];
-  let serverMode: "normal" | "outage" = "normal";
-
-  before(async () => {
-    server = http.createServer((req, res) => {
-      const url = req.url ?? "";
-
-      // 1. Hanging endpoints for Task 1
-      if (url === "/hanging-15s") {
-        // Deliberately wait 15 seconds before responding
-        setTimeout(() => {
-          if (!res.writableEnded) {
-            res.writeHead(200, {
-              "Content-Type": "application/json",
-              "X-Astra-Contract-Version": "v1",
-              "X-Request-ID": req.headers["x-request-id"] || "server-req-1",
-            });
-            res.end(
-              JSON.stringify({
-                success: true,
-                data: { status: "slow_ok" },
-                meta: { request_id: "server-req-1" },
-              }),
-            );
-          }
-        }, 15000);
-        return;
-      }
-
-      if (url === "/hanging-300ms") {
-        setTimeout(() => {
-          if (!res.writableEnded) {
-            res.writeHead(200, {
-              "Content-Type": "application/json",
-              "X-Astra-Contract-Version": "v1",
-              "X-Request-ID": req.headers["x-request-id"] || "server-req-fast",
-            });
-            res.end(
-              JSON.stringify({
-                success: true,
-                data: { status: "fast_slow_ok" },
-                meta: { request_id: "server-req-fast" },
-              }),
-            );
-          }
-        }, 300);
-        return;
-      }
-
-      // If simulated Astra outage
-      if (serverMode === "outage") {
-        res.writeHead(503, {
-          "Content-Type": "application/json",
-          "X-Astra-Contract-Version": "v1",
-          "X-Request-ID": req.headers["x-request-id"] || "outage-req-id",
-        });
-        res.end(
-          JSON.stringify({
-            success: false,
-            error: {
-              code: "DEPENDENCY_UNAVAILABLE",
-              message: "Simulated Astra service outage",
-            },
-            meta: { request_id: "outage-req-id" },
-          }),
-        );
-        return;
-      }
-
-      // Track POST schedule creations
-      if (req.method === "POST" && url === "/v1/admin/schedules") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          serverPostCalls.push({
-            path: url,
-            body: body ? JSON.parse(body) : null,
-          });
-          res.writeHead(201, {
-            "Content-Type": "application/json",
-            "X-Astra-Contract-Version": "v1",
-            "X-Request-ID": req.headers["x-request-id"] || "post-sched-id",
-          });
-          res.end(
-            JSON.stringify({
-              success: true,
-              data: { id: "sched-new", ...JSON.parse(body || "{}") },
-              meta: { request_id: "post-sched-id" },
-            }),
-          );
-        });
-        return;
-      }
-
-      // Normal endpoints
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "X-Astra-Contract-Version": "v1",
-        "X-Request-ID": req.headers["x-request-id"] || "normal-req-id",
-      });
-
-      if (url.startsWith("/v1/admin/schedules")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: [
-              {
-                id: "1",
-                day_of_week: "senin",
-                start_time: "06:30:00",
-                end_time: "07:30:00",
-                start_checkout: "15:00:00",
-                end_checkout: "16:00:00",
-                grace_period_minutes: 15,
-                is_active: true,
-              },
-            ],
-            meta: { request_id: "normal-req-id" },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/students")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: [
-              {
-                user_id: "student-1",
-                full_name: "Ahmad Santoso",
-                email: "ahmad@skanida.sch.id",
-                nis: "1001",
-                class_name: "XII RPL 1",
-                absence_number: "1",
-                lifecycle_status: "approved",
-                gender: "L",
-              },
-            ],
-            meta: { request_id: "normal-req-id" },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/attendance")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: [
-              {
-                id: "att-1",
-                user_id: "student-1",
-                date: "2026-09-05",
-                status: "Hadir",
-                action_type: "check_in",
-              },
-            ],
-            meta: {
-              request_id: "normal-req-id",
-              pagination: { limit: 100, offset: 0, has_more: false },
-            },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/leave-requests")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: [],
-            meta: { request_id: "normal-req-id" },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/locations")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: [
-              {
-                id: "loc-1",
-                name: "Kampus Utama",
-                latitude: -7.123,
-                longitude: 110.123,
-                radius_meters: 100,
-                is_active: true,
-              },
-            ],
-            meta: { request_id: "normal-req-id" },
-          }),
-        );
-        return;
-      }
-
-      res.end(
-        JSON.stringify({
-          success: true,
-          data: [],
-          meta: { request_id: "normal-req-id" },
-        }),
-      );
-    });
-
-    await new Promise<void>((resolve) => {
-      server.listen(serverPort, "127.0.0.1", () => {
-        resolve();
-      });
-    });
-  });
-
   after(async () => {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());

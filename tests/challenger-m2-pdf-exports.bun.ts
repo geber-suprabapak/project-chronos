@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import ExcelJS from "exceljs";
@@ -47,7 +47,218 @@ if (bunTest) {
   }));
 }
 
-// Dynamically import routes after mocking Logto
+let serverMode: "normal" | "empty" | "error" = "normal";
+
+const mockStudents = [
+  {
+    user_id: "stu-001",
+    full_name: "Budi Santoso",
+    email: "budi@skanida.sch.id",
+    nis: "1001",
+    class_name: "XII RPL 1",
+    absence_number: "5",
+    role: "student",
+    lifecycle_status: "approved",
+    gender: "L",
+    created_at: "2026-01-10T08:00:00Z",
+    updated_at: "2026-01-15T08:00:00Z",
+  },
+  {
+    user_id: "stu-002",
+    full_name: "Siti Rahma",
+    email: "siti@skanida.sch.id",
+    nis: "1002",
+    class_name: "XII RPL 1",
+    absence_number: "12",
+    role: "student",
+    lifecycle_status: "approved",
+    gender: "P",
+    created_at: "2026-01-11T08:00:00Z",
+    updated_at: "2026-01-16T08:00:00Z",
+  },
+  {
+    user_id: "stu-003",
+    full_name: "Agus Pratama",
+    email: "agus@skanida.sch.id",
+    nis: "1003",
+    class_name: "X TKJ 2",
+    absence_number: "2",
+    role: "student",
+    lifecycle_status: "pending",
+    gender: "L",
+    created_at: "2026-01-12T08:00:00Z",
+    updated_at: "2026-01-17T08:00:00Z",
+  },
+];
+
+const mockStaff = [
+  {
+    user_id: "staff-001",
+    full_name: "Drs. Eko Prasetyo",
+    email: "eko@skanida.sch.id",
+    nis: "197508121999031001",
+    class_name: null,
+    absence_number: null,
+    role: "teacher",
+    roles: ["teacher"],
+    lifecycle_status: "approved",
+    gender: "L",
+    created_at: "2025-08-01T07:00:00Z",
+    updated_at: "2026-01-01T07:00:00Z",
+  },
+  {
+    user_id: "staff-002",
+    full_name: "Tri Wahyuni, S.Kom",
+    email: "tri@skanida.sch.id",
+    nis: null,
+    class_name: null,
+    absence_number: null,
+    role: "staff",
+    roles: ["staff"],
+    lifecycle_status: "approved",
+    gender: "P",
+    created_at: "2025-09-01T07:00:00Z",
+    updated_at: "2026-01-01T07:00:00Z",
+  },
+  {
+    user_id: "staff-003",
+    full_name: "Dra. Sri Mulyani, M.Pd",
+    email: "kepsek@skanida.sch.id",
+    nis: "196803251992032002",
+    class_name: null,
+    absence_number: null,
+    role: "school_admin",
+    roles: ["school_admin"],
+    lifecycle_status: "approved",
+    gender: "P",
+    created_at: "2024-01-01T07:00:00Z",
+    updated_at: "2026-01-01T07:00:00Z",
+  },
+];
+
+const mockLeaveRequests = [
+  {
+    id: "leave-001",
+    user_id: "stu-001",
+    student_name: "Budi Santoso",
+    student_nis: "1001",
+    student_class: "XII RPL 1",
+    absence_number: "5",
+    category: "sakit",
+    description: "Demam tinggi",
+    status: true,
+    date: "2026-09-02",
+    approval_status: "approved",
+    attachment_url: "https://example.com/attachment1.jpg",
+    created_at: "2026-09-02T06:30:00Z",
+  },
+  {
+    id: "leave-002",
+    user_id: "stu-002",
+    student_name: "Siti Rahma",
+    student_nis: "1002",
+    student_class: "XII RPL 1",
+    absence_number: "12",
+    category: "pergi",
+    description: "Acara keluarga di luar kota",
+    status: false,
+    date: "2026-09-03",
+    approval_status: "rejected",
+    rejection_reason: "Tidak ada surat izin resmi",
+    created_at: "2026-09-03T07:00:00Z",
+  },
+  {
+    id: "leave-003",
+    user_id: "stu-003",
+    student_name: "Agus Pratama",
+    student_nis: "1003",
+    student_class: "X TKJ 2",
+    absence_number: "2",
+    category: "lainnya",
+    description: "Siswa dipulangkan karena sakit di UKS",
+    status: true,
+    date: "2026-09-04",
+    approval_status: "pending",
+    created_at: "2026-09-04T09:00:00Z",
+  },
+];
+
+const server = http.createServer((req, res) => {
+  const url = req.url ?? "";
+
+  if (serverMode === "error") {
+    res.writeHead(503, {
+      "Content-Type": "application/json",
+      "X-Astra-Contract-Version": "v1",
+      "X-Request-ID": req.headers["x-request-id"] || "err-req-id",
+    });
+    res.end(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "DEPENDENCY_UNAVAILABLE",
+          message: "Simulated Astra failure",
+        },
+        meta: { request_id: "err-req-id" },
+      }),
+    );
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "X-Astra-Contract-Version": "v1",
+    "X-Request-ID": req.headers["x-request-id"] || "mock-req-id",
+  });
+
+  if (url.startsWith("/v1/admin/students")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: serverMode === "empty" ? [] : mockStudents,
+        meta: { request_id: "mock-students-id" },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/staff")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: serverMode === "empty" ? [] : mockStaff,
+        meta: { request_id: "mock-staff-id" },
+      }),
+    );
+    return;
+  }
+
+  if (url.startsWith("/v1/admin/leave-requests")) {
+    res.end(
+      JSON.stringify({
+        success: true,
+        data: serverMode === "empty" ? [] : mockLeaveRequests,
+        meta: { request_id: "mock-leaves-id" },
+      }),
+    );
+    return;
+  }
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ success: false, message: "Not found" }));
+});
+
+await new Promise<void>((resolve) => {
+  server.listen(0, "127.0.0.1", () => {
+    const addr = server.address();
+    if (typeof addr === "object" && addr !== null) {
+      process.env.ASTRA_API_URL = `http://127.0.0.1:${addr.port}`;
+    }
+    resolve();
+  });
+});
+
+// Dynamically import routes after mocking Logto and binding ephemeral port
 const { GET: getProfiles } =
   await import("../src/app/api/export/profiles/route.ts");
 const { GET: getSiswa } = await import("../src/app/api/export/siswa/route.ts");
@@ -55,216 +266,6 @@ const { GET: getPerizinan } =
   await import("../src/app/api/export/perizinan/route.ts");
 
 describe("Milestone M2 Empirical Challenge: Authoritative PDF & XLSX Exports (Issue 05)", () => {
-  let server: http.Server;
-  let serverMode: "normal" | "empty" | "error" = "normal";
-
-  const mockStudents = [
-    {
-      user_id: "stu-001",
-      full_name: "Budi Santoso",
-      email: "budi@skanida.sch.id",
-      nis: "1001",
-      class_name: "XII RPL 1",
-      absence_number: "5",
-      role: "student",
-      lifecycle_status: "approved",
-      gender: "L",
-      created_at: "2026-01-10T08:00:00Z",
-      updated_at: "2026-01-15T08:00:00Z",
-    },
-    {
-      user_id: "stu-002",
-      full_name: "Siti Rahma",
-      email: "siti@skanida.sch.id",
-      nis: "1002",
-      class_name: "XII RPL 1",
-      absence_number: "12",
-      role: "student",
-      lifecycle_status: "approved",
-      gender: "P",
-      created_at: "2026-01-11T08:00:00Z",
-      updated_at: "2026-01-16T08:00:00Z",
-    },
-    {
-      user_id: "stu-003",
-      full_name: "Agus Pratama",
-      email: "agus@skanida.sch.id",
-      nis: "1003",
-      class_name: "X TKJ 2",
-      absence_number: "2",
-      role: "student",
-      lifecycle_status: "pending",
-      gender: "L",
-      created_at: "2026-01-12T08:00:00Z",
-      updated_at: "2026-01-17T08:00:00Z",
-    },
-  ];
-
-  const mockStaff = [
-    {
-      user_id: "staff-001",
-      full_name: "Drs. Eko Prasetyo",
-      email: "eko@skanida.sch.id",
-      nis: "197508121999031001",
-      class_name: null,
-      absence_number: null,
-      role: "teacher",
-      roles: ["teacher"],
-      lifecycle_status: "approved",
-      gender: "L",
-      created_at: "2025-08-01T07:00:00Z",
-      updated_at: "2026-01-01T07:00:00Z",
-    },
-    {
-      user_id: "staff-002",
-      full_name: "Tri Wahyuni, S.Kom",
-      email: "tri@skanida.sch.id",
-      nis: null,
-      class_name: null,
-      absence_number: null,
-      role: "staff",
-      roles: ["staff"],
-      lifecycle_status: "approved",
-      gender: "P",
-      created_at: "2025-09-01T07:00:00Z",
-      updated_at: "2026-01-01T07:00:00Z",
-    },
-    {
-      user_id: "staff-003",
-      full_name: "Dra. Sri Mulyani, M.Pd",
-      email: "kepsek@skanida.sch.id",
-      nis: "196803251992032002",
-      class_name: null,
-      absence_number: null,
-      role: "school_admin",
-      roles: ["school_admin"],
-      lifecycle_status: "approved",
-      gender: "P",
-      created_at: "2024-01-01T07:00:00Z",
-      updated_at: "2026-01-01T07:00:00Z",
-    },
-  ];
-
-  const mockLeaveRequests = [
-    {
-      id: "leave-001",
-      user_id: "stu-001",
-      student_name: "Budi Santoso",
-      student_nis: "1001",
-      student_class: "XII RPL 1",
-      absence_number: "5",
-      category: "sakit",
-      description: "Demam tinggi",
-      status: true,
-      date: "2026-09-02",
-      approval_status: "approved",
-      attachment_url: "https://example.com/attachment1.jpg",
-      created_at: "2026-09-02T06:30:00Z",
-    },
-    {
-      id: "leave-002",
-      user_id: "stu-002",
-      student_name: "Siti Rahma",
-      student_nis: "1002",
-      student_class: "XII RPL 1",
-      absence_number: "12",
-      category: "pergi",
-      description: "Acara keluarga di luar kota",
-      status: false,
-      date: "2026-09-03",
-      approval_status: "rejected",
-      rejection_reason: "Tidak ada surat izin resmi",
-      created_at: "2026-09-03T07:00:00Z",
-    },
-    {
-      id: "leave-003",
-      user_id: "stu-003",
-      student_name: "Agus Pratama",
-      student_nis: "1003",
-      student_class: "X TKJ 2",
-      absence_number: "2",
-      category: "lainnya",
-      description: "Siswa dipulangkan karena sakit di UKS",
-      status: true,
-      date: "2026-09-04",
-      approval_status: "pending",
-      created_at: "2026-09-04T09:00:00Z",
-    },
-  ];
-
-  before(async () => {
-    server = http.createServer((req, res) => {
-      const url = req.url ?? "";
-
-      if (serverMode === "error") {
-        res.writeHead(503, {
-          "Content-Type": "application/json",
-          "X-Astra-Contract-Version": "v1",
-          "X-Request-ID": req.headers["x-request-id"] || "err-req-id",
-        });
-        res.end(
-          JSON.stringify({
-            success: false,
-            error: {
-              code: "DEPENDENCY_UNAVAILABLE",
-              message: "Simulated Astra failure",
-            },
-            meta: { request_id: "err-req-id" },
-          }),
-        );
-        return;
-      }
-
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "X-Astra-Contract-Version": "v1",
-        "X-Request-ID": req.headers["x-request-id"] || "mock-req-id",
-      });
-
-      if (url.startsWith("/v1/admin/students")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: serverMode === "empty" ? [] : mockStudents,
-            meta: { request_id: "mock-students-id" },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/staff")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: serverMode === "empty" ? [] : mockStaff,
-            meta: { request_id: "mock-staff-id" },
-          }),
-        );
-        return;
-      }
-
-      if (url.startsWith("/v1/admin/leave-requests")) {
-        res.end(
-          JSON.stringify({
-            success: true,
-            data: serverMode === "empty" ? [] : mockLeaveRequests,
-            meta: { request_id: "mock-leaves-id" },
-          }),
-        );
-        return;
-      }
-
-      res.writeHead(404);
-      res.end(JSON.stringify({ success: false, message: "Not found" }));
-    });
-
-    await new Promise<void>((resolve) => {
-      server.listen(3000, () => {
-        resolve();
-      });
-    });
-  });
-
   after(async () => {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
