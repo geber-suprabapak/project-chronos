@@ -355,7 +355,7 @@ export const perizinanRouter = createTRPCRouter({
         );
       }
 
-      if (student.lifecycle_status !== "approved") {
+      if (student.lifecycle_status !== "approved" || !student.user_id) {
         throw new Error(
           `Siswa ${student.full_name ?? student.nis} belum memiliki akun user aktif. ` +
             `Siswa harus aktivasi akun terlebih dahulu sebelum bisa dibuatkan izin.`,

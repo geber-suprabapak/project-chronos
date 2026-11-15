@@ -27,7 +27,7 @@ import {
 } from "~/server/api/routers/attendance-source";
 
 interface AstraStudentProfile {
-  user_id: string;
+  user_id: string | null;
   full_name?: string | null;
   email?: string | null;
   nis?: string | null;
@@ -160,13 +160,14 @@ export const absencesRouter = createTRPCRouter({
       const students =
         await astraRequest<AstraStudentProfile[]>("/v1/admin/students");
       const student = students.find((candidate) => candidate.nis === input.nis);
-      if (!student) return [];
+      if (!student?.user_id) return [];
 
       // shortcut: each status is capped at 100; add date-filtered paging if older attempts must be selectable.
+      const userId = student.user_id;
       const attemptsByStatus = await Promise.all(
         (["failed", "error"] as const).map((status) => {
           const query = new URLSearchParams({
-            user_id: student.user_id,
+            user_id: userId,
             action_type: input.actionType,
             status,
             limit: "100",
@@ -205,6 +206,12 @@ export const absencesRouter = createTRPCRouter({
       const student = students.find((candidate) => candidate.nis === input.nis);
       if (!student) {
         throw new Error("Siswa dengan NIS tersebut tidak ditemukan di Astra.");
+      }
+      if (!student.user_id) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Siswa ${student.full_name ?? student.nis ?? input.nis} belum memiliki akun user aktif. Siswa harus aktivasi akun terlebih dahulu sebelum dibuatkan absensi manual.`,
+        });
       }
 
       const statusAndAction = (() => {

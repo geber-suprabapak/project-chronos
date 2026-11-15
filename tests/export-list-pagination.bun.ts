@@ -302,4 +302,39 @@ describe("paginated authoritative list exports", () => {
 
     await assertFailsClosed(getSiswa, "siswa");
   });
+
+  it("exports multiple roster-only students with null user_id without crashing or colliding (COR-01)", async () => {
+    resetCollections();
+    collections.set("/v1/admin/students", {
+      rows: [
+        {
+          student_id: null,
+          user_id: null,
+          full_name: "Siswa Satu",
+          nis: "20001",
+          class_name: "X RPL 1",
+          absence_number: "1",
+          role: "student",
+        },
+        {
+          student_id: null,
+          user_id: null,
+          full_name: "Siswa Satu",
+          nis: "20002",
+          class_name: "X RPL 1",
+          absence_number: "2",
+          role: "student",
+        },
+      ],
+    });
+
+    const worksheet = await getWorksheet(
+      getProfiles,
+      "profiles",
+      "Profil Pengguna",
+    );
+    assert.equal(worksheet.rowCount, 3);
+    assert.equal(worksheet.getRow(2).getCell(2).value, "20001");
+    assert.equal(worksheet.getRow(3).getCell(2).value, "20002");
+  });
 });

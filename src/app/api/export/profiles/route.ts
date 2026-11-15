@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 interface AstraStudentProfile {
-  user_id: string;
+  student_id?: string | null;
+  user_id: string | null;
   full_name?: string | null;
   email?: string | null;
   nis?: string | null;
@@ -168,37 +169,39 @@ export async function GET(request: Request) {
   }
 
   try {
-    const staffRows: ProfileExportRow[] = staff.map((st) => ({
-      id: st.user_id,
-      nis: st.nis ?? "-",
-      fullName: st.full_name ?? "-",
-      email: st.email ?? "-",
-      className: st.class_name ?? "-",
-      absenceNumber: st.absence_number ?? "-",
-      role: formatRole(st.role, st.roles),
-      createdAt: formatDate(st.created_at),
-      updatedAt: formatDate(st.updated_at),
-    }));
-
-    const studentRows: ProfileExportRow[] = students.map((s) => ({
-      id: s.user_id,
-      nis: s.nis ?? "-",
-      fullName: s.full_name ?? "-",
-      email: s.email ?? "-",
-      className: s.class_name ?? "-",
-      absenceNumber: s.absence_number ?? "-",
-      role: formatRole(s.role ?? "student"),
-      createdAt: formatDate(s.created_at),
-      updatedAt: formatDate(s.updated_at),
-    }));
-
     const rows: ProfileExportRow[] = [];
     const seenIds = new Set<string>();
-    for (const r of [...staffRows, ...studentRows]) {
-      if (!seenIds.has(r.id)) {
-        seenIds.add(r.id);
-        rows.push(r);
-      }
+
+    for (const st of staff) {
+      if (st.user_id && seenIds.has(st.user_id)) continue;
+      if (st.user_id) seenIds.add(st.user_id);
+      rows.push({
+        id: st.user_id ?? "-",
+        nis: st.nis ?? "-",
+        fullName: st.full_name ?? "-",
+        email: st.email ?? "-",
+        className: st.class_name ?? "-",
+        absenceNumber: st.absence_number ?? "-",
+        role: formatRole(st.role, st.roles),
+        createdAt: formatDate(st.created_at),
+        updatedAt: formatDate(st.updated_at),
+      });
+    }
+
+    for (const s of students) {
+      if (s.user_id && seenIds.has(s.user_id)) continue;
+      if (s.user_id) seenIds.add(s.user_id);
+      rows.push({
+        id: s.user_id ?? s.student_id ?? "-",
+        nis: s.nis ?? "-",
+        fullName: s.full_name ?? "-",
+        email: s.email ?? "-",
+        className: s.class_name ?? "-",
+        absenceNumber: s.absence_number ?? "-",
+        role: formatRole(s.role ?? "student"),
+        createdAt: formatDate(s.created_at),
+        updatedAt: formatDate(s.updated_at),
+      });
     }
 
     rows.sort((a, b) => {
