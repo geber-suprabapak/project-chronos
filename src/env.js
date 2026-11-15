@@ -1,6 +1,11 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+const DEV_DEFAULT_APP_SECRET = "chronos-secret-key-at-least-32-chars";
+const DEV_DEFAULT_COOKIE_SECRET =
+  "complex_password_at_least_32_characters_long_12345";
+const isProduction = process.env["NODE_ENV"] === "production";
+
 export const env = createEnv({
   /**
    * Specify your server-side environment variables schema here. This way you can ensure the app
@@ -12,14 +17,24 @@ export const env = createEnv({
       .default("development"),
     LOGTO_ENDPOINT: z.string().url().default("http://localhost:3001"),
     LOGTO_APP_ID: z.string().min(1).default("chronos-app"),
-    LOGTO_APP_SECRET: z
-      .string()
-      .min(1)
-      .default("chronos-secret-key-at-least-32-chars"),
-    LOGTO_COOKIE_SECRET: z
-      .string()
-      .min(32)
-      .default("complex_password_at_least_32_characters_long_12345"),
+    LOGTO_APP_SECRET: isProduction
+      ? z
+          .string()
+          .min(1)
+          .refine(
+            (value) => value !== DEV_DEFAULT_APP_SECRET,
+            "LOGTO_APP_SECRET must not use the development placeholder in production",
+          )
+      : z.string().min(1).default(DEV_DEFAULT_APP_SECRET),
+    LOGTO_COOKIE_SECRET: isProduction
+      ? z
+          .string()
+          .min(32)
+          .refine(
+            (value) => value !== DEV_DEFAULT_COOKIE_SECRET,
+            "LOGTO_COOKIE_SECRET must not use the development placeholder in production",
+          )
+      : z.string().min(32).default(DEV_DEFAULT_COOKIE_SECRET),
     LOGTO_BASE_URL: z.string().url().default("http://localhost:3000"),
     LOGTO_RESOURCE: z.string().optional(),
     LOGTO_POST_LOGOUT_REDIRECT_URI: z.string().url(),
