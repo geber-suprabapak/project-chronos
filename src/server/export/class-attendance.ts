@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import { makeWorkbookMetadata } from "../../app/api/export/utils.ts";
 import type { PerClassStatusRow } from "../../lib/attendance-status.ts";
 import type { ExportFormat } from "./types.ts";
+import { safeExcelText } from "./xlsx-generator.ts";
 
 export async function generateClassAttendanceExport(
   rows: readonly PerClassStatusRow[],
@@ -23,7 +24,9 @@ export async function generateClassAttendanceExport(
     Object.assign(workbook, makeWorkbookMetadata(title));
     const sheet = workbook.addWorksheet("Absensi Per Kelas");
     sheet.addRow(headers).font = { bold: true };
-    sheet.addRows(body);
+    sheet.addRows(
+      body.map((cells) => cells.map((cell) => safeExcelText(cell))),
+    );
     [12, 32, 18, 20, 22].forEach((width, index) => {
       sheet.getColumn(index + 1).width = width;
     });

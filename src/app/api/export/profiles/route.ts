@@ -9,6 +9,7 @@ import { fetchCompleteAstraExport } from "~/server/export/complete-astra-list";
 import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
 import { getAsiaJakartaCurrentInfo } from "~/server/export/date-bounds";
+import { safeExcelText } from "~/server/export/xlsx-generator";
 import { writeOperationalEvent } from "~/lib/observability";
 
 // Ensure fresh data on each request
@@ -329,7 +330,17 @@ export async function GET(request: Request) {
 
     // Add rows to worksheet
     for (const r of rows) {
-      ws.addRow(r);
+      ws.addRow({
+        id: safeExcelText(r.id),
+        nis: safeExcelText(r.nis),
+        fullName: safeExcelText(r.fullName),
+        email: safeExcelText(r.email),
+        className: safeExcelText(r.className),
+        absenceNumber: safeExcelText(r.absenceNumber),
+        role: safeExcelText(r.role),
+        createdAt: safeExcelText(r.createdAt),
+        updatedAt: safeExcelText(r.updatedAt),
+      });
     }
 
     // Auto-filter for all columns

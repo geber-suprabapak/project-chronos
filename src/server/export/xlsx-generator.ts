@@ -52,12 +52,12 @@ export async function generateAttendanceXlsx(
     lastDate = r.date;
 
     const row = ws.addRow({
-      tanggal: r.date || "-",
-      nis: r.nis || "-",
-      kelas: r.className || "-",
-      nama: r.name || "-",
-      keterangan: r.displayStatus || "-",
-      lokasi: r.lokasi || "-",
+      tanggal: safeExcelText(r.date || "-"),
+      nis: safeExcelText(r.nis || "-"),
+      kelas: safeExcelText(r.className || "-"),
+      nama: safeExcelText(r.name || "-"),
+      keterangan: safeExcelText(r.displayStatus || "-"),
+      lokasi: safeExcelText(r.lokasi || "-"),
     });
 
     row.alignment = { vertical: "middle" };
@@ -85,8 +85,8 @@ export interface MonthlyAttendanceXlsxOptions {
 const MONTHLY_ATTENDANCE_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-function safeExcelText(value: string): string {
-  return /^(?:[=+@]|-(?=\S))/.test(value) ? `'${value}` : value;
+export function safeExcelText(value: string): string {
+  return /^(?:[\t\r=+@]|-(?=\S))/.test(value) ? `'${value}` : value;
 }
 
 function safeWorksheetName(

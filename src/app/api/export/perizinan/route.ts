@@ -10,6 +10,7 @@ import { createAstraRequestId } from "~/lib/astra/request-id";
 import { runWithRequestId } from "~/lib/astra/request-context";
 import { formatLeaveCategory } from "~/server/api/routers/perizinan";
 import { getAsiaJakartaCurrentInfo } from "~/server/export/date-bounds";
+import { safeExcelText } from "~/server/export/xlsx-generator";
 import { writeOperationalEvent } from "~/lib/observability";
 
 // Ensure fresh data on each request
@@ -284,11 +285,11 @@ export async function GET(request: Request) {
       }
 
       ws.addRow({
-        tanggal: tanggalStr,
-        nis: r.student_nis ?? profile?.nis ?? "-",
-        kelas: r.student_class ?? profile?.class_name ?? "-",
-        nama: r.student_name ?? profile?.full_name ?? "-",
-        keterangan: keterangan,
+        tanggal: safeExcelText(tanggalStr ?? "-"),
+        nis: safeExcelText(r.student_nis ?? profile?.nis ?? "-"),
+        kelas: safeExcelText(r.student_class ?? profile?.class_name ?? "-"),
+        nama: safeExcelText(r.student_name ?? profile?.full_name ?? "-"),
+        keterangan: safeExcelText(keterangan),
       });
     }
 
