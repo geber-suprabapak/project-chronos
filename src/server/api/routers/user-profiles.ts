@@ -12,7 +12,9 @@ import {
   PROFILE_DETAIL_NOT_FOUND_SIGNAL,
   classifyProfileDetailFailures,
   isProfileDetailNotFound,
+  isSafeProfileLookupId,
   profileDetailSeamCode,
+  profileLookupSegment,
   type AstraUpstreamFailure,
 } from "~/server/api/routers/user-profiles-detail";
 
@@ -136,14 +138,24 @@ export const userProfilesRouter = createTRPCRouter({
   // dependensi sebagai "profil tidak ditemukan" dan tidak membedah keberadaan
   // profil terproteksi lewat koleksi lain saat 403.
   getById: adminProcedure
-    .input(z.object({ id: z.string().min(1) }))
+    .input(
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .refine(isSafeProfileLookupId, "ID profil tidak valid."),
+      }),
+    )
     .query(async ({ input }) => {
+      const encodedId = profileLookupSegment(input.id);
       const failures: (AstraUpstreamFailure | null)[] = [];
       let upstreamCause: AstraRequestError | undefined;
       let student: AstraStudentProfile | null | undefined;
       try {
         student = await astraRequest<AstraStudentProfile>(
-          `/v1/admin/students/${input.id}`,
+          `/v1/admin/students/${encodedId}`,
         );
       } catch (error) {
         const upstream = error instanceof AstraRequestError ? error : null;
@@ -161,7 +173,7 @@ export const userProfilesRouter = createTRPCRouter({
       let staff: AstraStaffProfile | null | undefined;
       try {
         staff = await astraRequest<AstraStaffProfile>(
-          `/v1/admin/staff/${input.id}`,
+          `/v1/admin/staff/${encodedId}`,
         );
       } catch (error) {
         const upstream = error instanceof AstraRequestError ? error : null;

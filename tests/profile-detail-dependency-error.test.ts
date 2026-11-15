@@ -6,9 +6,11 @@ import {
   classifyProfileDetailFailure,
   classifyProfileDetailFailures,
   isRetryableProfileDetailUiState,
+  isSafeProfileLookupId,
   profileDetailSeamCode,
   isProfileDetailNotFound,
   profileDetailUiState,
+  profileLookupSegment,
 } from "../src/server/api/routers/user-profiles-detail.ts";
 
 /**
@@ -263,6 +265,35 @@ describe("Profile detail dependency-error mapping (C01b)", () => {
         false,
       );
       assert.equal(isProfileDetailNotFound(null), false);
+    });
+  });
+
+  describe("profile lookup ID path safety (SEC-03)", () => {
+    it("rejects path traversal and query-smuggling segments", () => {
+      for (const badId of [
+        "",
+        "   ",
+        ".",
+        "..",
+        "../staff/admin",
+        "user/123",
+        "user\\123",
+        "user?admin=1",
+        "user#frag",
+        "user%2f123",
+        "a..b",
+      ]) {
+        assert.equal(isSafeProfileLookupId(badId), false);
+      }
+    });
+
+    it("accepts and encodes valid UUID and Logto subject IDs", () => {
+      assert.equal(
+        isSafeProfileLookupId("550e8400-e29b-41d4-a716-446655440000"),
+        true,
+      );
+      assert.equal(isSafeProfileLookupId("user_abc|123"), true);
+      assert.equal(profileLookupSegment("user_abc|123"), "user_abc%7C123");
     });
   });
 });

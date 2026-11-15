@@ -208,3 +208,16 @@ export function isRetryableProfileDetailUiState(
 ): boolean {
   return state === "dependency" || state === "unknown";
 }
+
+/** Reject path-traversal, query-smuggling, and control characters in profile IDs. */
+export function isSafeProfileLookupId(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 255) return false;
+  if (trimmed === "." || trimmed === "..") return false;
+  return !/[/?#%\\\s]|\.\./.test(trimmed);
+}
+
+/** Encode a validated profile lookup ID as a single Astra URL path segment. */
+export function profileLookupSegment(id: string): string {
+  return encodeURIComponent(id.trim());
+}
