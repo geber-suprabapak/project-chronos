@@ -352,7 +352,7 @@ export function AbsenManualDialog({ trigger }: AbsenManualDialogProps = {}) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setOpen(false)}
+                  onClick={() => handleOpenChange(false)}
                   className="flex-1"
                   disabled={createAbsence.isPending}
                 >
