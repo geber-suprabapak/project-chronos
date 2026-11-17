@@ -709,7 +709,15 @@ export default function ShowPerizinanPage() {
       </div>
 
       {/* Dialogs */}
-      <Dialog open={isRejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+      <Dialog
+        open={isRejectDialogOpen}
+        onOpenChange={(open) => {
+          setRejectDialogOpen(open);
+          if (!open) {
+            setRejectionReason("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Konfirmasi Penolakan</DialogTitle>

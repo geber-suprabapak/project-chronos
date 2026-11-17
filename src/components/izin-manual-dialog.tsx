@@ -598,7 +598,7 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setOpen(false)}
+                  onClick={() => handleOpenChange(false)}
                   className="flex-1"
                   disabled={createIzin.isPending}
                 >
