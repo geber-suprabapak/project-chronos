@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -45,15 +45,28 @@ export function AutoSearchForm({
   const [kelamin, setKelamin] = useState(initialValues.kelamin ?? "ALL");
   const [activated, setActivated] = useState(initialValues.activated ?? "ALL");
 
-  // Debounce effect for search term
+  const serializedFilters = JSON.stringify({
+    searchTerm: searchTerm.trim(),
+    kelas,
+    kelamin,
+    activated,
+  });
+  const lastPushedFiltersRef = useRef(serializedFilters);
+
+  // Debounce effect for filter changes (never fire on initial mount so pagination state like ?page=2 is preserved)
   useEffect(() => {
+    if (serializedFilters === lastPushedFiltersRef.current) {
+      return;
+    }
+
     const timer = setTimeout(() => {
+      lastPushedFiltersRef.current = serializedFilters;
       updateURL();
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, kelas, kelamin, activated]);
+  }, [serializedFilters]);
 
   const updateURL = () => {
     const params = new URLSearchParams();
@@ -86,7 +99,7 @@ export function AutoSearchForm({
       params.set("activated", activated);
     }
 
-    // Always reset to page 1 on filter change
+    // Reset to page 1 only on actual filter change
     params.set("page", "1");
 
     const queryString = params.toString();
@@ -98,6 +111,12 @@ export function AutoSearchForm({
   };
 
   const handleReset = () => {
+    lastPushedFiltersRef.current = JSON.stringify({
+      searchTerm: "",
+      kelas: "ALL",
+      kelamin: "ALL",
+      activated: "ALL",
+    });
     setSearchTerm("");
     setKelas("ALL");
     setKelamin("ALL");
