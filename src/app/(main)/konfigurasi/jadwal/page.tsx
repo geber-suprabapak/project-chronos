@@ -208,8 +208,24 @@ export default function JadwalPage() {
       return;
     }
 
-    const kompensasi = parseInt(formData.kompensasiWaktu);
-    if (isNaN(kompensasi) || kompensasi < 0 || kompensasi > 120) {
+    if (formData.selesaiMasuk <= formData.mulaiMasuk) {
+      toast.error("Selesai Masuk harus lebih akhir dari Mulai Masuk");
+      return;
+    }
+    if (formData.mulaiPulang < formData.selesaiMasuk) {
+      toast.error("Mulai Pulang tidak boleh lebih awal dari Selesai Masuk");
+      return;
+    }
+    if (formData.selesaiPulang <= formData.mulaiPulang) {
+      toast.error("Selesai Pulang harus lebih akhir dari Mulai Pulang");
+      return;
+    }
+
+    const kompensasiText = formData.kompensasiWaktu.trim();
+    const kompensasi = /^\d+$/.test(kompensasiText)
+      ? Number(kompensasiText)
+      : Number.NaN;
+    if (!Number.isFinite(kompensasi) || kompensasi < 0 || kompensasi > 120) {
       toast.error("Kompensasi waktu harus antara 0-120 menit");
       return;
     }
