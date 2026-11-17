@@ -430,6 +430,42 @@ test.describe("QA Sweep: Critical Flows, Boundary Inputs, RBAC & Adversarial Hun
       const reopened = page.getByRole("dialog");
       await expect(reopened.locator("input#search-siswa")).toHaveValue("");
 
+      // Ensure pending status regardless of earlier perizinan approval tests
+      await page.route("**/api/trpc/*perizinan.getById*", async (route) => {
+        const response = await route.fetch();
+        const text = await response.text();
+        const chunks = text
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line));
+        for (const chunk of chunks) {
+          const queue = [chunk];
+          while (queue.length > 0) {
+            const node = queue.shift();
+            if (!node || typeof node !== "object") continue;
+            if (Array.isArray(node)) {
+              queue.push(...node);
+              continue;
+            }
+            const record = node as Record<string, unknown>;
+            if (
+              record.id === "b0000000-0000-4000-8000-000000000001" &&
+              "approvalStatus" in record
+            ) {
+              record.approvalStatus = "pending";
+              record.status = false;
+              record.approvedAt = null;
+              record.rejectedAt = null;
+            }
+            queue.push(...Object.values(record));
+          }
+        }
+        await route.fulfill({
+          response,
+          body: `${chunks.map((c) => JSON.stringify(c)).join("\n")}\n`,
+        });
+      });
+
       // Validate empty rejection reason on pending detail
       await page.goto("/perizinan/show/b0000000-0000-4000-8000-000000000001");
       await page.getByRole("button", { name: "Tolak", exact: true }).click();
@@ -442,6 +478,14 @@ test.describe("QA Sweep: Critical Flows, Boundary Inputs, RBAC & Adversarial Hun
         page.getByText("Alasan penolakan tidak boleh kosong."),
       ).toBeVisible();
       await expect(rejectDialog).toBeVisible();
+
+      // Closing and reopening Reject dialog clears stale rejection reason
+      await rejectDialog.getByRole("button", { name: "Batal" }).click();
+      await expect(rejectDialog).toBeHidden();
+      await page.getByRole("button", { name: "Tolak", exact: true }).click();
+      await expect(
+        page.getByRole("dialog").locator("#rejection-reason"),
+      ).toHaveValue("");
     });
 
     test("prevents double-submit when creating a location and supports Equator 0,0 coordinates", async ({
@@ -515,6 +559,31 @@ test.describe("QA Sweep: Critical Flows, Boundary Inputs, RBAC & Adversarial Hun
       await expect(
         page.getByText(/Selesai Masuk harus lebih akhir dari Mulai Masuk/i),
       ).toBeVisible();
+
+      // Restore valid masuk times, test mulaiPulang < selesaiMasuk ordering
+      await page.locator("#mulaiMasuk").fill("06:30");
+      await page.locator("#selesaiMasuk").fill("07:30");
+      await page.locator("#mulaiPulang").fill("07:00");
+      await page.getByRole("button", { name: "Simpan", exact: true }).click();
+      await expect(
+        page.getByText(
+          /Mulai Pulang tidak boleh lebih awal dari Selesai Masuk/i,
+        ),
+      ).toBeVisible();
+
+      // Restore valid pulang time, verify decimal / out-of-range kompensasi is rejected
+      await page.locator("#mulaiPulang").fill("15:00");
+      await page.locator("#kompensasiWaktu").fill("10.5");
+      const decimalValid = await page
+        .locator("#kompensasiWaktu")
+        .evaluate((el) => (el as HTMLInputElement).checkValidity());
+      expect(decimalValid).toBe(false);
+
+      await page.locator("#kompensasiWaktu").fill("121");
+      const overMaxValid = await page
+        .locator("#kompensasiWaktu")
+        .evaluate((el) => (el as HTMLInputElement).checkValidity());
+      expect(overMaxValid).toBe(false);
     });
 
     test("prevents duplicate requests on rapid double-click of DownloadExcelButton", async ({
