@@ -115,9 +115,9 @@ export default function MonthlyAttendanceRecapPage() {
       </div>
 
       <Card className="p-3 sm:p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           <label
-            className="grid gap-1 text-sm font-medium"
+            className="grid min-w-0 gap-1 text-sm font-medium"
             htmlFor="monthly-recap-month"
           >
             Bulan
@@ -127,11 +127,11 @@ export default function MonthlyAttendanceRecapPage() {
               type="month"
               value={month}
               onChange={(event) => setMonth(event.target.value)}
-              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] w-full min-w-0 rounded-md border bg-background px-3 font-normal"
             />
           </label>
           <label
-            className="grid gap-1 text-sm font-medium"
+            className="grid min-w-0 gap-1 text-sm font-medium"
             htmlFor="monthly-recap-class"
           >
             Kelas (opsional)
@@ -140,7 +140,7 @@ export default function MonthlyAttendanceRecapPage() {
               aria-label="Filter kelas rekap"
               value={className}
               onChange={(event) => setClassName(event.target.value)}
-              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] w-full min-w-0 rounded-md border bg-background px-3 font-normal"
             >
               <option value="">Semua kelas</option>
               {(classes.data ?? []).map((value) => (
@@ -151,7 +151,7 @@ export default function MonthlyAttendanceRecapPage() {
             </select>
           </label>
           <label
-            className="grid gap-1 text-sm font-medium"
+            className="grid min-w-0 gap-1 text-sm font-medium"
             htmlFor="monthly-recap-student"
           >
             Siswa (opsional)
@@ -160,7 +160,7 @@ export default function MonthlyAttendanceRecapPage() {
               aria-label="Filter siswa rekap"
               value={nis}
               onChange={(event) => setNis(event.target.value)}
-              className="h-9 min-h-[44px] rounded-md border bg-background px-3 font-normal"
+              className="h-9 min-h-[44px] w-full min-w-0 rounded-md border bg-background px-3 font-normal"
             >
               <option value="">Semua siswa</option>
               {(students.data ?? []).map((student) => (
