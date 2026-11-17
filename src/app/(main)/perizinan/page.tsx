@@ -253,7 +253,10 @@ export default function PerizinanPage() {
               <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
                 <span>
                   Halaman {page} - Menampilkan {pagedRows.length} dari{" "}
-                  {rows.length} data
+                  {isSearchingByName
+                    ? rows.length
+                    : (perizinan?.total ?? pagedRows.length)}{" "}
+                  data
                 </span>
                 <div className="flex gap-2">
                   <Button
