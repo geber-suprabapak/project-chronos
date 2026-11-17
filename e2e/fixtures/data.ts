@@ -132,8 +132,7 @@ export function createInitialMockData() {
       absence_number: "01",
       gender: "L",
       lifecycle_status: "approved",
-      avatar_url:
-        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde",
+      avatar_url: "https://storage.lunaradev.my.id/avatars/student-001.jpg",
       role: "student",
     },
     {
@@ -145,8 +144,7 @@ export function createInitialMockData() {
       absence_number: "02",
       gender: "P",
       lifecycle_status: "approved",
-      avatar_url:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+      avatar_url: "https://storage.lunaradev.my.id/avatars/student-002.jpg",
       role: "student",
     },
     {
@@ -170,8 +168,7 @@ export function createInitialMockData() {
       absence_number: "01",
       gender: "P",
       lifecycle_status: "approved",
-      avatar_url:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+      avatar_url: "https://storage.lunaradev.my.id/avatars/student-004.jpg",
       role: "student",
     },
     {

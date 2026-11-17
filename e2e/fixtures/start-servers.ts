@@ -120,6 +120,7 @@ async function main() {
     LOGTO_BASE_URL: `http://localhost:${CHRONOS_PORT}`,
     LOGTO_POST_LOGOUT_REDIRECT_URI: `http://localhost:${CHRONOS_PORT}/login`,
     LOGTO_RESOURCE: "https://api.skanida.sch.id",
+    STORAGE_PUBLIC_URL: "https://storage.lunaradev.my.id",
     NODE_ENV: "test",
   };
 
