@@ -276,6 +276,7 @@ export default function AbsensiPage() {
                   onChange={(e) => {
                     setQuery(e.target.value);
                     setPage(1);
+                    setSelectedIds(new Set());
                   }}
                   placeholder="Cari nama atau NIS"
                   className="h-9"
@@ -291,6 +292,7 @@ export default function AbsensiPage() {
                   onValueChange={(v) => {
                     setStatus(v === "all" ? "" : v);
                     setPage(1);
+                    setSelectedIds(new Set());
                   }}
                 >
                   <SelectTrigger
@@ -322,6 +324,7 @@ export default function AbsensiPage() {
                   onChange={(e) => {
                     setDate(e.target.value);
                     setPage(1);
+                    setSelectedIds(new Set());
                   }}
                   className="h-9"
                 />
@@ -336,6 +339,7 @@ export default function AbsensiPage() {
                   onValueChange={(v) => {
                     setSelectedClass(v === "all" ? "" : v);
                     setPage(1);
+                    setSelectedIds(new Set());
                   }}
                 >
                   <SelectTrigger
@@ -456,7 +460,10 @@ export default function AbsensiPage() {
                         variant="outline"
                         size="sm"
                         disabled={page <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        onClick={() => {
+                          setPage((p) => Math.max(1, p - 1));
+                          setSelectedIds(new Set());
+                        }}
                         aria-label="Halaman sebelumnya"
                       >
                         Sebelumnya
@@ -465,7 +472,10 @@ export default function AbsensiPage() {
                         variant="outline"
                         size="sm"
                         disabled={!hasMore}
-                        onClick={() => setPage((p) => p + 1)}
+                        onClick={() => {
+                          setPage((p) => p + 1);
+                          setSelectedIds(new Set());
+                        }}
                         aria-label="Halaman berikutnya"
                       >
                         Berikutnya
