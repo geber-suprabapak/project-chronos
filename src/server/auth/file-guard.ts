@@ -108,6 +108,7 @@ export type FileValidationResult =
 /**
  * Validates that the uploaded entry is a valid File matching:
  * - Presence (instance of File)
+ * - Non-empty (size > 0 bytes)
  * - Size <= 5MiB
  * - MIME type & extension in JPEG, PNG, PDF
  */
@@ -119,6 +120,13 @@ export function validateUploadedFile(
     return {
       ok: false,
       response: jsonError("A file is required.", 400, requestId),
+    };
+  }
+
+  if (entry.size <= 0) {
+    return {
+      ok: false,
+      response: jsonError("File cannot be empty.", 400, requestId),
     };
   }
 

@@ -292,6 +292,18 @@ describe("Issue 04 Role & Action Enforcement Matrix", () => {
       }
     });
 
+    it("rejects empty zero-byte file with HTTP 400", () => {
+      const emptyFile = new File([], "empty.png", {
+        type: "image/png",
+      });
+
+      const result = validateUploadedFile(emptyFile, "req-empty-bytes");
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.equal(result.response.status, 400);
+      }
+    });
+
     it("rejects file exceeding 5MB with HTTP 413", () => {
       const oversizedBuffer = new Uint8Array(MAX_FILE_SIZE_BYTES + 1);
       const oversizedFile = new File([oversizedBuffer], "large.jpg", {

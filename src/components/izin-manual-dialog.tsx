@@ -148,9 +148,17 @@ export function IzinManualDialog({ trigger }: IzinManualDialogProps = {}) {
       return;
     }
 
+    // Validate non-empty file
+    if (file.size <= 0) {
+      toast.error("File tidak boleh kosong");
+      e.target.value = "";
+      return;
+    }
+
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Ukuran file maksimal 5MB");
+      e.target.value = "";
       return;
     }
 
