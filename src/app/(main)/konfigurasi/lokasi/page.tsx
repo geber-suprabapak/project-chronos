@@ -98,6 +98,7 @@ export default function ConfigurationPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const currentSearchIdRef = useRef(0);
+  const isSubmittingRef = useRef(false);
 
   // Queries
   // retry: false keeps dependency-failure handling deterministic (no silent
@@ -131,6 +132,9 @@ export default function ConfigurationPage() {
     onError: (error) => {
       toast.error(`Gagal membuat lokasi: ${error.message}`);
     },
+    onSettled: () => {
+      isSubmittingRef.current = false;
+    },
   });
 
   const updateMutation = api.location.updateById.useMutation({
@@ -144,6 +148,9 @@ export default function ConfigurationPage() {
     },
     onError: (error) => {
       toast.error(`Gagal update lokasi: ${error.message}`);
+    },
+    onSettled: () => {
+      isSubmittingRef.current = false;
     },
   });
 
@@ -479,7 +486,11 @@ export default function ConfigurationPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (createMutation.isPending || updateMutation.isPending) {
+    if (
+      isSubmittingRef.current ||
+      createMutation.isPending ||
+      updateMutation.isPending
+    ) {
       return;
     }
 
@@ -528,6 +539,7 @@ export default function ConfigurationPage() {
     };
 
     if (selectedLocationId && selectedLocationId !== 1) {
+      isSubmittingRef.current = true;
       // Update existing location (not ID 1)
       updateMutation.mutate({
         id: selectedLocationId,
@@ -542,6 +554,7 @@ export default function ConfigurationPage() {
         return;
       }
 
+      isSubmittingRef.current = true;
       createMutation.mutate(
         {
           id: nextId,
@@ -1264,17 +1277,21 @@ export default function ConfigurationPage() {
                 >
                   <LocationPicker
                     latitude={
-                      formData.latitude
-                        ? parseFloat(formData.latitude)
+                      formData.latitude.trim() !== "" &&
+                      Number.isFinite(Number(formData.latitude.trim()))
+                        ? Number(formData.latitude.trim())
                         : -7.4771886
                     }
                     longitude={
-                      formData.longitude
-                        ? parseFloat(formData.longitude)
+                      formData.longitude.trim() !== "" &&
+                      Number.isFinite(Number(formData.longitude.trim()))
+                        ? Number(formData.longitude.trim())
                         : 110.2182633
                     }
                     distance={
-                      formData.distance ? parseInt(formData.distance) : 20
+                      /^\d+$/.test(formData.distance.trim())
+                        ? Number(formData.distance.trim())
+                        : 20
                     }
                     onLocationChange={handleLocationChange}
                   />

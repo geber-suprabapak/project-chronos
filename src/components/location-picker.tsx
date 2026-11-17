@@ -143,7 +143,10 @@ export default function LocationPicker({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {latitude && longitude ? (
+        {latitude !== null &&
+        Number.isFinite(latitude) &&
+        longitude !== null &&
+        Number.isFinite(longitude) ? (
           <LeafletMap
             latitude={latitude}
             longitude={longitude}
