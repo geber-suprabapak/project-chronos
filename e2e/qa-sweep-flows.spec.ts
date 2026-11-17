@@ -454,29 +454,7 @@ test.describe("QA Sweep: Critical Flows, Boundary Inputs, RBAC & Adversarial Hun
       await page.route("**/api/trpc/*location.create*", async (route) => {
         createRequestCount += 1;
         await new Promise((resolve) => setTimeout(resolve, 600));
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify([
-            {
-              result: {
-                data: {
-                  json: {
-                    id: 3,
-                    astraId: "loc-3",
-                    name: "Kampus Khatulistiwa 🧪",
-                    latitude: 0,
-                    longitude: 0,
-                    distance: 150,
-                    isActive: true,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  },
-                },
-              },
-            },
-          ]),
-        });
+        await route.continue();
       });
 
       await page.goto("/konfigurasi/lokasi");
@@ -508,6 +486,15 @@ test.describe("QA Sweep: Critical Flows, Boundary Inputs, RBAC & Adversarial Hun
       await saveBtn.dblclick();
       await expect(page.getByText(/berhasil dibuat/i)).toBeVisible();
       expect(createRequestCount).toBe(1);
+
+      // Clean up created location so subsequent tests keep 2/3 locations
+      const deleteBtn = page.getByRole("button", {
+        name: /Hapus lokasi Kampus Khatulistiwa/i,
+      });
+      await expect(deleteBtn).toHaveCount(1);
+      await deleteBtn.click();
+      await page.getByRole("button", { name: "Hapus", exact: true }).click();
+      await expect(deleteBtn).toHaveCount(0);
     });
 
     test("validates schedule time order and rejects non-integer kompensasi on /konfigurasi/jadwal", async ({
