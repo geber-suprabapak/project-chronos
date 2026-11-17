@@ -121,18 +121,6 @@ export default function ConfigurationPage() {
   };
 
   // Mutations
-  const upsertMutation = api.location.upsert.useMutation({
-    onSuccess: () => {
-      toast.success("Konfigurasi lokasi berhasil disimpan!");
-      void refetchLocations();
-      void refetchActive();
-      void refetchStats();
-    },
-    onError: (error) => {
-      toast.error(`Gagal menyimpan konfigurasi: ${error.message}`);
-    },
-  });
-
   const createMutation = api.location.create.useMutation({
     onSuccess: () => {
       // Intentionally no global toast here to avoid duplicate messages; per-call onSuccess handles UI
@@ -459,7 +447,7 @@ export default function ConfigurationPage() {
         name: "",
         latitude: "",
         longitude: "",
-        distance: "0",
+        distance: "100",
       });
     }
     setShowForm(true);
@@ -491,6 +479,10 @@ export default function ConfigurationPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (createMutation.isPending || updateMutation.isPending) {
+      return;
+    }
+
     // Prevent editing ID 1
     if (selectedLocationId === 1) {
       toast.error("Lokasi default (ID #1) tidak dapat diubah");
@@ -498,9 +490,14 @@ export default function ConfigurationPage() {
     }
 
     const name = formData.name.trim();
-    const latitude = parseFloat(formData.latitude);
-    const longitude = parseFloat(formData.longitude);
-    const distance = parseInt(formData.distance);
+    const latText = formData.latitude.trim();
+    const lngText = formData.longitude.trim();
+    const distanceText = formData.distance.trim();
+    const latitude = latText === "" ? Number.NaN : Number(latText);
+    const longitude = lngText === "" ? Number.NaN : Number(lngText);
+    const distance = /^\d+$/.test(distanceText)
+      ? Number(distanceText)
+      : Number.NaN;
 
     // Validation
     if (!name) {
@@ -508,17 +505,17 @@ export default function ConfigurationPage() {
       return;
     }
 
-    if (isNaN(latitude) || latitude < -90 || latitude > 90) {
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
       toast.error("Latitude harus berupa angka antara -90 dan 90");
       return;
     }
 
-    if (isNaN(longitude) || longitude < -180 || longitude > 180) {
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
       toast.error("Longitude harus berupa angka antara -180 dan 180");
       return;
     }
 
-    if (isNaN(distance) || distance < 1 || distance > 10000) {
+    if (!Number.isFinite(distance) || distance < 1 || distance > 10000) {
       toast.error("Jarak harus berupa angka antara 1 dan 10000 meter");
       return;
     }
@@ -1317,13 +1314,13 @@ export default function ConfigurationPage() {
                 variant="success"
                 disabled={
                   selectedLocationId === 1 ||
-                  upsertMutation.isPending ||
+                  createMutation.isPending ||
                   updateMutation.isPending
                 }
                 className="min-w-32"
               >
                 <Save className="mr-2 h-4 w-4" />
-                {upsertMutation.isPending || updateMutation.isPending
+                {createMutation.isPending || updateMutation.isPending
                   ? "Menyimpan..."
                   : selectedLocationId === 1
                     ? "Read-only"
