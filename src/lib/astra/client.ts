@@ -1,3 +1,4 @@
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import { getAccessTokenRSC } from "@logto/next/server-actions";
 import { env } from "~/env.js";
 import { logtoConfig } from "~/lib/logto/config";
@@ -9,6 +10,8 @@ import {
 } from "~/lib/astra/request-id";
 import { getActiveRequestId } from "~/lib/astra/request-context";
 import {
+  getServiceName,
+  injectTraceHeaders,
   safeOperationalPath,
   writeOperationalEvent,
 } from "~/lib/observability";
@@ -191,156 +194,195 @@ export async function astraRequestEnvelope<T>(
   options?: AstraRequestOptions,
 ): Promise<AstraResponse<T>> {
   const startedAt = performance.now();
+  const method = (init.method ?? "GET").toUpperCase();
+  const safePath = safeOperationalPath(path) ?? "/";
   let candidateRequestId = getActiveRequestId();
+  const tracer = trace.getTracer(getServiceName());
 
-  try {
-    // This client is also used while rendering Server Components through the
-    // server-side tRPC caller. The RSC variant deliberately does not persist a
-    // refreshed token cookie, which Next.js forbids during render.
-    const token = await getAccessTokenRSC(logtoConfig, env.LOGTO_RESOURCE);
-    const { headers, requestId } = buildAstraContractHeaders(
-      init.headers,
-      candidateRequestId,
-    );
-    candidateRequestId = requestId;
-    headers.set("Authorization", `Bearer ${token}`);
-    if (init.body && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-
-    const timeoutMs =
-      options?.timeoutMs ?? init.timeoutMs ?? DEFAULT_ASTRA_TIMEOUT_MS;
-    const timeoutSignal = AbortSignal.timeout(timeoutMs);
-    const signal = init.signal
-      ? AbortSignal.any([init.signal, timeoutSignal])
-      : timeoutSignal;
-
-    let response: Response;
-    try {
-      response = await fetch(`${env.ASTRA_API_URL}${path}`, {
-        ...init,
-        headers,
-        signal,
-      });
-    } catch (fetchError: unknown) {
-      const err =
-        fetchError instanceof Error
-          ? fetchError
-          : new Error(String(fetchError));
-      if (
-        err.name === "TimeoutError" ||
-        (err.name === "AbortError" && timeoutSignal.aborted)
-      ) {
-        throw new AstraRequestError(
-          `Astra request to ${path} timed out after ${timeoutMs}ms.`,
-          504,
-          requestId,
-          "TIMEOUT",
-        );
-      }
-      if (err instanceof TypeError || err.name === "TypeError") {
-        throw new AstraRequestError(
-          `Astra request to ${path} failed: ${err.message}`,
-          503,
-          requestId,
-          "NETWORK_ERROR",
-        );
-      }
-      if (err.name === "AbortError") {
-        throw new AstraRequestError(
-          `Astra request to ${path} was cancelled.`,
-          499,
-          requestId,
-          "CANCELLED",
-        );
-      }
-      throw new AstraRequestError(
-        `Astra request to ${path} encountered a network failure: ${err.message}`,
-        503,
-        requestId,
-        "NETWORK_ERROR",
-      );
-    }
-
-    const responseRequestId = getAstraResponseRequestId(response, requestId);
-    if (
-      response.headers.get("X-Astra-Contract-Version") !==
-      ASTRA_CONTRACT_VERSION
-    ) {
-      throw new AstraRequestError(
-        "Astra contract version is unavailable or incompatible.",
-        502,
-        responseRequestId,
-        "CONTRACT_VERSION_MISMATCH",
-      );
-    }
-    // SAFETY: Astra contract header v1 was verified immediately before decoding.
-    const envelope = (await response
-      .json()
-      .catch(() => null)) as AstraEnvelope<T> | null;
-    const envelopeRequestId = resolveAstraEnvelopeRequestId(
-      envelope?.meta?.request_id,
-      responseRequestId,
-    );
-    if (!envelope) {
-      throw new AstraRequestError(
-        `Astra returned non-JSON or invalid envelope with status ${response.status}.`,
-        response.ok ? 502 : response.status,
-        envelopeRequestId,
-        "INVALID_ENVELOPE",
-      );
-    }
-    if (!response.ok || !envelope.success) {
-      throw new AstraRequestError(
-        envelope.error?.message ??
-          envelope.message ??
-          `Astra request failed with status ${response.status}.`,
-        response.status,
-        envelopeRequestId,
-        envelope.error?.code,
-        envelope.error?.details,
-      );
-    }
-    if (!("data" in envelope)) {
-      throw new AstraRequestError(
-        "Astra response omitted data.",
-        502,
-        envelopeRequestId,
-        "INVALID_ENVELOPE",
-      );
-    }
-    writeOperationalEvent({
-      event: "astra.request",
-      outcome: "success",
-      requestId: envelopeRequestId,
-      path: safeOperationalPath(path),
-      status: response.status,
-      durationMs: Math.round(performance.now() - startedAt),
-    });
-    // SAFETY: The success envelope has a data property after the contract guard.
-    return {
-      data: envelope.data as T,
-      meta: {
-        ...envelope.meta,
-        request_id: envelopeRequestId,
+  return tracer.startActiveSpan(
+    `astra ${method} ${safePath}`,
+    {
+      kind: SpanKind.CLIENT,
+      attributes: {
+        "http.request.method": method,
+        "url.path": safePath,
+        "peer.service": "astra",
       },
-      requestId: envelopeRequestId,
-    };
-  } catch (error) {
-    writeOperationalEvent({
-      event: "astra.request",
-      outcome: "failure",
-      requestId:
-        error instanceof AstraRequestError
-          ? error.requestId
-          : (candidateRequestId ?? undefined),
-      path: safeOperationalPath(path),
-      status: error instanceof AstraRequestError ? error.status : undefined,
-      code: error instanceof AstraRequestError ? error.code : undefined,
-      durationMs: Math.round(performance.now() - startedAt),
-    });
-    throw error;
-  }
+    },
+    async (span) => {
+      try {
+        // This client is also used while rendering Server Components through the
+        // server-side tRPC caller. The RSC variant deliberately does not persist a
+        // refreshed token cookie, which Next.js forbids during render.
+        const token = await getAccessTokenRSC(logtoConfig, env.LOGTO_RESOURCE);
+        const { headers, requestId } = buildAstraContractHeaders(
+          init.headers,
+          candidateRequestId,
+        );
+        candidateRequestId = requestId;
+        span.setAttribute("request.id", requestId);
+        headers.set("Authorization", `Bearer ${token}`);
+        injectTraceHeaders(headers);
+        if (init.body && !headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
+
+        const timeoutMs =
+          options?.timeoutMs ?? init.timeoutMs ?? DEFAULT_ASTRA_TIMEOUT_MS;
+        const timeoutSignal = AbortSignal.timeout(timeoutMs);
+        const signal = init.signal
+          ? AbortSignal.any([init.signal, timeoutSignal])
+          : timeoutSignal;
+
+        let response: Response;
+        try {
+          response = await fetch(`${env.ASTRA_API_URL}${path}`, {
+            ...init,
+            headers,
+            signal,
+          });
+        } catch (fetchError: unknown) {
+          const err =
+            fetchError instanceof Error
+              ? fetchError
+              : new Error(String(fetchError));
+          if (
+            err.name === "TimeoutError" ||
+            (err.name === "AbortError" && timeoutSignal.aborted)
+          ) {
+            throw new AstraRequestError(
+              `Astra request to ${safePath} timed out after ${timeoutMs}ms.`,
+              504,
+              requestId,
+              "TIMEOUT",
+            );
+          }
+          if (err instanceof TypeError || err.name === "TypeError") {
+            throw new AstraRequestError(
+              `Astra request to ${safePath} failed: ${err.message}`,
+              503,
+              requestId,
+              "NETWORK_ERROR",
+            );
+          }
+          if (err.name === "AbortError") {
+            throw new AstraRequestError(
+              `Astra request to ${safePath} was cancelled.`,
+              499,
+              requestId,
+              "CANCELLED",
+            );
+          }
+          throw new AstraRequestError(
+            `Astra request to ${safePath} encountered a network failure: ${err.message}`,
+            503,
+            requestId,
+            "NETWORK_ERROR",
+          );
+        }
+
+        span.setAttribute("http.response.status_code", response.status);
+        const responseRequestId = getAstraResponseRequestId(
+          response,
+          requestId,
+        );
+        if (
+          response.headers.get("X-Astra-Contract-Version") !==
+          ASTRA_CONTRACT_VERSION
+        ) {
+          throw new AstraRequestError(
+            "Astra contract version is unavailable or incompatible.",
+            502,
+            responseRequestId,
+            "CONTRACT_VERSION_MISMATCH",
+          );
+        }
+        // SAFETY: Astra contract header v1 was verified immediately before decoding.
+        const envelope = (await response
+          .json()
+          .catch(() => null)) as AstraEnvelope<T> | null;
+        const envelopeRequestId = resolveAstraEnvelopeRequestId(
+          envelope?.meta?.request_id,
+          responseRequestId,
+        );
+        if (!envelope) {
+          throw new AstraRequestError(
+            `Astra returned non-JSON or invalid envelope with status ${response.status}.`,
+            response.ok ? 502 : response.status,
+            envelopeRequestId,
+            "INVALID_ENVELOPE",
+          );
+        }
+        if (!response.ok || !envelope.success) {
+          throw new AstraRequestError(
+            envelope.error?.message ??
+              envelope.message ??
+              `Astra request failed with status ${response.status}.`,
+            response.status,
+            envelopeRequestId,
+            envelope.error?.code,
+            envelope.error?.details,
+          );
+        }
+        if (!("data" in envelope)) {
+          throw new AstraRequestError(
+            "Astra response omitted data.",
+            502,
+            envelopeRequestId,
+            "INVALID_ENVELOPE",
+          );
+        }
+        span.setStatus({ code: SpanStatusCode.OK });
+        writeOperationalEvent({
+          event: "astra.request",
+          outcome: "success",
+          requestId: envelopeRequestId,
+          method,
+          path: safePath,
+          status: response.status,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+        // SAFETY: The success envelope has a data property after the contract guard.
+        return {
+          data: envelope.data as T,
+          meta: {
+            ...envelope.meta,
+            request_id: envelopeRequestId,
+          },
+          requestId: envelopeRequestId,
+        };
+      } catch (error) {
+        const status =
+          error instanceof AstraRequestError ? error.status : undefined;
+        if (status !== undefined) {
+          span.setAttribute("http.response.status_code", status);
+        }
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message:
+            error instanceof AstraRequestError
+              ? (error.code ?? "ASTRA_ERROR")
+              : "ASTRA_ERROR",
+        });
+        writeOperationalEvent({
+          event: "astra.request",
+          outcome: "failure",
+          requestId:
+            error instanceof AstraRequestError
+              ? error.requestId
+              : (candidateRequestId ?? undefined),
+          method,
+          path: safePath,
+          status,
+          code: error instanceof AstraRequestError ? error.code : undefined,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+        throw error;
+      } finally {
+        span.end();
+      }
+    },
+  );
 }
 
 export async function astraRequest<T>(

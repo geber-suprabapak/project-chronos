@@ -11,7 +11,7 @@ import {
   requireFileUploadAccess,
   validateUploadedFile,
 } from "~/server/auth/file-guard";
-import { writeOperationalEvent } from "~/lib/observability";
+import { injectTraceHeaders, writeOperationalEvent } from "~/lib/observability";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       },
       requestId,
     );
+    injectTraceHeaders(headers);
     const intentResponse = await fetch(
       `${env.ASTRA_API_URL}/v1/mobile/files/upload-intent`,
       {
@@ -139,18 +140,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const confirmHeaders = buildAstraContractHeaders(
+      {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      intentRequestId,
+    ).headers;
+    injectTraceHeaders(confirmHeaders);
     const confirmResponse = await fetch(
       `${env.ASTRA_API_URL}/v1/mobile/files/${encodeURIComponent(fileId)}/confirm`,
       {
         method: "POST",
         signal: AbortSignal.timeout(ASTRA_FILE_TIMEOUT_MS),
-        headers: buildAstraContractHeaders(
-          {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          intentRequestId,
-        ).headers,
+        headers: confirmHeaders,
       },
     );
     const confirmRequestId = getAstraResponseRequestId(
